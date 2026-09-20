@@ -1,0 +1,35 @@
+{
+    "name": "evsu-oc/sportsync",
+    "description": "EVSU-Ormoc Campus SportSync tournament management system",
+    "type": "project",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "classmap": ["backend/models/", "backend/controllers/", "backend/middleware/", "backend/utils/", "backend/config/"]
+    },
+    "autoload-dev": {
+        "psr-4": { "Tests\\": "tests/" }
+    },
+    "scripts": {
+        "lint": "php vendor/bin/phpstan.phar analyse backend --level=5",
+        "test": "php vendor/bin/phpunit.phar",
+        "ci": ["@lint", "@test"]
+    },
+    "config": {
+        "allow-plugins": true
+    },
+    "extra": {
+        "phan": {
+            "directory": "backend"
+        }
+    },
+    "_tooling": {
+        "note": "PHPStan and PHPUnit are used as standalone PHARs in vendor/bin because this environment's PHP lacks openssl/mbstring. Run 'php vendor/bin/phpstan.phar --version' and 'php vendor/bin/phpunit.phar --version' to verify."
+    }
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="FullCourt – tournaments, live scoring, standings, analytics, and public results." />
+    <meta name="theme-color" content="#b71c1c" />
+    <title>FullCourt</title>
+    <!-- Google Fonts: Inter + Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"><div id="fullcourt-startup" style="min-height:100vh;display:grid;place-content:center;text-align:center;background:#f7f7f5;color:#18181b;font-family:Arial,sans-serif;padding:24px;box-sizing:border-box"><h1>FullCourt</h1><p id="fullcourt-startup-message" role="status">Loading your basketball workspace…</p><button id="fullcourt-reload" type="button" hidden style="padding:12px 20px;border:0;border-radius:10px;background:#c8102e;color:white;cursor:pointer">Reload FullCourt</button></div></div>
+    <script>
+      (() => {
+        const showRecovery = () => {
+          const message = document.getElementById('fullcourt-startup-message');
+          const button = document.getElementById('fullcourt-reload');
+          if (!message || !button) return;
+          message.textContent = 'FullCourt is taking longer to load. Check your connection, then reload.';
+          button.hidden = false;
+        };
+        document.getElementById('fullcourt-reload').addEventListener('click', () => location.reload());
+        window.addEventListener('error', showRecovery);
+        window.addEventListener('unhandledrejection', showRecovery);
+        window.setTimeout(showRecovery, 12000);
+      })();
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

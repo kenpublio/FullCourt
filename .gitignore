@@ -1,0 +1,33 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Installed dependencies and generated builds
+/vendor/
+/frontend/node_modules/
+/frontend/dist/
+
+# Local runtime artifacts
+/output/
+/tmp/
+/frontend/output/
+/.continue/
+/.pnpm-store/
+*.log
+.phpunit.result.cache
+
+# Downloaded local tooling
+/composer.phar
+
+# User-uploaded or potentially private files
+/backend/uploads/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated audit screenshots
+/tests/*.png
