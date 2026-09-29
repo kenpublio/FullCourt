@@ -109,6 +109,13 @@ class Team {
         return $stmt->execute([':status' => $status, ':id' => $id]);
     }
 
+    public function findCoachApplication(int $tournamentId, int $userId): ?array {
+        $stmt=$this->db->prepare("SELECT * FROM teams WHERE tournament_id=:tournament_id AND (coach_user_id=:coach_id OR manager_user_id=:manager_id) ORDER BY id DESC LIMIT 1");
+        $stmt->execute([':tournament_id'=>$tournamentId,':coach_id'=>$userId,':manager_id'=>$userId]);
+        $row=$stmt->fetch();
+        return $row ?: null;
+    }
+
     public function update(int $id, array $data): bool {
         $sql = "UPDATE teams SET tournament_id = :tournament_id, division_id = :division_id,
                 team_name = :team_name, short_name = :short_name, primary_color = :primary_color

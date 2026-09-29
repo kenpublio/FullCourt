@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import engagementService from '../services/engagementService';
 
 const roleBadgeClass = (role) => {
   switch (role) {
@@ -15,6 +16,29 @@ const roleBadgeClass = (role) => {
 
 const Navbar = ({ onMenuClick, adminTheme, onThemeToggle }) => {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const userId = user?.id;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const refreshUnreadCount = useCallback(async () => {
+    if (!userId) { setUnreadCount(0); return; }
+    try {
+      const items = await engagementService.notifications();
+      setUnreadCount(items.filter((item) => !item.read_at).length);
+    } catch {
+      // Keep the header usable if notifications are temporarily unavailable.
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    refreshUnreadCount();
+    const timer = window.setInterval(refreshUnreadCount, 30000);
+    window.addEventListener('focus', refreshUnreadCount);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshUnreadCount);
+    };
+  }, [refreshUnreadCount, location.pathname]);
+
   const handleLogout = () => {
     const isPlatformAdmin = ['platform_admin', 'admin'].includes(user?.role);
     logout();
@@ -48,12 +72,13 @@ const Navbar = ({ onMenuClick, adminTheme, onThemeToggle }) => {
         {/* Notification bell */}
         <Link
           to="/notifications"
-          className="navbar-notification-btn text-decoration-none"
-          title="Notifications"
+          className={`navbar-notification-btn text-decoration-none${unreadCount ? ' has-unread' : ''}`}
+          title={unreadCount ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'Notifications'}
+          aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
           id="navbar-notifications-btn"
         >
           <i className="bi bi-bell-fill" style={{ fontSize: '1rem' }} />
-          <span className="navbar-notification-dot" />
+          {unreadCount > 0 && <span className="navbar-notification-count" aria-hidden="true">{unreadCount > 99 ? '99+' : unreadCount}</span>}
         </Link>
 
         {user && (

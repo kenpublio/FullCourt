@@ -1,13 +1,13 @@
 # FullCourt
 
-FullCourt is a basketball operations and tournament management platform for leagues, barangays, schools, and community organizations. It supports isolated organization workspaces, tournament setup, team and player eligibility, officials, schedules, live statistics, score corrections, standings, awards, public portals, analytics, notifications, and PDF reports.
+FullCourt is a basketball operations and tournament management platform for leagues, barangays, schools, and community organizations. It supports isolated organization workspaces, tournament setup, team and player eligibility, statistician assignments, schedules, live statistics, score corrections, standings, awards, public portals, analytics, notifications, and PDF reports.
 
 ## Main roles
 
 - Platform administrator: reviews organizations and monitors the platform.
 - Organization administrator: manages one organization's tournaments and staff.
 - Coach or team manager: manages rosters, eligibility, and five-player lineups.
-- Official or statistician: accepts assignments and records game activity.
+- Statistician: accepts game assignments and records the live score and player statistics.
 - Player: manages profile documents and views personal analytics.
 
 ## Local setup

@@ -54,6 +54,12 @@ class BasketballOperationsController {
         OrganizationAccess::requireTournament($tournamentId,$user);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         if (empty($input['name'])) Response::error('Division name is required.', 422);
+        $minimum = ($input['min_age'] ?? '') === '' ? null : (int)$input['min_age'];
+        $maximum = ($input['max_age'] ?? '') === '' ? null : (int)$input['max_age'];
+        if ($minimum !== null && ($minimum < 0 || $minimum > 99)) Response::error('Minimum age must be between 0 and 99.', 422);
+        if ($maximum !== null && ($maximum < 0 || $maximum > 99)) Response::error('Maximum age must be between 0 and 99.', 422);
+        if ($minimum !== null && $maximum !== null && $minimum > $maximum) Response::error('Minimum age cannot be greater than maximum age.', 422);
+        if (!empty($input['age_cutoff_date']) && !DateTimeImmutable::createFromFormat('Y-m-d', (string)$input['age_cutoff_date'])) Response::error('Age cutoff date must be a valid date.', 422);
         $id = $this->model->createDivision($tournamentId, $input);
         $this->audit->log((int)$user['user_id'], 'CREATE_DIVISION', 'TOURNAMENT_MGMT', "Created division {$id} for tournament {$tournamentId}.");
         Response::success('Division created', ['id'=>$id], 201);

@@ -47,6 +47,7 @@ const CoachDashboard = lazy(() => import('../pages/CoachDashboard'));
 const LegalPage = lazy(() => import('../pages/LegalPage'));
 const PublicGameDetails = lazy(() => import('../pages/PublicGameDetails'));
 const PublicDailySchedule = lazy(() => import('../pages/PublicDailySchedule'));
+const GuestScoringConsole = lazy(() => import('../pages/GuestScoringConsole'));
 
 // Guard
 import ProtectedRoute from './ProtectedRoute';
@@ -75,14 +76,14 @@ const AppRoutes = () => {
         <Route
           path="/users"
           element={
-            <ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}>
+            <ProtectedRoute allowedRoles={['platform_admin','admin']}>
               <UserManagement />
             </ProtectedRoute>
           }
         />
         <Route path="/profile" element={<Profile />} />
         <Route path="/organizations" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><OrganizationManagement /></ProtectedRoute>} />
-        <Route path="/officials" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','official','statistician']}><OfficialsWorkspace /></ProtectedRoute>} />
+        <Route path="/officials" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><OfficialsWorkspace /></ProtectedRoute>} />
         <Route path="/awards" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><AwardsManagement /></ProtectedRoute>} />
         <Route path="/share-cards" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><ShareCards /></ProtectedRoute>} />
         <Route path="/player/performance" element={<ProtectedRoute allowedRoles={['player']}><PlayerAnalytics /></ProtectedRoute>} />
@@ -95,7 +96,6 @@ const AppRoutes = () => {
         <Route path="/platform" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><Dashboard /></ProtectedRoute>} />
         <Route path="/player" element={<ProtectedRoute allowedRoles={['player']}><Dashboard /></ProtectedRoute>} />
         <Route path="/coach" element={<ProtectedRoute allowedRoles={['coach','coach_manager']}><CoachDashboard /></ProtectedRoute>} />
-        <Route path="/official" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','official']}><OfficialsWorkspace /></ProtectedRoute>} />
         <Route path="/statistician" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><BasketballStatistician /></ProtectedRoute>} />
         <Route path="/games/:gameId/live" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><LiveScoringView /></ProtectedRoute>} />
         
@@ -108,7 +108,7 @@ const AppRoutes = () => {
         <Route path="/live-scoring" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><LiveScoringView /></ProtectedRoute>} />
         <Route path="/scorekeeper" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><BasketballStatistician /></ProtectedRoute>} />
         <Route path="/standings" element={<StandingsView />} />
-        <Route path="/payments" element={<ProtectedRoute allowedRoles={['admin','finance_officer','coach_manager']}><PaymentVerificationView /></ProtectedRoute>} />
+        <Route path="/payments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','finance_officer','coach','coach_manager']}><PaymentVerificationView /></ProtectedRoute>} />
         <Route path="/qr-attendance" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']}><QRAttendanceView /></ProtectedRoute>} />
         <Route path="/game-day" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><GameDayOperations /></ProtectedRoute>} />
         <Route path="/notifications" element={<NotificationsView />} />
@@ -125,6 +125,7 @@ const AppRoutes = () => {
       <Route path="/sports/categories" element={<PublicSportsPortal />} />
       <Route path="/sports/tournaments/:id" element={<PublicTournamentDetails />} />
       <Route path="/sports/games/:gameId" element={<PublicGameDetails />} />
+      <Route path="/score/:token" element={<GuestScoringConsole />} />
       <Route path="/public/:slug" element={<PublicOrganizationPortal />} />
       <Route path="/overlay/game/:gameId" element={<BroadcastOverlay />} />
       <Route path="/legal/:document" element={<LegalPage />} />

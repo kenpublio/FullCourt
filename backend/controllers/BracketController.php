@@ -23,7 +23,7 @@ class BracketController {
     }
 
     public function generate(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         OrganizationAccess::requireTournament($tournamentId,$user);
 
         $tournament = $this->tournamentModel->getById($tournamentId);

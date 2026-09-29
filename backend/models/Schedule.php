@@ -288,7 +288,10 @@ class Schedule {
 
     // Reschedule a single match (drag/time edit). Rejects completed/postponed matches.
     public function updateMatchSlot(int $matchId, string $start, ?int $courtId): array {
-        $stmt = $this->db->prepare("SELECT id, tournament_id, court_id, scheduled_start_time, scheduled_end_time, status FROM matches WHERE id = :mid LIMIT 1");
+        $stmt = $this->db->prepare("SELECT m.id, m.tournament_id, m.court_id, m.scheduled_start_time, m.scheduled_end_time, m.status, m.schedule_status,
+                c.court_name, v.name AS venue_name
+            FROM matches m LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN venues v ON v.id=c.venue_id
+            WHERE m.id = :mid LIMIT 1");
         $stmt->execute([':mid' => $matchId]);
         $m = $stmt->fetch();
         if (!$m) throw new Exception("Match not found.");
@@ -352,7 +355,59 @@ class Schedule {
         $this->db->prepare("UPDATE matches SET court_id = :court, scheduled_start_time = :s, scheduled_end_time = :e WHERE id = :mid")
             ->execute([':court' => $courtId, ':s' => $startDt->format('Y-m-d H:i:s'), ':e' => $endDt->format('Y-m-d H:i:s'), ':mid' => $matchId]);
 
-        return ['scheduled' => true, 'start' => $startDt->format('Y-m-d H:i:s'), 'end' => $endDt->format('Y-m-d H:i:s')];
+        return [
+            'scheduled' => true,
+            'start' => $startDt->format('Y-m-d H:i:s'),
+            'end' => $endDt->format('Y-m-d H:i:s'),
+            'previous_start' => $m['scheduled_start_time'],
+            'was_published' => ($m['schedule_status'] ?? null) === 'published',
+            'previous_court_id' => $m['court_id'],
+            'previous_court' => $m['court_name'] ?? null,
+            'previous_venue' => $m['venue_name'] ?? null,
+        ];
+    }
+
+    public function notifyScheduleChange(int $matchId, array $change): int {
+        $stmt = $this->db->prepare("SELECT m.tournament_id,m.scheduled_start_time,m.court_id,
+                t.name AS tournament_name,h.team_name AS home_team,a.team_name AS away_team,
+                c.court_name,v.name AS venue_name
+            FROM matches m JOIN tournaments t ON t.id=m.tournament_id
+            LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id
+            LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN venues v ON v.id=c.venue_id
+            WHERE m.id=:match_id LIMIT 1");
+        $stmt->execute([':match_id' => $matchId]);
+        $match = $stmt->fetch();
+        if (!$match) return 0;
+
+        $recipients = $this->db->prepare("SELECT DISTINCT recipient.user_id FROM (
+                SELECT tp.user_id FROM teams tm JOIN team_players tp ON tp.team_id=tm.id
+                JOIN matches m ON tm.id IN (m.team1_id,m.team2_id) WHERE m.id=:players_match AND tp.user_id IS NOT NULL
+                UNION SELECT tm.coach_user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
+                    WHERE m.id=:coaches_match AND tm.coach_user_id IS NOT NULL
+                UNION SELECT tm.manager_user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
+                    WHERE m.id=:managers_match AND tm.manager_user_id IS NOT NULL
+                UNION SELECT ga.user_id FROM game_assignments ga WHERE ga.match_id=:assignment_match AND ga.status='accepted'
+            ) recipient JOIN users u ON u.id=recipient.user_id WHERE u.is_active=1");
+        $recipients->execute([
+            ':players_match' => $matchId,
+            ':coaches_match' => $matchId,
+            ':managers_match' => $matchId,
+            ':assignment_match' => $matchId,
+        ]);
+        $users = $recipients->fetchAll(PDO::FETCH_COLUMN);
+        if (!$users) return 0;
+
+        $date = date('M j, Y g:i A', strtotime((string)$match['scheduled_start_time']));
+        $place = trim(($match['venue_name'] ?? '') . (($match['court_name'] ?? '') ? ' · ' . $match['court_name'] : ''));
+        $message = sprintf('%s vs %s in %s was rescheduled to %s%s.',
+            $match['home_team'] ?? 'Team TBA', $match['away_team'] ?? 'Team TBA',
+            $match['tournament_name'], $date, $place !== '' ? ' at ' . $place : '');
+        $insert = $this->db->prepare("INSERT INTO notifications (user_id,notification_type,title,message,action_url)
+            VALUES (:user_id,'schedule_change','Game schedule changed',:message,'/schedules')");
+        foreach ($users as $userId) {
+            $insert->execute([':user_id' => (int)$userId, ':message' => $message]);
+        }
+        return count($users);
     }
 
     public function saveConstraints(int $tournamentId, array $c): bool {

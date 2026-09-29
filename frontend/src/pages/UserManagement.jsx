@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import userService from '../services/userService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
+import '../styles/user-management.css';
 
 const UserManagement = () => {
   const { user: currentUser } = useAuth();
@@ -89,9 +90,13 @@ const UserManagement = () => {
 
   const getRoleBadge = (role) => {
     switch (role) {
-      case 'admin': return 'bg-danger';
+      case 'admin':
+      case 'platform_admin': return 'bg-danger';
+      case 'organization_admin':
       case 'tournament_organizer': return 'bg-warning text-dark';
+      case 'coach':
       case 'coach_manager': return 'bg-primary';
+      case 'statistician': return 'bg-info text-dark';
       case 'finance_officer': return 'bg-success';
       case 'player': return 'bg-dark';
       default: return 'bg-secondary';
@@ -106,35 +111,42 @@ const UserManagement = () => {
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+  const activeUsers = users.filter(u => u.is_active).length;
+  const inactiveUsers = users.length - activeUsers;
 
   return (
-    <div className="container-fluid p-0">
-      {/* Header Banner */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <div>
-          <h3 className="fw-bold text-dark mb-1">
-            <i className="bi bi-shield-lock-fill text-evsu-primary me-2"></i>
-            User &amp; Role Management
-          </h3>
-          <p className="text-muted small mb-0">
-            Control user permissions, role authorizations, and platform audit security logs
-          </p>
+    <div className="container-fluid p-0 user-management-page">
+      <section className="user-management-hero">
+        <div className="user-management-hero-copy">
+          <span className="user-management-eyebrow"><i className="bi bi-shield-lock-fill"/> PLATFORM CONTROL</span>
+          <h1>User &amp; Role Management</h1>
+          <p>Manage account access, role assignments, and the security trail for FullCourt.</p>
         </div>
+        <div className="user-management-hero-stats" aria-label="User account summary">
+          <div><i className="bi bi-people-fill"/><span><b>{users.length}</b><small>Total accounts</small></span></div>
+          <div><i className="bi bi-person-check-fill"/><span><b>{activeUsers}</b><small>Active</small></span></div>
+          <div><i className="bi bi-person-x-fill"/><span><b>{inactiveUsers}</b><small>Deactivated</small></span></div>
+        </div>
+      </section>
 
-        <div className="btn-group" role="group">
+      <div className="user-management-toolbar">
+        <div className="user-management-context"><span className="user-management-live-dot"/><span>ACCESS &amp; AUDIT CENTER</span></div>
+        <div className="btn-group user-management-tabs" role="group" aria-label="User management sections">
           <button
             type="button"
-            className={`btn btn-sm px-3 fw-semibold ${activeTab === 'users' ? 'btn-evsu' : 'btn-outline-secondary'}`}
+            className={`btn btn-sm px-3 fw-semibold ${activeTab === 'users' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('users')}
+            aria-pressed={activeTab === 'users'}
           >
-            <i className="bi bi-people-fill me-1"></i> User Directory ({users.length})
+            <i className="bi bi-people-fill me-2"></i>User directory<span>{users.length}</span>
           </button>
           <button
             type="button"
-            className={`btn btn-sm px-3 fw-semibold ${activeTab === 'logs' ? 'btn-evsu' : 'btn-outline-secondary'}`}
+            className={`btn btn-sm px-3 fw-semibold ${activeTab === 'logs' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('logs')}
+            aria-pressed={activeTab === 'logs'}
           >
-            <i className="bi bi-journal-text me-1"></i> Security Audit Logs ({auditLogs.length})
+            <i className="bi bi-journal-check me-2"></i>Security audit<span>{auditLogs.length}</span>
           </button>
         </div>
       </div>
@@ -148,18 +160,20 @@ const UserManagement = () => {
       )}
 
       {activeTab === 'users' ? (
-        <div className="card-custom p-4">
+        <div className="card-custom p-4 user-directory-panel">
           {/* Filters Bar */}
+          <div className="user-directory-heading"><div><span className="user-management-eyebrow">ACCOUNT DIRECTORY</span><h2>Platform accounts</h2><p>Search users and review their assigned access.</p></div><span className="user-results-count"><i className="bi bi-funnel-fill"/>{filteredUsers.length} shown</span></div>
           <div className="row g-3 mb-4">
             <div className="col-md-6 col-lg-4">
               <div className="input-group input-group-sm">
-                <span className="input-group-text bg-light border-end-0">
+                <span className="input-group-text border-end-0 user-search-icon">
                   <i className="bi bi-search text-muted"></i>
                 </span>
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search by name, email, or mobile number..."
+                  aria-label="Search user accounts"
+                  placeholder="Search name, email, phone, or address"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -168,8 +182,10 @@ const UserManagement = () => {
 
             <div className="col-md-6 col-lg-4 ms-auto">
               <div className="d-flex align-items-center gap-2">
-                <label className="small text-muted fw-semibold text-nowrap">Filter Role:</label>
+                <label className="small text-muted fw-semibold text-nowrap" htmlFor="user-role-filter">Filter role</label>
                 <select
+                  id="user-role-filter"
+                  aria-label="Filter users by role"
                   className="form-select form-select-sm"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
@@ -179,7 +195,6 @@ const UserManagement = () => {
                   <option value="organization_admin">Organization Administrator</option>
                   <option value="tournament_organizer">Tournament Organizer</option>
                   <option value="coach">Coach</option>
-                  <option value="official">Official / Referee</option>
                   <option value="statistician">Statistician</option>
                   <option value="player">Player</option>
                 </select>
@@ -191,8 +206,8 @@ const UserManagement = () => {
           {loading ? (
             <LoadingSpinner message="Loading user directory..." />
           ) : (
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+            <div className="table-responsive user-table-scroll" role="region" aria-label="User accounts table" tabIndex={0}>
+              <table className="table table-hover align-middle mb-0 user-directory-table">
                 <thead className="table-light">
                   <tr>
                     <th>ID / Name</th>
@@ -278,12 +293,9 @@ const UserManagement = () => {
         </div>
       ) : (
         /* Audit Security Logs Tab */
-        <div className="card-custom p-4">
-          <h5 className="fw-bold text-dark mb-3">
-            <i className="bi bi-shield-check text-success me-2"></i>
-            System Security Audit Trail
-          </h5>
-          <div className="table-responsive">
+        <div className="card-custom p-4 user-directory-panel user-audit-panel">
+          <div className="user-directory-heading"><div><span className="user-management-eyebrow">SECURITY HISTORY</span><h2>System audit trail</h2><p>Review account and platform actions recorded by FullCourt.</p></div><span className="user-results-count"><i className="bi bi-shield-check"/>{auditLogs.length} records</span></div>
+          <div className="table-responsive" role="region" aria-label="Account security audit log" tabIndex={0}>
             <table className="table table-sm table-striped align-middle mb-0" style={{ fontSize: '0.85rem' }}>
               <thead className="table-dark">
                 <tr>
@@ -371,7 +383,6 @@ const UserManagement = () => {
                       <option value="organization_admin">Organization Administrator</option>
                       <option value="tournament_organizer">Tournament Organizer</option>
                       <option value="coach">Coach</option>
-                      <option value="official">Official / Referee</option>
                       <option value="statistician">Statistician</option>
                       <option value="player">Player</option>
                     </select>

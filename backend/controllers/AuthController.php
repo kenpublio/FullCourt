@@ -7,7 +7,6 @@ require_once __DIR__ . '/../utils/jwt.php';
 require_once __DIR__ . '/../utils/response.php';
 require_once __DIR__ . '/../utils/Mailer.php';
 require_once __DIR__ . '/../utils/ResendMailer.php';
-require_once __DIR__ . '/../utils/SemaphoreSms.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../models/AuthSession.php';
 require_once __DIR__ . '/../middleware/RateLimiter.php';
@@ -24,20 +23,29 @@ class AuthController {
 
         $email = $this->normalizeContact(strtolower(trim($input['email'] ?? '')));
         $password = trim($input['password'] ?? '');
+        $portal = trim((string)($input['portal'] ?? 'user'));
         RateLimiter::hit('login',10,60,$email);
 
         if (empty($email) || empty($password)) {
-            Response::error('Email/mobile number and password are required fields.', 400);
+            Response::error('Email address and password are required fields.', 400);
         }
 
         $user = $this->userModel->findByLogin($email);
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
-            Response::error('Invalid credentials. Please check your email/mobile number and password.', 401);
+            Response::error('Invalid credentials. Please check your email address and password.', 401);
         }
 
         if (!$user['is_active']) {
             Response::error('Account is deactivated. Please contact the administrator.', 403);
+        }
+
+        $isPlatformAdmin = in_array($user['role'], ['platform_admin','admin'], true);
+        if ($portal === 'admin' && !$isPlatformAdmin) {
+            Response::error('This portal is reserved for platform administrators.', 403);
+        }
+        if ($portal !== 'admin' && $isPlatformAdmin) {
+            Response::error('Administrator accounts must sign in through the Admin Portal.', 403);
         }
 
         // Generate JWT payload
@@ -68,7 +76,7 @@ class AuthController {
         $input = json_decode(file_get_contents('php://input'), true);
 
         $fullName = trim($input['full_name'] ?? '');
-        $contact = $this->normalizeContact(strtolower(trim($input['email'] ?? '')));
+        $contact = strtolower(trim($input['email'] ?? ''));
         $password = trim($input['password'] ?? '');
         $studentId = trim($input['student_faculty_id'] ?? '');
         $ageInput = $input['age'] ?? null;
@@ -82,27 +90,26 @@ class AuthController {
         $role = trim($input['role'] ?? 'player');
         $dept = trim($input['department_course'] ?? '');
         $yearLevel = trim($input['year_level'] ?? '');
-        $phone = trim($input['phone_number'] ?? '');
+        $phone = $this->normalizeContact(trim($input['phone_number'] ?? ''));
         $verificationCode = trim($input['verification_code'] ?? '');
 
         if (empty($fullName) || empty($birthDate) || empty($address) || empty($contact) || empty($password)) {
-            Response::error('Full name, date of birth, address, email/mobile number, and password are required fields.', 400);
+            Response::error('Full name, date of birth, address, email address, and password are required fields.', 400);
         }
         $birth = DateTimeImmutable::createFromFormat('!Y-m-d', $birthDate);
         if (!$birth || $birth->format('Y-m-d') !== $birthDate || $birth > new DateTimeImmutable('today')) Response::error('Enter a valid date of birth.', 400);
         $age = $birth->diff(new DateTimeImmutable('today'))->y;
         if ($age < 1 || $age > 120) Response::error('Date of birth must result in an age between 1 and 120.', 400);
-        $isEmail = $this->isValidEmail($contact);
-        if (!$isEmail && !$this->isValidPhone($contact)) Response::error('Enter a valid email address or Philippine mobile number.',400);
-        $email = $isEmail ? $contact : null;
-        if (!$isEmail) $phone = $contact;
+        if (!$this->isValidEmail($contact)) Response::error('Enter a valid email address.', 400);
+        if ($phone !== '' && !$this->isValidPhone($phone)) Response::error('Enter a valid Philippine mobile number or leave it blank.', 400);
+        $email = $contact;
 
         if (strlen($password) < 8 || !preg_match('/[A-Z]/',$password) || !preg_match('/\d/',$password) || !preg_match('/[^A-Za-z0-9]/',$password)) {
             Response::error('Password must have 8 characters, an uppercase letter, a number, and a special character.', 400);
         }
 
         // Check if email already exists
-        if ($email !== null && $this->userModel->findByEmail($email)) {
+        if ($this->userModel->findByEmail($email)) {
             Response::error('Email is already registered in FullCourt.', 409);
         }
         if ($phone !== '' && $this->userModel->findByPhone($phone)) Response::error('Mobile number is already registered in FullCourt.',409);
@@ -112,7 +119,7 @@ class AuthController {
             Response::error('Student/Faculty ID is already registered.', 409);
         }
 
-        if (!$this->userModel->verifyCode($contact, 'registration', $verificationCode)) {
+        if (!$this->userModel->verifyCode($email, 'registration', $verificationCode)) {
             Response::error('The verification code is invalid or expired.', 400);
         }
 
@@ -150,25 +157,26 @@ class AuthController {
     }
 
     public function requestEmailCode(): void {
-        $input=json_decode(file_get_contents('php://input'),true); $contact=$this->normalizeContact(strtolower(trim($input['email']??''))); $purpose=trim($input['purpose']??'registration');
+        $input=json_decode(file_get_contents('php://input'),true); $contact=strtolower(trim($input['email']??'')); $purpose=trim($input['purpose']??'registration');
         RateLimiter::hit('contact_code',5,600,$contact);
-        if(!$this->isValidEmail($contact)&&!$this->isValidPhone($contact)) Response::error('Enter a valid email address or Philippine mobile number.',400);
-        if($purpose==='registration' && $this->userModel->findByLogin($contact)) Response::error('This email or mobile number is already registered.',409);
+        if(!$this->isValidEmail($contact)) Response::error('Enter a valid email address.',400);
+        if($purpose==='registration' && $this->userModel->findByEmail($contact)) Response::error('This email address is already registered.',409);
         $this->issueCode($contact,$purpose);
     }
 
     public function forgotPassword(): void {
-        $input=json_decode(file_get_contents('php://input'),true); $contact=$this->normalizeContact(strtolower(trim($input['email']??'')));
+        $input=json_decode(file_get_contents('php://input'),true); $contact=strtolower(trim($input['email']??''));
         RateLimiter::hit('password_reset',5,600,$contact);
-        if(!$this->isValidEmail($contact)&&!$this->isValidPhone($contact)) Response::error('Enter a valid email address or Philippine mobile number.',400);
+        if(!$this->isValidEmail($contact)) Response::error('Enter a valid email address.',400);
         if($this->userModel->findByLogin($contact)) $this->issueCode($contact,'password_reset');
-        Response::success('If that email or mobile number is registered, a reset code has been sent.');
+        Response::success('If that email address is registered, a reset code has been sent.');
     }
 
     public function verifyPasswordResetCode(): void {
         $input = json_decode(file_get_contents('php://input'), true);
         $email = $this->normalizeContact(strtolower(trim($input['email'] ?? '')));
         $code = trim($input['code'] ?? '');
+        if (!$this->isValidEmail($email)) Response::error('Enter a valid email address.', 400);
         if (strlen($code) !== 6 || !$this->userModel->verifyCode($email, 'password_reset', $code, false)) {
             Response::error('The reset code is invalid or expired.', 400);
         }
@@ -179,14 +187,16 @@ class AuthController {
         $input = json_decode(file_get_contents('php://input'), true);
         $email = $this->normalizeContact(strtolower(trim($input['email'] ?? '')));
         $code = trim($input['code'] ?? '');
+        if (!$this->isValidEmail($email)) Response::error('Enter a valid email address.', 400);
         if (strlen($code) !== 6 || !$this->userModel->verifyCode($email, 'registration', $code, false)) {
             Response::error('The verification code is invalid or expired.', 400);
         }
-        Response::success('Contact successfully verified.');
+        Response::success('Email address successfully verified.');
     }
 
     public function resetPassword(): void {
-        $input=json_decode(file_get_contents('php://input'),true); $email=$this->normalizeContact(strtolower(trim($input['email']??''))); $code=trim($input['code']??''); $password=$input['password']??'';
+        $input=json_decode(file_get_contents('php://input'),true); $email=strtolower(trim($input['email']??'')); $code=trim($input['code']??''); $password=$input['password']??'';
+        if (!$this->isValidEmail($email)) Response::error('Enter a valid email address.', 400);
         if(strlen($password)<8 || !preg_match('/[A-Z]/',$password) || !preg_match('/\d/',$password) || !preg_match('/[^A-Za-z0-9]/',$password)) Response::error('Use at least 8 characters with uppercase, number, and special character.',400);
         if(!$this->userModel->verifyCode($email,'password_reset',$code)) Response::error('The reset code is invalid or expired.',400);
         $this->userModel->updatePasswordByLogin($email,$password); Response::success('Password reset successfully.');
@@ -210,18 +220,6 @@ class AuthController {
 
     private function issueCode(string $email,string $purpose): void {
         $code=(string)random_int(100000,999999); $this->userModel->saveVerificationCode($email,$purpose,$code);
-        if($this->isValidPhone($email)){
-            $sms = new SemaphoreSms();
-            if (!$sms->isConfigured()) {
-                $data=[];if(getenv('APP_ENV')!=='production')$data['development_code']=$code;
-                if(getenv('APP_ENV')==='production')Response::error('SMS verification is not configured yet. Please use an email address or contact the administrator.',503);
-                Response::success('Semaphore is not configured locally. Use the test code shown below.',$data);
-            }
-            if (!$sms->sendOtp($email, $code, 3)) {
-                Response::error('We could not send the SMS verification code. Check the number or try again later.',503);
-            }
-            Response::success('Verification code sent to your mobile number.');
-        }
         $subject=$purpose==='password_reset'?'FullCourt password reset code':'Verify your FullCourt account';
         $body="Your FullCourt verification code is {$code}. It expires in 3 minutes.";
         $resend = new ResendMailer();

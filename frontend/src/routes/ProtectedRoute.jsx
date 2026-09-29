@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const home = ['platform_admin','admin'].includes(role) ? '/platform'
       : ['organization_admin','tournament_organizer'].includes(role) ? '/organizer'
       : ['coach','coach_manager'].includes(role) ? '/coach'
-      : role === 'player' ? '/player' : role === 'statistician' ? '/statistician' : '/official';
+      : role === 'player' ? '/player' : '/statistician';
     return <Navigate to={home} replace />;
   }
 

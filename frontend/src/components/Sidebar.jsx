@@ -4,23 +4,23 @@ import { useAuth } from '../hooks/useAuth';
 
 const menuItems = [
   { section: 'Main', items: [
-    { title: 'Dashboard', path: '/dashboard', icon: 'bi-grid-1x2-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','official','statistician'] },
+    { title: 'Dashboard', path: '/dashboard', icon: 'bi-grid-1x2-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','statistician'] },
   ]},
   { section: 'Management', items: [
     { title: 'Organizations', path: '/organizations', icon: 'bi-buildings-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
-    { title: 'User & Role Ops', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
+    { title: 'User & Role Ops', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin'] },
     { title: 'Tournaments', path: '/tournaments', icon: 'bi-trophy-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
     { title: 'Teams & Players', path: '/teams', icon: 'bi-people-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
     { title: 'Eligibility', path: '/eligibility', icon: 'bi-patch-check-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
     { title: 'Brackets', path: '/brackets', icon: 'bi-diagram-3-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
   ]},
   { section: 'Live Ops', items: [
-    { title: 'Officials & Assignments', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','official','statistician'] },
-    { title: 'Schedules & Venues', path: '/schedules', icon: 'bi-calendar-event-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','official','statistician'] },
+    { title: 'Statistician Assignments', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','statistician'] },
+    { title: 'Schedules & Venues', path: '/schedules', icon: 'bi-calendar-event-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','statistician'] },
     { title: 'Venues & Courts', path: '/venues', icon: 'bi-geo-alt-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
     { title: 'Live Scoring', path: '/live-scoring', icon: 'bi-broadcast-pin', roles: ['platform_admin','admin','organization_admin','tournament_organizer','statistician'] },
     { title: 'Statistician Console', path: '/scorekeeper', icon: 'bi-clipboard-data-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','statistician'] },
-    { title: 'Standings', path: '/standings', icon: 'bi-list-ol', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','official','statistician'] },
+    { title: 'Standings', path: '/standings', icon: 'bi-list-ol', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','statistician'] },
   ]},
   { section: 'Insights', items: [
     { title: 'My Performance', path: '/player/performance', icon: 'bi-graph-up-arrow', roles: ['player'] },
@@ -29,14 +29,15 @@ const menuItems = [
     { title: 'Reports', path: '/reports', icon: 'bi-file-earmark-bar-graph-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
   ]},
   { section: 'Operations', items: [
+    { title: 'Payments', path: '/payments', icon: 'bi-credit-card-fill', roles: ['platform_admin','admin','finance_officer','coach','coach_manager'] },
     { title: 'QR Game Access', path: '/qr-attendance', icon: 'bi-qr-code-scan', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
     { title: 'Game-Day Control', path: '/game-day', icon: 'bi-clipboard2-pulse-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
   ]},
   { section: 'Account', items: [
     { title: 'Eligibility Documents', path: '/player/documents', icon: 'bi-file-earmark-lock-fill', roles: ['player'] },
-    { title: 'Notifications', path: '/notifications', icon: 'bi-bell-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','official','statistician'] },
+    { title: 'Notifications', path: '/notifications', icon: 'bi-bell-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','statistician'] },
     { title: 'Basketball History',      path: '/history',       icon: 'bi-clock-history',         roles: ['player'] },
-    { title: 'My Profile', path: '/profile', icon: 'bi-person-circle', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','official','statistician'] },
+    { title: 'My Profile', path: '/profile', icon: 'bi-person-circle', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player','statistician'] },
     { title: 'Settings', path: '/settings', icon: 'bi-gear-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player'] },
   ]},
 ];
@@ -53,10 +54,10 @@ const Sidebar = ({ open = false, onClose }) => {
   const roleHome = ['platform_admin','admin'].includes(role) ? '/platform'
     : ['organization_admin','tournament_organizer'].includes(role) ? '/organizer'
     : ['coach','coach_manager'].includes(role) ? '/coach'
-    : role === 'player' ? '/player' : role === 'statistician' ? '/statistician' : '/official';
+    : role === 'player' ? '/player' : '/statistician';
 
   return (
-    <aside className={`sidebar-wrapper${open ? ' is-open' : ''}`}>
+    <aside className={`sidebar-wrapper${open ? ' is-open' : ''}`} aria-label="Primary navigation">
       {/* Brand */}
       <div className="sidebar-brand">
         <div className="sidebar-logo">

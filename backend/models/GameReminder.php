@@ -11,12 +11,13 @@ class GameReminder {
         $this->db=$connection;
     }
 
-    public function dispatchDue(): array {
-        $matches=$this->db->query("SELECT m.id,m.scheduled_start_time,h.team_name home_team,a.team_name away_team
+    public function dispatchDue(?int $userId=null,bool $platform=true): array {
+        $sql="SELECT m.id,m.scheduled_start_time,h.team_name home_team,a.team_name away_team
             FROM matches m LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id
+            JOIN tournaments t ON t.id=m.tournament_id
             WHERE m.status='scheduled' AND m.schedule_status='published' AND m.reminder_30_sent_at IS NULL
               AND m.scheduled_start_time BETWEEN NOW() + INTERVAL '25 minutes' AND NOW() + INTERVAL '35 minutes'
-            FOR UPDATE OF m")->fetchAll();
+            ";$params=[];if(!$platform){$sql.=" AND EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:user_id AND om.status='active')";$params=[':user_id'=>$userId];}$sql.=" FOR UPDATE OF m";$stmt=$this->db->prepare($sql);$stmt->execute($params);$matches=$stmt->fetchAll();
         $sent=0;$emailsSent=0;$emailsFailed=0;$mailer=new NotificationMailer();
         foreach($matches as $match){
             $this->db->beginTransaction();

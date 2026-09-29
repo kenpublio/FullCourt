@@ -52,7 +52,8 @@ class Scorekeeper {
 
     public function getMatchScoreState(int $matchId): ?array {
         $stmt = $this->db->prepare("
-            SELECT ms.*, m.tournament_id, m.team1_id, m.team2_id, m.winner_team_id, m.status AS match_status,
+            SELECT ms.*, CASE WHEN ms.is_timer_running=1 THEN GREATEST(0,ms.timer_seconds-FLOOR(EXTRACT(EPOCH FROM (NOW()-ms.updated_at)))) ELSE ms.timer_seconds END AS clock_remaining_seconds,
+                   m.tournament_id, m.team1_id, m.team2_id, m.winner_team_id, m.status AS match_status,
                    t1.team_name AS team1_name, t2.team_name AS team2_name
             FROM match_scores ms
             JOIN matches m ON ms.match_id = m.id
@@ -205,6 +206,12 @@ class Scorekeeper {
 
     public function completeMatch(int $matchId, int $winnerTeamId): void {
         $this->db->prepare("UPDATE matches SET status = 'completed', actual_end_time = NOW(), winner_team_id = :w WHERE id = :mid")->execute([':w' => $winnerTeamId, ':mid' => $matchId]);
+    }
+
+    public function submitMatchForConfirmation(int $matchId, int $winnerTeamId): void {
+        $stmt = $this->db->prepare("UPDATE matches SET status='awaiting_confirmation' WHERE id=:mid AND status IN ('scheduled','in_progress') AND :winner IN (team1_id,team2_id)");
+        $stmt->execute([':winner'=>$winnerTeamId,':mid'=>$matchId]);
+        if ($stmt->rowCount() !== 1) throw new InvalidArgumentException('The game or selected winner is no longer available for final-score review.');
     }
 
     public function assignOfficial(int $matchId, int $userId, string $role, int $assignedBy): bool {

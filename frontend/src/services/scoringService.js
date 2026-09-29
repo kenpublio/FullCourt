@@ -11,8 +11,16 @@ export const scoringService = {
     return res.data;
   },
 
-  async finalizeMatch(matchId, winnerTeamId) {
-    const res = await api.post(`/matches/${matchId}/finalize`, { winner_team_id: winnerTeamId });
+  async finalizeMatch(matchId, winnerTeamId, scoreData, expectedScore) {
+    const res = await api.post(`/matches/${matchId}/finalize`, {
+      winner_team_id: winnerTeamId,
+      team1_score: scoreData.team1_score,
+      team2_score: scoreData.team2_score,
+      current_period: scoreData.current_period,
+      timer_seconds: scoreData.timer_seconds,
+      expected_team1_score: expectedScore.team1_score,
+      expected_team2_score: expectedScore.team2_score,
+    });
     return res.data;
   }
 };

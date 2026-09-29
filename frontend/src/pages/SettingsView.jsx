@@ -3,6 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import authService from "../services/authService";
 import platformSettingsService from "../services/platformSettingsService";
 import '../styles/settings-center.css';
+import '../styles/settings-polish.css';
 
 const defaults = {
   gameReminders: true,
@@ -12,6 +13,7 @@ const defaults = {
   announcements: true,
   reminderTime: "30",
   appearance: "system",
+  reduceMotion: false,
   publicProfile: false,
   publicStats: true,
   playerApplications: true,
@@ -40,6 +42,8 @@ const SettingsView = () => {
   const storageKey = `fullcourt_settings_${user?.id || "guest"}`;
   const [settings, setSettings] = useState(defaults),
     [saved, setSaved] = useState(false);
+  const [savedSnapshot,setSavedSnapshot]=useState(JSON.stringify(defaults));
+  const [saveError,setSaveError]=useState('');
   const [showPassword, setShowPassword] = useState(false),
     [passwords, setPasswords] = useState({
       current: "",
@@ -53,20 +57,24 @@ const SettingsView = () => {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(storageKey));
-      if (stored) setSettings({ ...defaults, ...stored });
+      const merged=stored?{...defaults,...stored}:defaults;
+      setSettings(merged);setSavedSnapshot(JSON.stringify(merged));
     } catch {
       setSettings(defaults);
+      setSavedSnapshot(JSON.stringify(defaults));
     }
   }, [storageKey]);
   useEffect(()=>{if(isAdmin)platformSettingsService.get().then(data=>data&&setPlatformSettings(data)).catch(()=>{});},[isAdmin]);
   useEffect(()=>{const dark=settings.appearance==='dark'||(settings.appearance==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);const resolvedTheme=dark?'dark':'light';document.documentElement.dataset.fullcourtTheme=resolvedTheme;document.documentElement.dataset.bsTheme=resolvedTheme;},[settings.appearance]);
+  useEffect(()=>{document.documentElement.dataset.reduceMotion=String(Boolean(settings.reduceMotion));},[settings.reduceMotion]);
   const toggle = (key) =>
     setSettings((value) => ({ ...value, [key]: !value[key] }));
   const save = () => {
-    localStorage.setItem(storageKey, JSON.stringify(settings));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try{localStorage.setItem(storageKey, JSON.stringify(settings));setSavedSnapshot(JSON.stringify(settings));setSaveError('');setSaved(true);setTimeout(() => setSaved(false), 2500);}
+    catch{setSaveError('Your browser could not save these preferences. Check browser storage permissions and try again.');}
   };
+  const resetPreferences=()=>{setSettings(defaults);setSaveError('');};
+  const preferencesChanged=JSON.stringify(settings)!==savedSnapshot;
   const isPlayer = user?.role === "player",
     isCoach = ["coach", "coach_manager"].includes(user?.role);
   const savePlatform=async()=>{setPlatformSaving(true);setPlatformMessage('');try{const data=await platformSettingsService.update(platformSettings);setPlatformSettings(data);setPlatformMessage('Platform operations settings saved.');window.dispatchEvent(new CustomEvent('fullcourt-platform-settings',{detail:data}));}catch(error){setPlatformMessage(error.response?.data?.message||'Unable to save platform operations settings.');}finally{setPlatformSaving(false);}};
@@ -92,24 +100,20 @@ const SettingsView = () => {
   };
   return (
     <div className="container-fluid p-0 page-enter settings-center">
-      <header className="settings-hero"><div><span>ACCOUNT CONTROL CENTER</span><h3>Settings</h3><p>Control your FullCourt alerts, reminders, privacy, and account preferences.</p></div><i className="bi bi-sliders2"/></header>
+      <header className="settings-hero"><div className="settings-hero-copy"><span>ACCOUNT CONTROL CENTER</span><h1>Make FullCourt<br/><em>work your way.</em></h1><p>Manage your alerts, display preferences, and account security in one place.</p></div><div className="settings-account-chip"><span className="settings-account-avatar">{(user?.full_name||user?.email||'FC').slice(0,1).toUpperCase()}</span><div><small>Signed in as</small><b>{user?.full_name||user?.email||'FullCourt member'}</b><span>{String(user?.role||'Member').replaceAll('_',' ')}</span></div><i className="bi bi-shield-check"/></div></header>
       {saved && (
-        <div className="alert alert-success d-flex align-items-center gap-2">
+        <div className="alert alert-success settings-alert d-flex align-items-center gap-2" role="status">
           <i className="bi bi-check-circle-fill" />
           Settings saved successfully.
         </div>
       )}
+      {saveError&&<div className="alert alert-danger settings-alert" role="alert"><i className="bi bi-exclamation-triangle-fill me-2"/>{saveError}</div>}
       <div className="row g-4">
         {isAdmin&&<div className="col-12"><section className="settings-platform-panel"><header><div><span>PLATFORM OPERATIONS</span><h5>Maintenance &amp; Access Control</h5><p>Manage temporary service notices and new account access across FullCourt.</p></div><i className="bi bi-tools"/></header><div className="settings-platform-grid"><Toggle id="maintenanceMode" label="Maintenance notice" description="Show a system-wide maintenance banner while updates are in progress." checked={Boolean(platformSettings.maintenance_enabled)} onChange={()=>setPlatformSettings(value=>({...value,maintenance_enabled:!value.maintenance_enabled}))}/><Toggle id="registrationEnabled" label="Allow new registrations" description="Turn this off temporarily to prevent new accounts from being created." checked={Boolean(platformSettings.registration_enabled)} onChange={()=>setPlatformSettings(value=>({...value,registration_enabled:!value.registration_enabled}))}/><label className="settings-maintenance-message"><span>Maintenance message</span><textarea className="form-control" rows="2" maxLength="240" value={platformSettings.maintenance_message||''} onChange={event=>setPlatformSettings(value=>({...value,maintenance_message:event.target.value}))} disabled={!platformSettings.maintenance_enabled}/><small>{(platformSettings.maintenance_message||'').length}/240 characters</small></label></div><footer>{platformMessage&&<span><i className="bi bi-check-circle"/> {platformMessage}</span>}<button className="btn btn-evsu" disabled={platformSaving} onClick={savePlatform}><i className="bi bi-cloud-check"/> {platformSaving?'Saving…':'Save platform controls'}</button></footer></section></div>}
         <div className="col-lg-7">
-          <section className="card-custom p-4 mb-4">
-            <h5 className="fw-bold mb-1">
-              <i className="bi bi-bell-fill text-warning me-2" />
-              Notifications
-            </h5>
-            <p className="text-muted small">
-              Choose the updates you want to receive.
-            </p>
+          <section className="card-custom p-4 mb-4 settings-section">
+            <div className="settings-section-heading"><span className="settings-section-icon is-red"><i className="bi bi-bell-fill"/></span><div><h2>Notifications &amp; reminders</h2><p>Choose the updates you want to keep in your preferences.</p></div></div>
+            <div className="settings-local-note"><i className="bi bi-info-circle-fill"/><span>These preferences are stored in this browser for your account. Email delivery also depends on the notification service being configured.</span></div>
             <Toggle
               id="gameReminders"
               label="Game reminders"
@@ -150,10 +154,11 @@ const SettingsView = () => {
               onChange={() => toggle("announcements")}
             />
             <div className="mt-3">
-              <label className="form-label fw-semibold">
+              <label htmlFor="game-reminder-time" className="form-label fw-semibold">
                 Game reminder time
               </label>
               <select
+                id="game-reminder-time"
                 className="form-select"
                 value={settings.reminderTime}
                 onChange={(e) =>
@@ -168,14 +173,9 @@ const SettingsView = () => {
             </div>
           </section>
           {isPlayer && (
-            <section className="card-custom p-4 mb-4">
-              <h5 className="fw-bold mb-1">
-                <i className="bi bi-eye-fill text-primary me-2" />
-                Player Privacy
-              </h5>
-              <p className="text-muted small">
-                Control what appears on public tournament pages.
-              </p>
+            <section className="card-custom p-4 mb-4 settings-section">
+              <div className="settings-section-heading"><span className="settings-section-icon is-blue"><i className="bi bi-eye-fill"/></span><div><h2>Player privacy preferences</h2><p>Your display choices for player profile and stats.</p></div></div>
+              <div className="settings-local-note"><i className="bi bi-info-circle-fill"/><span>Saved locally in this browser; these switches do not yet change public-profile visibility on the server.</span></div>
               <Toggle
                 id="publicProfile"
                 label="Public player profile"
@@ -193,11 +193,8 @@ const SettingsView = () => {
             </section>
           )}
           {isCoach && (
-            <section className="card-custom p-4 mb-4">
-              <h5 className="fw-bold mb-1">
-                <i className="bi bi-people-fill text-success me-2" />
-                Coach Preferences
-              </h5>
+            <section className="card-custom p-4 mb-4 settings-section">
+              <div className="settings-section-heading"><span className="settings-section-icon is-green"><i className="bi bi-people-fill"/></span><div><h2>Coach preferences</h2><p>Local notification preferences for roster activity.</p></div></div>
               <Toggle
                 id="playerApplications"
                 label="Player application alerts"
@@ -207,20 +204,11 @@ const SettingsView = () => {
               />
             </section>
           )}
-          <button
-            className="btn btn-evsu rounded-pill px-4 py-2 fw-semibold shadow-sm"
-            onClick={save}
-          >
-            <i className="bi bi-check2-circle me-2" />
-            Save Settings
-          </button>
+          <div className="settings-savebar"><span className={preferencesChanged?'is-dirty':'is-saved'}><i className={`bi ${preferencesChanged?'bi-pencil-square':'bi-check-circle-fill'}`}/>{preferencesChanged?'Unsaved preference changes':'All preferences saved'}</span><div><button className="btn btn-light border" onClick={resetPreferences} disabled={!preferencesChanged}>Reset changes</button><button className="btn btn-evsu" onClick={save} disabled={!preferencesChanged}><i className="bi bi-check2-circle me-2" />Save preferences</button></div></div>
         </div>
         <div className="col-lg-5">
-          <section className="card-custom p-4 mb-4">
-            <h5 className="fw-bold">
-              <i className="bi bi-palette-fill text-evsu-primary me-2" />
-              Appearance
-            </h5>
+          <section className="card-custom p-4 mb-4 settings-section">
+            <div className="settings-section-heading"><span className="settings-section-icon is-gold"><i className="bi bi-palette-fill"/></span><div><h2>Appearance</h2><p>Pick a mode that feels comfortable.</p></div></div>
             <label className="form-label small fw-semibold">Color mode</label>
             <div className="d-grid gap-2">
               {[
@@ -231,7 +219,7 @@ const SettingsView = () => {
                 <button
                   key={value}
                   type="button"
-                  className={`btn text-start ${settings.appearance === value ? "btn-evsu" : "btn-light border"}`}
+                  className={`btn text-start settings-mode-btn ${settings.appearance === value ? "is-selected" : ""}`}
                   onClick={() =>
                     setSettings({ ...settings, appearance: value })
                   }
@@ -242,14 +230,12 @@ const SettingsView = () => {
               ))}
             </div>
             <small className="text-muted d-block mt-2">
-              Your selection is saved for this account.
+              Preview applies immediately. Save preferences to keep it in this browser.
             </small>
+            <div className="settings-motion-toggle"><Toggle id="reduceMotion" label="Reduce interface animations" description="Limit non-essential motion throughout FullCourt for a calmer experience." checked={Boolean(settings.reduceMotion)} onChange={()=>toggle("reduceMotion")}/></div>
           </section>
-          <section className="card-custom p-4">
-            <h5 className="fw-bold">
-              <i className="bi bi-shield-lock-fill text-success me-2" />
-              Account Security
-            </h5>
+          <section className="card-custom p-4 settings-section">
+            <div className="settings-section-heading"><span className="settings-section-icon is-green"><i className="bi bi-shield-lock-fill"/></span><div><h2>Account security</h2><p>Protect your account with a strong password.</p></div></div>
             <p className="text-muted small">
               Update your password using your current password.
             </p>

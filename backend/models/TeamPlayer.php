@@ -12,9 +12,15 @@ class TeamPlayer {
     }
 
     public function getByTeam(int $teamId): array {
-        $sql = "SELECT tp.*, u.full_name, u.email, u.phone_number, u.avatar_url, u.department_course, v.full_name as verifier_name
+        $sql = "SELECT tp.*, u.full_name, u.email, u.phone_number, u.avatar_url, u.department_course, v.full_name as verifier_name,
+                       pp.birth_date, d.name AS division_name, d.min_age, d.max_age,
+                       COALESCE(d.age_cutoff_date,t.start_date) AS age_cutoff_date, t.start_date
                 FROM team_players tp
+                JOIN teams tm ON tm.id=tp.team_id
+                JOIN tournaments t ON t.id=tm.tournament_id
+                LEFT JOIN divisions d ON d.id=tm.division_id AND d.tournament_id=t.id
                 LEFT JOIN users u ON tp.user_id = u.id
+                LEFT JOIN player_profiles pp ON pp.user_id=tp.user_id
                 LEFT JOIN users v ON tp.verified_by = v.id
                 WHERE tp.team_id = :teamId
                   AND NOT (tp.eligibility_status = 'pending' AND tp.user_id IS NOT NULL
@@ -24,7 +30,7 @@ class TeamPlayer {
                 ORDER BY tp.id DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':teamId' => $teamId]);
-        return $stmt->fetchAll();
+        return array_map(fn(array $row): array => array_merge($row, $this->ageEligibilityFromRow($row)), $stmt->fetchAll());
     }
 
     public function getAllPending(): array {
@@ -195,7 +201,7 @@ class TeamPlayer {
     }
 
     public function ageEligibility(int $id): array {
-        $stmt = $this->db->prepare("SELECT pp.birth_date,d.min_age,d.max_age,t.start_date
+        $stmt = $this->db->prepare("SELECT pp.birth_date,d.min_age,d.max_age,d.age_cutoff_date,t.start_date
             FROM team_players tp JOIN teams tm ON tm.id=tp.team_id
             JOIN tournaments t ON t.id=tm.tournament_id
             LEFT JOIN divisions d ON d.id=tm.division_id AND d.tournament_id=t.id
@@ -203,20 +209,28 @@ class TeamPlayer {
         $stmt->execute([':id'=>$id]);
         $row = $stmt->fetch();
         if (!$row) return ['qualified'=>false,'message'=>'Player roster record was not found.'];
+        return $this->ageEligibilityFromRow($row);
+    }
+
+    private function ageEligibilityFromRow(array $row): array {
         if ($row['min_age'] === null && $row['max_age'] === null) {
-            return ['qualified'=>true,'message'=>'No division age restriction applies.'];
+            return ['qualified'=>true,'age_qualified'=>true,'age_at_cutoff'=>null,'age_eligibility_code'=>'open_age','age_eligibility_message'=>'Open age: no division age restriction applies.','message'=>'No division age restriction applies.'];
         }
         if (empty($row['birth_date'])) {
-            return ['qualified'=>false,'message'=>'Verification blocked: the player must provide a birthdate for this age-restricted division.'];
+            return ['qualified'=>false,'age_qualified'=>false,'age_at_cutoff'=>null,'age_eligibility_code'=>'missing_birthdate','age_eligibility_message'=>'Pending birthdate: age eligibility cannot be computed.','message'=>'Verification blocked: the player must provide a birthdate for this age-restricted division.'];
         }
-        $reference = new DateTimeImmutable($row['start_date'] ?: 'today');
+        $referenceDate = $row['age_cutoff_date'] ?: ($row['start_date'] ?: 'today');
+        $reference = new DateTimeImmutable($referenceDate);
         $age = (new DateTimeImmutable($row['birth_date']))->diff($reference)->y;
         $minimum = $row['min_age'] === null ? 0 : (int)$row['min_age'];
         $maximum = $row['max_age'] === null ? 200 : (int)$row['max_age'];
-        if ($age < $minimum || $age > $maximum) {
-            return ['qualified'=>false,'age'=>$age,'message'=>"Verification blocked: age {$age} is outside the allowed {$minimum}-{$maximum} range on tournament start date."];
+        if ($age < $minimum) {
+            return ['qualified'=>false,'age'=>$age,'age_qualified'=>false,'age_at_cutoff'=>$age,'age_eligibility_code'=>'under_age','age_eligibility_message'=>"Not eligible: age {$age} is below the minimum age {$minimum}.",'message'=>"Verification blocked: age {$age} is below the minimum age {$minimum} on {$reference->format('F j, Y')}."];
         }
-        return ['qualified'=>true,'age'=>$age,'message'=>"Age verified automatically: {$age} years old on tournament start date."];
+        if ($age > $maximum) {
+            return ['qualified'=>false,'age'=>$age,'age_qualified'=>false,'age_at_cutoff'=>$age,'age_eligibility_code'=>'over_age','age_eligibility_message'=>"Not eligible: age {$age} is above the maximum age {$maximum}.",'message'=>"Verification blocked: age {$age} is above the maximum age {$maximum} on {$reference->format('F j, Y')}."];
+        }
+        return ['qualified'=>true,'age'=>$age,'age_qualified'=>true,'age_at_cutoff'=>$age,'age_eligibility_code'=>'qualified','age_eligibility_message'=>"Qualified: age {$age} is within the division range.",'message'=>"Age verified automatically: {$age} years old on {$reference->format('F j, Y')}."];
     }
 
     public function updateRosterDetails(int $id, ?int $jerseyNumber, ?string $position): bool {

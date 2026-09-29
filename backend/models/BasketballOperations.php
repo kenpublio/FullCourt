@@ -67,12 +67,13 @@ class BasketballOperations {
 
     public function createDivision(int $tournamentId, array $data): int {
         $stmt = $this->db->prepare("INSERT INTO divisions
-            (tournament_id,name,age_group,gender_category,format,min_age,max_age,max_roster_size,eligibility_requirements)
-            VALUES (:tournament_id,:name,:age_group,:gender,:format,:min_age,:max_age,:max_roster,:requirements)");
+            (tournament_id,name,age_group,gender_category,format,min_age,max_age,age_cutoff_date,max_roster_size,eligibility_requirements)
+            VALUES (:tournament_id,:name,:age_group,:gender,:format,:min_age,:max_age,:age_cutoff_date,:max_roster,:requirements)");
         $stmt->execute([
             ':tournament_id'=>$tournamentId, ':name'=>$data['name'], ':age_group'=>$data['age_group'] ?? null,
             ':gender'=>$data['gender_category'] ?? 'open', ':format'=>$data['format'] ?? 'round_robin',
             ':min_age'=>($data['min_age'] ?? '') === '' ? null : (int)$data['min_age'], ':max_age'=>($data['max_age'] ?? '') === '' ? null : (int)$data['max_age'],
+            ':age_cutoff_date'=>($data['age_cutoff_date'] ?? '') === '' ? null : $data['age_cutoff_date'],
             ':max_roster'=>$data['max_roster_size'] ?? 15, ':requirements'=>$data['eligibility_requirements'] ?? null
         ]);
         return (int)$this->db->lastInsertId();

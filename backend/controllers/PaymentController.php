@@ -17,7 +17,7 @@ class PaymentController {
     }
 
     public function index(): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'finance_officer', 'tournament_organizer', 'coach_manager', 'player']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin', 'finance_officer', 'tournament_organizer', 'coach','coach_manager', 'player']);
         if(in_array($user['role'],['coach','coach_manager','player'],true))$payments=$this->paymentModel->getForUser((int)$user['user_id'],$user['role']);
         elseif(OrganizationAccess::isPlatform($user)||$user['role']==='finance_officer')$payments=$this->paymentModel->getAll();
         else $payments=$this->paymentModel->getForOrganizationUser((int)$user['user_id']);
@@ -25,7 +25,7 @@ class PaymentController {
     }
 
     public function submit(): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'coach_manager', 'player']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach','coach_manager', 'player']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['team_id']) || empty($input['tournament_id']) || empty($input['reference_number']) || empty($input['amount'])) {
@@ -47,7 +47,7 @@ class PaymentController {
     }
 
     public function uploadReceipt(int $paymentId): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'coach_manager', 'player']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach','coach_manager', 'player']);
 
         $payment = $this->paymentModel->getById($paymentId);
         if (!$payment) Response::error('Payment record not found.', 404);
@@ -90,7 +90,7 @@ class PaymentController {
     }
 
     public function verify(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'finance_officer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin', 'finance_officer']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         $status = $input['status'] ?? 'approved'; // 'approved' or 'rejected'

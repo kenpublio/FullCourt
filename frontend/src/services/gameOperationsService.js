@@ -2,7 +2,7 @@ import api from './api';
 
 const gameOperationsService = {
   async assignments() { return (await api.get('/game-assignments')).data?.data?.assignments || []; },
-  async assign(matchId, userId, assignmentRole) { return (await api.post(`/matches/${matchId}/assignments`, { user_id:userId, assignment_role:assignmentRole })).data; },
+  async assignStatistician(matchId, userId) { return (await api.post(`/matches/${matchId}/assignments`, { user_id:userId, assignment_role:'statistician' })).data; },
   async respond(id, status) { return (await api.put(`/game-assignments/${id}/respond`, { status })).data; },
   async confirmLineup(matchId, players) { return (await api.put(`/matches/${matchId}/lineup`, { players })).data; },
   async lineup(matchId) { return (await api.get(`/matches/${matchId}/lineup`)).data?.data?.players || []; },

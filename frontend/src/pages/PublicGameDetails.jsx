@@ -221,7 +221,7 @@ export default function PublicGameDetails() {
                 <header>
                   <div>
                     <span>GAME PERSONNEL</span>
-                    <h2>Lineups &amp; officials</h2>
+                    <h2>Lineups &amp; statistician</h2>
                   </div>
                   <i className="bi bi-people-fill" />
                 </header>
@@ -250,7 +250,7 @@ export default function PublicGameDetails() {
                     )}
                   </article>
                   <article>
-                    <h3>Assigned officials</h3>
+                    <h3>Assigned statistician</h3>
                     {pregame.officials.length ? (
                       <div className="game-official-list">
                         {pregame.officials.map((o, index) => (
@@ -267,7 +267,7 @@ export default function PublicGameDetails() {
                       </div>
                     ) : (
                       <p>
-                        Public official assignments have not been confirmed yet.
+                        The game statistician has not been confirmed yet.
                       </p>
                     )}
                   </article>

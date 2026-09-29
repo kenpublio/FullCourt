@@ -1,8 +1,8 @@
 import api from './api';
 
 export const authService = {
-  async login(email, password) {
-    const response = await api.post('/auth/login', { email, password });
+  async login(email, password, portal = 'user') {
+    const response = await api.post('/auth/login', { email, password, portal });
     if (response.data && response.data.data) {
       const { token, refresh_token: refreshToken, user } = response.data.data;
       localStorage.setItem('sportsync_token', token);

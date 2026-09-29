@@ -46,4 +46,235 @@
 .admin-console .bracket-team-row.is-winner { background:#e4f7eb; color:#155c36; border-color:#a8dfbd; }
 .admin-console-dark .bracket-team-row.is-winner { background:#153c2a; color:#dcfce7; border-color:#2c6f4b; }
 .bracket-round-column{position:relative}.bracket-round-column:not(:last-child)::after{content:'›';position:absolute;right:-22px;top:48%;display:grid;place-items:center;width:20px;height:34px;border:1px solid var(--surface-border);border-radius:999px;background:var(--surface-card);color:var(--evsu-gold);font-weight:900}.bracket-round-column.is-championship .bracket-round-title{color:#8a6508!important;border-color:#d4a72c;background:var(--evsu-gold-soft)}
+
+/* Keep contrast overrides after Bootstrap/theme utilities in the cascade. */
+.fc-auth .auth-page-kicker,
+.fc-auth .auth-copyright { color: #62626c !important; }
+.admin-console .text-muted,
+.admin-console .form-text,
+.admin-console .text-secondary,
+.admin-console .sidebar-subtitle,
+.admin-console .sidebar-user-role,
+.admin-console .sidebar-section-label,
+.admin-console .sidebar-footer { color: var(--admin-muted) !important; }
+.admin-console:not(.admin-console-dark) .text-white { color: var(--admin-text) !important; }
+.admin-console-dark .table { --bs-table-bg: #19191b; --bs-table-color: #f4f4f5; --bs-table-border-color: #303035; }
+.admin-console-dark .table-modern thead th { background: #292a2f !important; color: #f4f4f5 !important; }
+.admin-console-dark .table-modern tbody td { color: #e4e4e7; }
+.admin-console-dark .text-evsu-primary,
+.admin-console-dark .text-danger,
+.admin-console-dark .text-success:not(.bg-success-subtle),
+.admin-console-dark .text-warning,
+.admin-console-dark .schedule-time,
+.admin-console-dark .schedule-matchup span,
+.admin-console-dark .schedule-status.in_progress,
+.admin-console-dark .game-day-page .game-ready-pill.pending { color: #ffad91 !important; }
+.admin-console-dark .app-footer-badge { color: #f1c75b !important; }
+.app-footer-badge { color: #8f210e; }
+.bg-success-subtle.text-success { color: #146c43 !important; }
+.court-site .hub-team-top > span:first-child { color: #666672; }
+:root[data-fullcourt-theme] .admin-console .text-muted,
+:root[data-fullcourt-theme] .admin-console .form-text,
+:root[data-fullcourt-theme] .admin-console .text-secondary { color: var(--admin-muted) !important; }
+:root[data-fullcourt-theme] .admin-console-dark .text-evsu-primary,
+:root[data-fullcourt-theme] .admin-console-dark .text-danger,
+:root[data-fullcourt-theme] .admin-console-dark .text-success:not(.bg-success-subtle),
+:root[data-fullcourt-theme] .admin-console-dark .text-warning { color: #ffad91 !important; }
+:root[data-fullcourt-theme] .admin-console-dark .table-modern,
+:root[data-fullcourt-theme] .admin-console-dark .table-modern tr,
+:root[data-fullcourt-theme] .admin-console-dark .table-modern td,
+:root[data-fullcourt-theme] .admin-console-dark .table-modern th { background-color: var(--admin-panel) !important; }
+:root[data-fullcourt-theme] .admin-console-dark .table-modern td { color: #e4e4e7 !important; }
+:root[data-fullcourt-theme] .admin-console-dark .text-body { color: var(--admin-text) !important; }
 /* Preserve green success, amber warning, and red error meanings. */
+:root[data-fullcourt-theme] .admin-console-dark .btn-outline-primary,
+:root[data-fullcourt-theme] .admin-console-dark .btn-outline-danger,
+:root[data-fullcourt-theme] .admin-console-dark .btn-outline-dark {
+  --bs-btn-color: #ffad91;
+  --bs-btn-border-color: #ffad91;
+  --bs-btn-hover-color: #19191b;
+  --bs-btn-hover-bg: #ffad91;
+  --bs-btn-hover-border-color: #ffad91;
+  --bs-btn-active-color: #19191b;
+  --bs-btn-active-bg: #ffad91;
+  --bs-btn-active-border-color: #ffad91;
+}
+:root[data-fullcourt-theme] .admin-console-dark .team-selection-empty,
+:root[data-fullcourt-theme] .admin-console-dark .match-item,
+:root[data-fullcourt-theme] .admin-console-dark .award-card,
+:root[data-fullcourt-theme] .admin-console-dark .stat-oversight-title {
+  background-color: var(--admin-panel) !important;
+  color: var(--admin-text) !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .team-selection-empty h4,
+:root[data-fullcourt-theme] .admin-console-dark .award-card h5,
+:root[data-fullcourt-theme] .admin-console-dark .stat-oversight-title h5,
+:root[data-fullcourt-theme] .admin-console-dark .match-item :is(strong, small, span, p) {
+  color: var(--admin-text) !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .reports-page .report-table-panel thead th {
+  background: #292a2f !important;
+  color: #f4f4f5 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .bracket-round-title span,
+:root[data-fullcourt-theme] .admin-console-dark .bracket-match-meta b,
+:root[data-fullcourt-theme] .admin-console-dark .bracket-round-column.is-championship .bracket-round-title span,
+:root[data-fullcourt-theme] .admin-console-dark .reports-eyebrow,
+:root[data-fullcourt-theme] .admin-console-dark .game-day-page .game-day-actions .incident {
+  color: #ffad91 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .bracket-match-card.is-complete .bracket-match-meta b {
+  color: #86efac !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .badge.bg-warning.text-dark {
+  color: #392b00 !important;
+}
+:root[data-fullcourt-theme="light"] .main-content .notifications-page .btn-link {
+  color: #084298 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .team-selection-empty :is(p, h4, h5),
+:root[data-fullcourt-theme] .admin-console-dark .venue-role-notice :is(span, b),
+:root[data-fullcourt-theme] .admin-console-dark .venue-card :is(b, span),
+:root[data-fullcourt-theme] .admin-console-dark .schedule-ops-toolbar span,
+:root[data-fullcourt-theme] .admin-console-dark .ops-eyebrow,
+:root[data-fullcourt-theme] .admin-console-dark .bracket-board-head > div > span,
+:root[data-fullcourt-theme] .admin-console-dark .stat-oversight-title > div > span,
+:root[data-fullcourt-theme] .admin-console-dark .incident-head > div > span,
+:root[data-fullcourt-theme] .admin-console-dark .incident-head > b,
+:root[data-fullcourt-theme] .admin-console-dark .award-type,
+:root[data-fullcourt-theme] .admin-console-dark .qr-empty > span {
+  color: #ffad91 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .team-selection-empty p,
+:root[data-fullcourt-theme] .admin-console-dark .venue-role-notice span,
+:root[data-fullcourt-theme] .admin-console-dark .venue-card span,
+:root[data-fullcourt-theme] .admin-console-dark .qr-empty > span {
+  color: var(--admin-muted) !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .bg-evsu-gold {
+  color: #2b2107 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .badge.bg-danger {
+  color: #fff !important;
+  background-color: #b42335 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .venue-card .bg-light.text-dark.border {
+  color: #27272a !important;
+  background-color: #f8f9fa !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .report-chart-panel,
+:root[data-fullcourt-theme] .admin-console-dark .report-table-panel,
+:root[data-fullcourt-theme] .admin-console-dark .qr-connection-panel,
+:root[data-fullcourt-theme] .admin-console-dark .qr-log-panel {
+  background-color: var(--admin-panel) !important;
+  color: var(--admin-text) !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .report-chart-panel h6,
+:root[data-fullcourt-theme] .admin-console-dark .report-table-panel > h5,
+:root[data-fullcourt-theme] .admin-console-dark .qr-connection-panel b,
+:root[data-fullcourt-theme] .admin-console-dark .qr-log-head h5,
+:root[data-fullcourt-theme] .admin-console-dark .report-table-panel .mb-3 {
+  color: var(--admin-text) !important;
+}
+:root[data-fullcourt-theme="light"] .btn-outline-secondary {
+  --bs-btn-color: #565d64;
+  --bs-btn-border-color: #737a81;
+}
+:root[data-fullcourt-theme="light"] .btn-outline-danger {
+  --bs-btn-color: #b42335;
+  --bs-btn-border-color: #b42335;
+}
+:root[data-fullcourt-theme="light"] .auth-heading > p {
+  color: #6f5555 !important;
+}
+:root[data-fullcourt-theme] .fc-auth .auth-heading > p { color: #6f5555 !important; }
+.fc-auth .auth-heading > p { color: #6f5555 !important; }
+:root[data-fullcourt-theme] .admin-console-dark .btn-outline-secondary {
+  --bs-btn-color: #c4c6cc;
+  --bs-btn-border-color: #92949c;
+  color: #c4c6cc !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .badge.bg-light.text-dark.border {
+  color: #27272a !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .venue-role-notice span {
+  color: #f1f5f9 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .statistician-oversight-page .venue-role-notice span {
+  color: #374151 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .ss-spinner-label {
+  color: #a1a1aa !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .qr-connection-panel small {
+  color: #a1a1aa !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .qr-log-head > div > span {
+  color: #ffad91 !important;
+}
+:root[data-fullcourt-theme="light"] .incident-head > b {
+  color: #a12618 !important;
+}
+
+/* Small labels and table copy must remain readable on both admin themes. */
+:root[data-fullcourt-theme] .admin-console-dark :is(.user-directory-heading p, .user-results-count, .user-directory-table thead th, .tournament-ops-card-description, .eligibility-records-table td.small, .coach-eligibility-section-heading > div > p, .coach-eligibility-count, .scorer-empty-hint, .scorer-mode-heading > small, .live-scoring-panel-heading > div > span, .standings-table-heading > div > p, .standings-updated-note, em) {
+  color: #c4c7ce !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark :is(.eligibility-section-kicker, .bracket-ops-empty > span, .scorer-mode-heading > .form-label, .live-scoring-panel-heading > div > span, .standings-table-heading .ops-eyebrow, .awards-list-heading > div > span, .tournament-ops-list-heading > div > span, .user-management-eyebrow) {
+  color: #ffad91 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .settings-mode-btn.is-selected {
+  color: #ffad91 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .alert-danger :is(.text-danger, small, span, b, strong) {
+  color: #842029 !important;
+}
+:root[data-fullcourt-theme] .admin-console-dark .statistician-oversight-page .venue-role-notice :is(span, b) {
+  color: #e4e4e7 !important;
+}
+:root[data-fullcourt-theme="light"] :is(.ops-eyebrow, .eligibility-section-kicker, .bracket-ops-empty > span, .awards-list-heading > div > span, .tournament-ops-list-heading > div > span, .user-management-eyebrow) {
+  color: #a12618 !important;
+}
+:root[data-fullcourt-theme="light"] .text-success:not(.bg-success-subtle) {
+  color: #146c43 !important;
+}
+:root[data-fullcourt-theme="dark"] .share-preview-section {
+  background: #1c1d20 !important;
+}
+:root[data-fullcourt-theme="dark"] .share-data-note small,
+:root[data-fullcourt-theme="dark"] .share-preview-heading h2 {
+  color: #f4f4f5 !important;
+}
+:root[data-fullcourt-theme="light"] .share-data-note small {
+  color: #525866 !important;
+}
+:root[data-fullcourt-theme="dark"] .game-day-section-head > div > span {
+  color: #ffad91 !important;
+}
+:root[data-fullcourt-theme="light"] .game-day-section-head > div > span {
+  color: #a12618 !important;
+}
+.standings-you-tag { color: #146c43; }
+.admin-console .user-management-tabs .btn.is-active {
+  background: #b42318 !important;
+}
+.admin-console-dark .user-directory-table .badge.bg-danger-subtle.text-danger {
+  color: #842029 !important;
+}
+.admin-console-dark .user-row-actions .btn-outline-success {
+  --bs-btn-color: #146c43;
+  --bs-btn-border-color: #146c43;
+}
+.admin-console-dark .share-preview-section {
+  background: #19191b !important;
+  border-color: #303035 !important;
+}
+.admin-console-dark .user-management-tabs .btn:not(.is-active) > span {
+  color: #525866 !important;
+}
+.admin-console-dark .share-preview-heading > div > span {
+  color: #ffad91 !important;
+}
+.admin-console-dark :is(.share-size-tag, .share-preview-caption) {
+  color: #c4c7ce !important;
+}

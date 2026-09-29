@@ -23,6 +23,7 @@ require_once __DIR__ . '/../controllers/VenueController.php';
 require_once __DIR__ . '/../controllers/ScorekeeperController.php';
 require_once __DIR__ . '/../controllers/BasketballOperationsController.php';
 require_once __DIR__ . '/../controllers/GameOperationsController.php';
+require_once __DIR__ . '/../controllers/ScoringAccessController.php';
 require_once __DIR__ . '/../controllers/EngagementController.php';
 require_once __DIR__ . '/../controllers/PdfReportController.php';
 require_once __DIR__ . '/../controllers/BasketballAnalyticsController.php';
@@ -105,6 +106,7 @@ function routeRequest(string $uri, string $method) {
     // 4. Team Routes
     if ($path === '/teams' && $method === 'GET') { (new TeamController())->index(); return; }
     if ($path === '/teams' && $method === 'POST') { (new TeamController())->store(); return; }
+    if (preg_match('#^/teams/(\d+)/application$#', $path, $m) && $method === 'PUT') { (new TeamController())->reviewApplication((int)$m[1]); return; }
     if (preg_match('#^/teams/(\d+)$#', $path, $m) && $method === 'PUT') { (new TeamController())->update((int)$m[1]); return; }
     if (preg_match('#^/teams/(\d+)$#', $path, $m) && $method === 'DELETE') { (new TeamController())->destroy((int)$m[1]); return; }
     if (preg_match('#^/teams/(\d+)/players$#', $path, $m) && $method === 'GET') { (new TeamController())->players((int)$m[1]); return; }
@@ -139,6 +141,13 @@ function routeRequest(string $uri, string $method) {
 
     // 8. Live Scoring Routes
     if ($path === '/game-assignments' && $method === 'GET') { (new GameOperationsController())->assignments(); return; }
+    if (preg_match('#^/matches/(\d+)/scoring-link$#', $path, $m) && $method === 'POST') { (new ScoringAccessController())->create((int)$m[1]); return; }
+    if (preg_match('#^/scoring-links/(\d+)$#', $path, $m) && $method === 'DELETE') { (new ScoringAccessController())->revoke((int)$m[1]); return; }
+    if (preg_match('#^/public/scoring-links/([a-f0-9]{64})/activate$#', $path, $m) && $method === 'POST') { (new ScoringAccessController())->activate($m[1]); return; }
+    if ($path === '/scoring-session/console' && $method === 'GET') { (new ScoringAccessController())->console(); return; }
+    if ($path === '/scoring-session/stats' && $method === 'POST') { (new ScoringAccessController())->stat(); return; }
+    if ($path === '/scoring-session/clock' && $method === 'PUT') { (new ScoringAccessController())->updateClock(); return; }
+    if ($path === '/scoring-session/substitutions' && $method === 'POST') { (new ScoringAccessController())->substitute(); return; }
     if (preg_match('#^/matches/(\d+)/assignments$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->assign((int)$m[1]); return; }
     if (preg_match('#^/game-assignments/(\d+)/respond$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->respond((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/lineup$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->lineup((int)$m[1]); return; }

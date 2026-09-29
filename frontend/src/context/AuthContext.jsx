@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (email, password) => {
-    const { token: newTok, user: newUser } = await authService.login(email, password);
+  const login = async (email, password, portal = 'user') => {
+    const { token: newTok, user: newUser } = await authService.login(email, password, portal);
     setToken(newTok);
     setUser(newUser);
     return newUser;

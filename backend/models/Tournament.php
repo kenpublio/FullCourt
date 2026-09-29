@@ -13,7 +13,7 @@ class Tournament {
 
     public function getAll(?int $userId = null, bool $platform = false): array {
         $sql = "SELECT t.*, s.name as sport_name, s.category as sport_category, u.full_name as organizer_name,
-                (SELECT COUNT(*) FROM teams WHERE tournament_id = t.id) as registered_teams_count
+                (SELECT COUNT(*) FROM teams WHERE tournament_id = t.id AND status = 'registered') as registered_teams_count
                 FROM tournaments t
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON t.created_by = u.id
@@ -25,6 +25,24 @@ class Tournament {
                 ORDER BY t.created_at DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(!$platform && $userId !== null ? [':user_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
+        return $stmt->fetchAll();
+    }
+
+    public function getAvailableForCoach(int $userId): array {
+        $sql = "SELECT t.*, s.name AS sport_name, s.category AS sport_category, u.full_name AS organizer_name,
+                (SELECT COUNT(*) FROM teams rt WHERE rt.tournament_id=t.id AND rt.status='registered') AS registered_teams_count,
+                coach_team.id AS application_team_id, coach_team.team_name AS application_team_name,
+                coach_team.status AS application_status
+                FROM tournaments t
+                JOIN sports s ON t.sport_id=s.id
+                JOIN users u ON t.created_by=u.id
+                LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id
+                  AND (coach_team.coach_user_id=:coach_id OR coach_team.manager_user_id=:manager_id)
+                WHERE LOWER(s.name)='basketball'
+                  AND (t.status IN ('upcoming','ongoing') OR coach_team.id IS NOT NULL)
+                ORDER BY CASE WHEN coach_team.id IS NOT NULL THEN 0 ELSE 1 END, t.start_date ASC";
+        $stmt=$this->db->prepare($sql);
+        $stmt->execute([':coach_id'=>$userId,':manager_id'=>$userId]);
         return $stmt->fetchAll();
     }
 

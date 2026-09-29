@@ -13,9 +13,9 @@ class GameOperations {
     }
 
     public function assignments(int $userId, bool $all = false, bool $platform = false): array {
-        $where = 'WHERE ga.user_id = :user_id';
-        if ($platform) $where = '';
-        elseif ($all) $where = "WHERE EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:user_id AND om.status='active')";
+        $where = "WHERE ga.assignment_role='statistician' AND ga.user_id = :user_id";
+        if ($platform) $where = "WHERE ga.assignment_role='statistician'";
+        elseif ($all) $where = "WHERE ga.assignment_role='statistician' AND EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:user_id AND om.status='active')";
         $sql = "SELECT ga.*, m.scheduled_start_time, m.status AS match_status, t.name AS tournament_name,
             home.team_name AS home_team, away.team_name AS away_team, c.court_name, v.name AS venue_name,
             u.full_name AS assignee_name
@@ -30,6 +30,23 @@ class GameOperations {
 
     public function hasAcceptedStatisticianAssignment(int $matchId, int $userId): bool {
         $stmt = $this->db->prepare("SELECT 1 FROM game_assignments WHERE match_id=:match_id AND user_id=:user_id AND assignment_role='statistician' AND status='accepted' LIMIT 1");
+        $stmt->execute([':match_id'=>$matchId, ':user_id'=>$userId]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    public function canAssignStatistician(int $matchId, int $userId, bool $platform): bool {
+        $scope = $platform ? '' : "AND EXISTS (
+            SELECT 1 FROM organization_members assignee_membership
+            WHERE assignee_membership.organization_id=t.organization_id
+              AND assignee_membership.user_id=u.id
+              AND assignee_membership.status='active'
+        )";
+        $stmt = $this->db->prepare("SELECT 1
+            FROM matches m
+            JOIN tournaments t ON t.id=m.tournament_id
+            JOIN users u ON u.id=:user_id
+            WHERE m.id=:match_id AND u.role='statistician' AND u.is_active=1 {$scope}
+            LIMIT 1");
         $stmt->execute([':match_id'=>$matchId, ':user_id'=>$userId]);
         return (bool)$stmt->fetchColumn();
     }
@@ -134,7 +151,7 @@ class GameOperations {
                 $score = $this->db->prepare("UPDATE match_scores ms SET
                     team1_score=ms.team1_score + CASE WHEN m.team1_id=:team_id_home THEN :points_home ELSE 0 END,
                     team2_score=ms.team2_score + CASE WHEN m.team2_id=:team_id_away THEN :points_away ELSE 0 END
-                    FROM matches m WHERE m.id=ms.match_id AND ms.match_id=:match_id AND m.status <> 'completed'");
+                    FROM matches m WHERE m.id=ms.match_id AND ms.match_id=:match_id AND m.status NOT IN ('completed','cancelled','awaiting_confirmation')");
                 $score->execute([':team_id_home'=>(int)$data['team_id'],':points_home'=>$points,
                     ':team_id_away'=>(int)$data['team_id'],':points_away'=>$points,':match_id'=>$matchId]);
             }
@@ -182,11 +199,23 @@ class GameOperations {
     public function corrections(int $userId, bool $platform = false): array {
         $where = $platform ? '' : "WHERE EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:user_id AND om.status='active')";
         $stmt = $this->db->prepare("SELECT sc.*,t.name tournament_name,h.team_name home_team,a.team_name away_team,
-            u.full_name requester_name FROM score_corrections sc JOIN matches m ON m.id=sc.match_id
+            u.full_name requester_name,reviewer.full_name reviewer_name FROM score_corrections sc JOIN matches m ON m.id=sc.match_id
             JOIN tournaments t ON t.id=m.tournament_id LEFT JOIN teams h ON h.id=m.team1_id
-            LEFT JOIN teams a ON a.id=m.team2_id JOIN users u ON u.id=sc.requested_by {$where} ORDER BY sc.created_at DESC");
+            LEFT JOIN teams a ON a.id=m.team2_id JOIN users u ON u.id=sc.requested_by
+            LEFT JOIN users reviewer ON reviewer.id=sc.reviewed_by {$where} ORDER BY sc.created_at DESC");
         $stmt->execute($platform ? [] : [':user_id'=>$userId]);
         return $stmt->fetchAll();
+    }
+
+    public function correctionDetails(int $id): ?array {
+        $stmt=$this->db->prepare("SELECT sc.*,m.tournament_id,t.name tournament_name,h.team_name home_team,
+                a.team_name away_team,requester.full_name requester_name,reviewer.full_name reviewer_name
+            FROM score_corrections sc JOIN matches m ON m.id=sc.match_id JOIN tournaments t ON t.id=m.tournament_id
+            LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id
+            JOIN users requester ON requester.id=sc.requested_by LEFT JOIN users reviewer ON reviewer.id=sc.reviewed_by
+            WHERE sc.id=:id LIMIT 1");
+        $stmt->execute([':id'=>$id]);
+        return $stmt->fetch() ?: null;
     }
 
     public function correctionTournamentId(int $id): ?int {

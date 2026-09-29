@@ -40,6 +40,9 @@ class News {
         return $stmt->fetchAll();
     }
 
+    public function allForAuthor(int $userId):array {$stmt=$this->db->prepare("SELECT n.*,s.name sport_name FROM news n LEFT JOIN sports s ON s.id=n.sport_id WHERE n.author_id=:user_id ORDER BY n.created_at DESC");$stmt->execute([':user_id'=>$userId]);return$stmt->fetchAll();}
+    public function canManage(int $id,int $userId):bool {$stmt=$this->db->prepare('SELECT id FROM news WHERE id=:id AND author_id=:user_id');$stmt->execute([':id'=>$id,':user_id'=>$userId]);return(bool)$stmt->fetchColumn();}
+
     public function create(array $d): int {
         $slug = $this->makeSlug($d['title']);
         $stmt = $this->db->prepare("INSERT INTO news (sport_id, title, slug, summary, body, cover_url, author_id, is_published, published_at)

@@ -138,7 +138,7 @@ const ScorekeeperPortal = () => {
     const s = board.score;
     const t1Id = s.team1_id;
     const t2Id = s.team2_id;
-    const locked = board.score.match_status === 'completed' || board.score.match_status === 'cancelled';
+    const locked = ['completed', 'cancelled', 'awaiting_confirmation'].includes(board.score.match_status);
     const disabled = locked ? { disabled: true } : {};
     const maybeSend = (payload) => { if (locked) return; send(payload); };
     const t1Fouls = board.fouls.filter(f => f.team_id === t1Id).length;
@@ -197,7 +197,7 @@ const ScorekeeperPortal = () => {
         <div className="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
           {locked && (
             <span className="badge bg-secondary" style={{ fontSize: '0.7rem' }}>
-              <i className="bi bi-lock-fill me-1" /> Match completed — scoreboard locked
+              <i className="bi bi-lock-fill me-1" /> {board.score.match_status === 'awaiting_confirmation' ? 'Final score submitted — waiting for organizer confirmation' : 'Match completed — scoreboard locked'}
             </span>
           )}
           <button className="btn btn-evsu-primary px-3" style={{ borderRadius: 10, fontSize: '0.8rem' }} {...disabled} onClick={toggleClock}>

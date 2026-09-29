@@ -1,8 +1,8 @@
 import api from './api';
 
 export const reportService = {
-  async getAnalytics() {
-    const res = await api.get('/analytics/dashboard');
+  async getAnalytics(teamId = null) {
+    const res = await api.get('/analytics/dashboard', { params: teamId ? { team_id: teamId } : {} });
     return res.data?.data || {};
   },
   async getStandings(tournamentId) {

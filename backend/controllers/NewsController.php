@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../models/News.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../middleware/OrganizationAccess.php';
 require_once __DIR__ . '/../utils/response.php';
 
 class NewsController {
@@ -23,12 +24,12 @@ class NewsController {
 
     // Admin/Organizer: all news (incl. drafts)
     public function all(): void {
-        AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
-        Response::success('News retrieved', ['news' => $this->model->all()]);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        Response::success('News retrieved', ['news' => OrganizationAccess::isPlatform($user)?$this->model->all():$this->model->allForAuthor((int)$user['user_id'])]);
     }
 
     public function create(): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         $input = json_decode(file_get_contents('php://input'), true);
         $input['author_id'] = (int) $user['user_id'];
         $id = $this->model->create($input);
@@ -36,14 +37,16 @@ class NewsController {
     }
 
     public function update(int $id): void {
-        AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        if(!OrganizationAccess::isPlatform($user)&&!$this->model->canManage($id,(int)$user['user_id']))Response::forbidden('You can only update your own organization news.');
         $input = json_decode(file_get_contents('php://input'), true);
         $this->model->update($id, $input);
         Response::success('News article updated.');
     }
 
     public function delete(int $id): void {
-        AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        if(!OrganizationAccess::isPlatform($user)&&!$this->model->canManage($id,(int)$user['user_id']))Response::forbidden('You can only delete your own organization news.');
         $this->model->delete($id);
         Response::success('News article deleted.');
     }

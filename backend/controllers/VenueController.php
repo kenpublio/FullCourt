@@ -17,20 +17,24 @@ class VenueController {
     }
 
     public function index(): void {
-        AuthMiddleware::authenticate();
-        $venues = $this->venueModel->getAll();
+        $user=AuthMiddleware::authenticate();
+        $venues = OrganizationAccess::isPlatform($user) ? $this->venueModel->getAll() : (in_array($user['role'],['organization_admin','tournament_organizer'],true) ? $this->venueModel->getForOrganizationUser((int)$user['user_id']) : $this->venueModel->getApproved());
         foreach ($venues as &$v) {
             $v['courts'] = $this->venueModel->getCourts((int)$v['id']);
         }
         unset($v);
-        $courts = $this->venueModel->getAllCourts();
+        $courts = array_merge(...array_map(fn($v)=>$v['courts'],$venues)) ?: [];
         Response::success('Venues and courts retrieved', ['venues' => $venues, 'courts' => $courts]);
     }
 
     public function show(int $id): void {
-        AuthMiddleware::authenticate();
+        $user=AuthMiddleware::authenticate();
         $venue = $this->venueModel->getById($id);
         if (!$venue) Response::error('Venue not found.', 404);
+        if(!OrganizationAccess::isPlatform($user)){
+            if(in_array($user['role'],['organization_admin','tournament_organizer'],true)){if(!$this->venueModel->canManage($id,(int)$user['user_id']))Response::forbidden('This venue belongs to another organization.');}
+            elseif(($venue['approval_status']??'')!=='approved')Response::forbidden('This venue is not publicly available.');
+        }
         Response::success('Venue retrieved', [
             'venue' => $venue,
             'courts' => $this->venueModel->getCourts($id)
@@ -53,6 +57,7 @@ class VenueController {
     public function updateVenue(int $id): void {
         $user = AuthMiddleware::authorizeRoles(['organization_admin', 'tournament_organizer']);
         if (!$this->venueModel->getById($id)) Response::error('Venue not found.', 404);
+        if(!$this->venueModel->canManage($id,(int)$user['user_id']))Response::forbidden('You can only update venues owned by your organization.');
         $input = json_decode(file_get_contents('php://input'), true);
         $name = trim($input['name'] ?? '');
         $location = trim($input['location'] ?? '');
@@ -65,6 +70,7 @@ class VenueController {
     public function destroyVenue(int $id): void {
         $user = AuthMiddleware::authorizeRoles(['organization_admin', 'tournament_organizer']);
         if (!$this->venueModel->getById($id)) Response::error('Venue not found.', 404);
+        if(!$this->venueModel->canManage($id,(int)$user['user_id']))Response::forbidden('You can only delete venues owned by your organization.');
         $this->venueModel->deleteVenue($id);
         $this->auditLog->log($user['user_id'], 'DELETE_VENUE', 'VENUE_MGMT', "Deleted venue ID {$id}.");
         Response::success('Venue deleted successfully');
@@ -76,6 +82,7 @@ class VenueController {
         $venueId = (int) ($input['venue_id'] ?? 0);
         $courtName = trim($input['court_name'] ?? '');
         if (!$venueId || !$this->venueModel->getById($venueId)) Response::error('A valid venue is required.', 400);
+        if(!$this->venueModel->canManage($venueId,(int)$user['user_id']))Response::forbidden('You can only add courts to your organization venues.');
         if ($courtName === '') Response::error('Court name is required.', 400);
         $sportId = empty($input['sport_id']) ? null : (int) $input['sport_id'];
         $id = $this->venueModel->createCourt($venueId, $courtName, $sportId, (bool)($input['is_available'] ?? true));
@@ -85,6 +92,7 @@ class VenueController {
 
     public function updateCourt(int $id): void {
         $user = AuthMiddleware::authorizeRoles(['organization_admin', 'tournament_organizer']);
+        $venueId=$this->venueModel->courtVenueId($id);if(!$venueId)Response::error('Court not found.',404);if(!$this->venueModel->canManage($venueId,(int)$user['user_id']))Response::forbidden('You can only update courts owned by your organization.');
         $input = json_decode(file_get_contents('php://input'), true);
         $courtName = trim($input['court_name'] ?? '');
         if ($courtName === '') Response::error('Court name is required.', 400);
@@ -96,6 +104,7 @@ class VenueController {
 
     public function destroyCourt(int $id): void {
         $user = AuthMiddleware::authorizeRoles(['organization_admin', 'tournament_organizer']);
+        $venueId=$this->venueModel->courtVenueId($id);if(!$venueId)Response::error('Court not found.',404);if(!$this->venueModel->canManage($venueId,(int)$user['user_id']))Response::forbidden('You can only delete courts owned by your organization.');
         $this->venueModel->deleteCourt($id);
         $this->auditLog->log($user['user_id'], 'DELETE_COURT', 'VENUE_MGMT', "Deleted court ID {$id}.");
         Response::success('Court deleted successfully');

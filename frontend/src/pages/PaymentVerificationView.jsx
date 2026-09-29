@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import paymentService from '../services/paymentService';
 import teamService from '../services/teamService';
 import tournamentService from '../services/tournamentService';
@@ -14,8 +14,9 @@ const receiptUrl = (path) => {
 
 const PaymentVerificationView = () => {
   const { user } = useAuth();
-  const canSubmitPayment = ['admin', 'coach_manager', 'player'].includes(user?.role);
-  const canVerifyPayment = ['admin', 'finance_officer'].includes(user?.role);
+  const canSubmitPayment = ['platform_admin','admin','coach','coach_manager','player'].includes(user?.role);
+  const canVerifyPayment = ['platform_admin','admin','finance_officer'].includes(user?.role);
+  const isCoach = ['coach','coach_manager'].includes(user?.role);
   const [payments, setPayments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -23,8 +24,10 @@ const PaymentVerificationView = () => {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [formData, setFormData] = useState({ team_id: '', tournament_id: '', payment_method: 'gcash', reference_number: '', amount: 500 });
   const [receiptFile, setReceiptFile] = useState(null);
+  const [loadError, setLoadError] = useState('');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    setLoadError('');
     try {
       setLoading(true);
       const [pData, tData, tourRes] = await Promise.all([
@@ -35,16 +38,16 @@ const PaymentVerificationView = () => {
       setPayments(pData);
       setTeams(tData);
       setTournaments(tourRes.tournaments || []);
-      if (tData.length > 0) setFormData(prev => ({ ...prev, team_id: tData[0].id }));
-      if (tourRes.tournaments?.length > 0) setFormData(prev => ({ ...prev, tournament_id: tourRes.tournaments[0].id }));
+      if (tData.length > 0) setFormData(prev => ({ ...prev, team_id: tData[0].id, tournament_id: isCoach ? (tData[0].tournament_id || '') : (tourRes.tournaments?.[0]?.id || prev.tournament_id) }));
     } catch (err) {
       console.error(err);
+      setLoadError(err.response?.data?.message || 'We could not load payment records. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [isCoach]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
@@ -81,6 +84,8 @@ const PaymentVerificationView = () => {
     if (payment.status === 'approved') summary.approvedAmount += Number(payment.amount || 0);
     return summary;
   }, { pending: 0, approved: 0, rejected: 0, approvedAmount: 0 });
+  const selectedTeam = teams.find(team => String(team.id) === String(formData.team_id));
+  const allowedTournaments = isCoach ? tournaments.filter(tournament => String(tournament.id) === String(selectedTeam?.tournament_id)) : tournaments;
 
   const downloadReport = () => {
     const escapeCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -99,7 +104,10 @@ const PaymentVerificationView = () => {
 
   return (
     <div className="container-fluid p-0">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      {isCoach ? <section className="coach-payment-heading mb-4">
+        <div><span className="coach-payment-kicker"><i className="bi bi-wallet2"/> TEAM FINANCE</span><h1>Team Payments</h1><p>Submit your team’s registration payment and follow its verification status.</p></div>
+        <div className="coach-payment-heading-actions"><button type="button" className="btn btn-outline-secondary" onClick={loadData} disabled={loading}><i className="bi bi-arrow-clockwise me-2"/>Refresh</button><button type="button" className="btn btn-evsu" onClick={() => setShowSubmitModal(true)} disabled={!teams.length}><i className="bi bi-plus-lg me-2"/>Submit payment</button></div>
+      </section> : <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h3 className="fw-bold text-dark mb-1">
             <i className="bi bi-credit-card-fill text-evsu-primary me-2"></i>
@@ -111,7 +119,14 @@ const PaymentVerificationView = () => {
           {user?.role === 'finance_officer' && <button className="btn btn-outline-danger" onClick={downloadReport}><i className="bi bi-file-earmark-arrow-down-fill me-1" />Download Report</button>}
           {canSubmitPayment && <button className="btn btn-evsu" onClick={() => setShowSubmitModal(true)}><i className="bi bi-plus-lg me-1"></i> Submit Payment Receipt</button>}
         </div>
-      </div>
+      </div>}
+
+      {isCoach&&!loading&&!loadError&&<section className="coach-payment-stats mb-4" aria-label="Team payment summary">
+        <article><i className="bi bi-hourglass-split pending"/><span><small>Awaiting review</small><strong>{paymentSummary.pending}</strong></span></article>
+        <article><i className="bi bi-check-circle-fill approved"/><span><small>Approved</small><strong>{paymentSummary.approved}</strong></span></article>
+        <article><i className="bi bi-arrow-counterclockwise rejected"/><span><small>Needs attention</small><strong>{paymentSummary.rejected}</strong></span></article>
+        <article><i className="bi bi-cash-stack amount"/><span><small>Verified total</small><strong>₱{paymentSummary.approvedAmount.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></span></article>
+      </section>}
 
       {!loading && user?.role === 'finance_officer' && <div className="row g-3 mb-4">
         <div className="col-sm-6 col-xl-3"><div className="finance-report-card pending"><i className="bi bi-hourglass-split" /><div><small>Pending Review</small><strong>{paymentSummary.pending}</strong></div></div></div>
@@ -120,11 +135,12 @@ const PaymentVerificationView = () => {
         <div className="col-sm-6 col-xl-3"><div className="finance-report-card revenue"><i className="bi bi-cash-stack" /><div><small>Verified Revenue</small><strong>₱{paymentSummary.approvedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></div></div></div>
       </div>}
 
-      {loading ? (
+      {loadError&&!loading ? <div className="coach-payment-empty" role="alert"><i className="bi bi-wifi-off"/><h3>Payments unavailable</h3><p>{loadError}</p><button type="button" className="btn btn-evsu" onClick={loadData}>Try again</button></div> : loading ? (
         <LoadingSpinner message="Loading payment transactions..." />
       ) : (
-        <div className="card-custom p-4">
-          <div className="table-responsive">
+        <div className="card-custom p-3 p-md-4 coach-payment-table-card">
+          {isCoach&&<div className="coach-payment-table-head"><div><h2>Payment history</h2><p>{selectedTeam?.team_name ? `Transactions for ${selectedTeam.team_name}` : 'Your assigned team transactions'}</p></div><span>{payments.length} {payments.length===1?'record':'records'}</span></div>}
+          <div className="table-responsive" role="region" aria-label="Tournament payment records table" tabIndex={0}>
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -140,7 +156,7 @@ const PaymentVerificationView = () => {
               </thead>
               <tbody>
                 {payments.length === 0 ? (
-                  <tr><td colSpan={canVerifyPayment ? 8 : 7} className="text-center py-4 text-muted">No payment transactions recorded.</td></tr>
+                <tr><td colSpan={canVerifyPayment ? 8 : 7} className="text-center py-5 text-muted"><i className="bi bi-receipt-cutoff d-block mb-2 fs-3 opacity-50"/>{isCoach?'No payments for your team yet. Submit a payment when ready.':'No payment transactions recorded.'}</td></tr>
                 ) : (
                   payments.map(p => (
                     <tr key={p.id}>
@@ -195,14 +211,14 @@ const PaymentVerificationView = () => {
                 <div className="modal-body">
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Select Team</label>
-                    <select className="form-select" value={formData.team_id} onChange={e => setFormData({...formData, team_id: e.target.value})}>
+                    <select className="form-select" value={formData.team_id} onChange={e => {const team=teams.find(item=>String(item.id)===String(e.target.value));setFormData({...formData,team_id:e.target.value,tournament_id:isCoach?(team?.tournament_id||''):formData.tournament_id});}}>
                       {teams.map(tm => <option key={tm.id} value={tm.id}>{tm.team_name}</option>)}
                     </select>
                   </div>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Select Tournament</label>
-                    <select className="form-select" value={formData.tournament_id} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
-                      {tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    <select className="form-select" value={formData.tournament_id} disabled={isCoach} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
+                      {allowedTournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </div>
                   <div className="row g-2 mb-3">

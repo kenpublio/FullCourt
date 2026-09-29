@@ -22,7 +22,6 @@ $resendKey=$values['RESEND_API_KEY']??'';
 $resendFrom=$values['RESEND_FROM']??'';
 $check('Resend API',str_starts_with($resendKey,'re_'),'A Resend API key is required for production email.');
 $check('Verified sender',$resendFrom!==''&&!str_contains($resendFrom,'onboarding@resend.dev'),'RESEND_FROM must use a verified custom domain.');
-$check('SMS provider',!empty($values['SEMAPHORE_API_KEY']),'Semaphore is optional when mobile OTP is disabled.','optional');
 $check('Reminder worker',is_file(__DIR__.'/dispatch_game_reminders.php'),'Schedule this command every five minutes on the production host.');
 $check('Private environment',is_file($root.'/.gitignore')&&str_contains((string)file_get_contents($root.'/.gitignore'),'.env'),'.env is excluded from version control.');
 $check('Upload storage',is_dir(dirname(__DIR__).'/uploads')&&is_writable(dirname(__DIR__).'/uploads'),'Uploads directory must remain private and writable.');

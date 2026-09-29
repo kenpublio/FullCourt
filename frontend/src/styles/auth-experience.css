@@ -24,8 +24,8 @@
 .fc-auth .auth-form-panel { min-width: 0; background: #fff; padding: 48px clamp(28px,4vw,65px) 25px; }
 .fc-auth .auth-login-form { width: 100%; max-width: 405px; }
 .fc-auth .auth-page-icon { background: #fff4e8; color: #cd2d17; box-shadow: none; border: 1px solid #ecdccc; border-radius: 16px; width: 48px; height: 48px; margin-bottom: 24px; }
-.fc-auth .auth-page-kicker { color: #767680; font-size: .62rem; letter-spacing: .14em; }
-.fc-auth .auth-page-heading h2 { color: #18181b; font-size: clamp(1.9rem,3vw,2.55rem); font-weight: 700; letter-spacing: -.045em; margin: 8px 0 12px; }
+.fc-auth .auth-page-kicker { color: #62626c; font-size: .62rem; letter-spacing: .14em; }
+.fc-auth .auth-page-heading h1,.fc-auth .auth-page-heading h2,.fc-auth .auth-heading h1 { color: #18181b; font-size: clamp(1.9rem,3vw,2.55rem); font-weight: 700; letter-spacing: -.045em; margin: 8px 0 12px; }
 .fc-auth .auth-page-heading p { color: #63636e; font-size: .85rem; }
 .fc-auth .auth-field label, .fc-auth .field label, .fc-auth .form-step > label { color: #3f3f46; font-size: .75rem; font-weight: 600; }
 .fc-auth .auth-input-wrap { border-color: #dedee3; background: #fafafa; border-radius: 10px; }
@@ -39,7 +39,7 @@
 .fc-auth .auth-primary-button:hover:not(:disabled), .fc-auth .btn-neon:hover:not(:disabled) { background: #aa240f; box-shadow: 0 8px 18px #cd2d1720; transform: translateY(-1px); }
 .fc-auth .auth-register-prompt { background: none; border: 0; border-top: 1px solid #e7e7eb; border-radius: 0; padding: 24px 0 5px; }
 .fc-auth .auth-register-prompt a { display: inline-block; margin-top: 8px; }
-.fc-auth .auth-copyright { margin-top: 36px; color: #767680; font-size: .62rem; }
+.fc-auth .auth-copyright { margin-top: 36px; color: #62626c; font-size: .62rem; }
 .fc-auth .auth-back { color: #63636e; font-size: .75rem; text-decoration: none; gap: 8px; align-items: center; }
 .fc-auth .register-heading .auth-page-icon { display: none; }
 .fc-auth .stepper { margin: 22px 0 28px; }

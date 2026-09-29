@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../models/Scorekeeper.php';
 require_once __DIR__ . '/../models/MatchScore.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../middleware/OrganizationAccess.php';
 require_once __DIR__ . '/../utils/response.php';
 
 class ScorekeeperController {
@@ -50,8 +51,8 @@ class ScorekeeperController {
     public function recordEvent(int $matchId): void {
         $user = $this->requireScorer($matchId);
         $matchStatus = $this->skModel->getMatchStatus($matchId);
-        if ($matchStatus === 'completed' || $matchStatus === 'cancelled') {
-            Response::forbidden('Cannot modify a completed/cancelled match.');
+        if (in_array($matchStatus, ['completed','cancelled','awaiting_confirmation'], true)) {
+            Response::forbidden('This game is closed for scoring or is waiting for the organizer to confirm its final score.');
         }
         $input = json_decode(file_get_contents('php://input'), true);
         $type = $input['event_type'] ?? '';
@@ -155,10 +156,11 @@ class ScorekeeperController {
             case 'game_end':
                 $winner = (int)($input['winner_team_id'] ?? 0);
                 $scoreFields['is_timer_running'] = 0;
-                $detail = ['winner_team_id' => $winner];
-                if ($winner) {
-                    $this->skModel->completeMatch($matchId, $winner);
-                }
+                if (!$winner || (int)$state['team1_score'] === (int)$state['team2_score']) Response::error('A non-tied final score and its winning team are required for review.', 422);
+                $scoreWinner = (int)$state['team1_score'] > (int)$state['team2_score'] ? (int)$state['team1_id'] : (int)$state['team2_id'];
+                if ($winner !== $scoreWinner) Response::error('The selected winner does not match the current score.', 422);
+                $this->skModel->submitMatchForConfirmation($matchId, $winner);
+                $detail = ['winner_team_id' => $winner, 'awaiting_organizer_confirmation' => true];
                 break;
         }
 
@@ -180,7 +182,7 @@ class ScorekeeperController {
 
     // DELETE /matches/{matchId}/events/{eventId}  (undo)
     public function undoEvent(int $matchId, int $eventId): void {
-        $user = $this->requireScorer($matchId, ['admin', 'tournament_organizer']);
+        $user = $this->requireScorer($matchId, ['platform_admin','admin','organization_admin','tournament_organizer']);
         if (!$this->skModel->deleteEvent($eventId, $matchId)) {
             Response::error('Event not found for this match.', 404);
         }
@@ -189,7 +191,8 @@ class ScorekeeperController {
 
     // POST /matches/{id}/assign-scorekeeper  { user_id }
     public function assign(int $matchId): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        OrganizationAccess::requireMatch($matchId,$user);
         $input = json_decode(file_get_contents('php://input'), true);
         $uid = (int)($input['user_id'] ?? 0);
         if (!$uid) Response::error('user_id is required.', 400);
@@ -209,8 +212,8 @@ class ScorekeeperController {
     // scorekeeper for this match.
     private function requireScorer(int $matchId, array $extraRoles = []): array {
         $user = AuthMiddleware::authenticate();
-        $privileged = array_merge(['admin', 'tournament_organizer'], $extraRoles);
-        if (in_array($user['role'], $privileged, true)) return $user;
+        $privileged = array_unique(array_merge(['platform_admin','admin','organization_admin','tournament_organizer'], $extraRoles));
+        if (in_array($user['role'], $privileged, true)){OrganizationAccess::requireMatch($matchId,$user);return $user;}
         if ($this->skModel->isAssignedScorekeeper($matchId, (int)$user['user_id'])) return $user;
         Response::forbidden('You are not authorized to scorekeep this match.');
     }

@@ -7,6 +7,21 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import operationsService from '../services/operationsService';
 
+const ageEligibilityBadge = (player) => {
+  if (player.age_eligibility_code === 'qualified') return 'bg-success';
+  if (player.age_eligibility_code === 'open_age') return 'bg-primary';
+  if (['over_age', 'under_age'].includes(player.age_eligibility_code)) return 'bg-danger';
+  return 'bg-warning text-dark';
+};
+
+const ageEligibilityLabel = (player) => {
+  if (player.age_eligibility_code === 'qualified') return `Qualified · age ${player.age_at_cutoff}`;
+  if (player.age_eligibility_code === 'over_age') return `Not eligible · age ${player.age_at_cutoff} is over`;
+  if (player.age_eligibility_code === 'under_age') return `Not eligible · age ${player.age_at_cutoff} is under`;
+  if (player.age_eligibility_code === 'open_age') return 'Open age';
+  return 'Pending birthdate';
+};
+
 const TeamManagement = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -23,6 +38,7 @@ const TeamManagement = () => {
   const [playerIdentifier, setPlayerIdentifier] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [pageMessage, setPageMessage] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [logoFile, setLogoFile] = useState(null);
   const [rosterTeam, setRosterTeam] = useState(null);
   const [rosterPlayers, setRosterPlayers] = useState([]);
@@ -38,6 +54,7 @@ const TeamManagement = () => {
   const visibleTeams = useMemo(() => selectedDivision ? tournamentTeams.filter(team => String(team.division_id) === String(selectedDivision)) : tournamentTeams, [tournamentTeams, selectedDivision]);
 
   const loadData = async () => {
+    setLoadError('');
     try {
       setLoading(true);
       const tData = await teamService.getTeams();
@@ -49,6 +66,7 @@ const TeamManagement = () => {
       }
     } catch (err) {
       console.error(err);
+      setLoadError(err.response?.data?.message || 'Could not load the team directory. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -161,6 +179,21 @@ const TeamManagement = () => {
     }
   };
 
+  const reviewApplication = async (team, decision) => {
+    const verb=decision==='approve'?'approve':'reject';
+    if (!window.confirm(`${verb[0].toUpperCase()+verb.slice(1)} ${team.team_name}'s application?`)) return;
+    try {
+      await teamService.reviewApplication(team.id,decision);
+      setPageMessage(`Team application ${decision==='approve'?'approved':'rejected'} successfully.`);
+      await loadData();
+    } catch (err) {
+      setPageMessage(err.response?.data?.message || 'Unable to review this team application.');
+    }
+  };
+
+  const statusLabel=(status)=>status==='draft'?'Pending approval':status==='disqualified'?'Rejected':status.replace('_',' ');
+  const statusClass=(status)=>status==='registered'?'bg-success':status==='disqualified'?'bg-danger':'bg-warning text-dark';
+
   const sendInvitation = async (e) => {
     e.preventDefault();
     setInviteMessage('');
@@ -178,18 +211,25 @@ const TeamManagement = () => {
 
   return (
     <div className="container-fluid p-0">
-      <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+      {isCoach ? <section className="coach-roster-heading mb-4">
+        <div className="coach-roster-heading-copy">
+          <span className="coach-roster-kicker"><i className="bi bi-diagram-3-fill"/> COACH WORKSPACE</span>
+          <h1>My Team &amp; Roster</h1>
+          <p>Your team, players, and roster actions in one place.</p>
+        </div>
+        <div className="coach-roster-heading-actions">
+          <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/schedules')}><i className="bi bi-calendar3 me-2"/>Team schedule</button>
+          <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/standings')}><i className="bi bi-list-ol me-2"/>Standings</button>
+        </div>
+      </section> : <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
         <div>
-          <h3 className="fw-bold text-dark mb-1">
-            <i className="bi bi-people-fill text-evsu-primary me-2"></i>
-            Team Roster Management
-          </h3>
+          <h3 className="fw-bold text-dark mb-1"><i className="bi bi-people-fill text-evsu-primary me-2"></i>Team Roster Management</h3>
           <p className="text-muted small mb-0">Manage registered teams, logos, coaches, and rosters</p>
         </div>
-        <button className="btn btn-evsu align-self-start align-self-lg-center rounded-pill px-4" onClick={openCreate} disabled={!isCoach && !selectedTournament}>
+        <button className="btn btn-evsu align-self-start align-self-lg-center rounded-pill px-4" onClick={openCreate} disabled={!selectedTournament}>
           <i className="bi bi-plus-lg me-1"></i> New Team
         </button>
-      </div>
+      </div>}
 
       {pageMessage && (
         <div className="alert alert-info alert-dismissible fade show py-2" role="status">
@@ -198,20 +238,47 @@ const TeamManagement = () => {
         </div>
       )}
 
+      {isCoach && !loading && !loadError && visibleTeams.length > 0 && <section className="coach-roster-summary mb-4" aria-label="Coach team summary">
+        <div><span className="coach-roster-summary-icon"><i className="bi bi-shield-check"/></span><span><strong>{visibleTeams.length}</strong><small>Assigned {visibleTeams.length === 1 ? 'team' : 'teams'}</small></span></div>
+        <div><span className="coach-roster-summary-icon"><i className="bi bi-people-fill"/></span><span><strong>{visibleTeams.reduce((sum, team) => sum + Number(team.total_players || 0), 0)}</strong><small>Verified roster players</small></span></div>
+        <div><span className="coach-roster-summary-icon"><i className="bi bi-trophy-fill"/></span><span><strong>{new Set(visibleTeams.map(team => team.tournament_id)).size}</strong><small>Tournament entries</small></span></div>
+      </section>}
+
       {!isCoach && <section className="card-custom p-3 p-md-4 mb-4 team-tournament-picker">
         <div className="row g-3 align-items-end">
-          <div className="col-md-7"><label className="form-label small fw-bold"><i className="bi bi-trophy me-2 text-evsu-primary"/>Select Tournament</label><select className="form-select" value={selectedTournament} onChange={e=>{setSelectedTournament(e.target.value);setSelectedDivision('');}}><option value="">Choose a tournament to manage</option>{tournaments.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
-          <div className="col-md-5"><label className="form-label small fw-bold"><i className="bi bi-diagram-3 me-2 text-evsu-primary"/>Division</label><select className="form-select" value={selectedDivision} disabled={!selectedTournament||!filterDivisions.length} onChange={e=>setSelectedDivision(e.target.value)}><option value="">All divisions</option>{filterDivisions.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+          <div className="col-md-7"><label htmlFor="team-tournament-filter" className="form-label small fw-bold"><i className="bi bi-trophy me-2 text-evsu-primary"/>Select Tournament</label><select id="team-tournament-filter" className="form-select" value={selectedTournament} onChange={e=>{setSelectedTournament(e.target.value);setSelectedDivision('');}}><option value="">Choose a tournament to manage</option>{tournaments.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
+          <div className="col-md-5"><label htmlFor="team-division-filter" className="form-label small fw-bold"><i className="bi bi-diagram-3 me-2 text-evsu-primary"/>Division</label><select id="team-division-filter" className="form-select" value={selectedDivision} disabled={!selectedTournament||!filterDivisions.length} onChange={e=>setSelectedDivision(e.target.value)}><option value="">All divisions</option>{filterDivisions.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
         </div>
         {selectedTournament&&<div className="team-picker-summary mt-3"><span><b>{visibleTeams.length}</b> teams displayed</span><span><b>{visibleTeams.reduce((sum,team)=>sum+Number(team.total_players||0),0)}</b> rostered players</span></div>}
       </section>}
 
       {loading ? (
         <LoadingSpinner message="Loading team directory..." />
+      ) : loadError ? (
+        <div className="team-selection-empty"><i className="bi bi-exclamation-triangle"/><h4>Team directory unavailable</h4><p>{loadError}</p><button className="btn btn-evsu btn-sm" onClick={loadData}><i className="bi bi-arrow-clockwise me-1"/>Try again</button></div>
       ) : (!isCoach && !selectedTournament) ? (
         <div className="team-selection-empty"><i className="bi bi-trophy"/><h4>Select a tournament first</h4><p>Choose a tournament above to view and manage its registered teams, logos, coaches, and rosters.</p></div>
       ) : visibleTeams.length === 0 ? (
-        <div className="team-selection-empty"><i className="bi bi-people"/><h4>No teams found</h4><p>No registered teams match the selected tournament and division.</p><button className="btn btn-evsu btn-sm" onClick={openCreate}><i className="bi bi-plus-lg me-1"/>Register the first team</button></div>
+        <div className="team-selection-empty"><i className="bi bi-people"/><h4>{isCoach ? 'No team application yet' : 'No teams found'}</h4><p>{isCoach ? 'Open Tournament Operations, choose an available tournament, and submit your team application.' : 'No registered teams match the selected tournament and division.'}</p>{isCoach?<button className="btn btn-evsu btn-sm" onClick={()=>navigate('/tournaments')}><i className="bi bi-trophy me-1"/>Find a tournament</button>:<button className="btn btn-evsu btn-sm" onClick={openCreate}><i className="bi bi-plus-lg me-1"/>Register the first team</button>}</div>
+      ) : isCoach ? (
+        <section className="coach-team-grid" aria-label="Your assigned teams">
+          {visibleTeams.map(team => <article className="coach-team-card" key={team.id} style={{'--coach-team-color':team.primary_color || '#c92d19'}}>
+            <div className="coach-team-card-top">
+              <span className="coach-team-mark">
+                {team.logo_url ? <img src={mediaUrl(team.logo_url)} alt={`${team.team_name} logo`}/> : <span>{(team.short_name || team.team_name || 'FC').slice(0,2).toUpperCase()}</span>}
+              </span>
+              <span className={`badge ${team.status === 'registered' ? 'bg-success' : team.status === 'disqualified' ? 'bg-danger' : 'bg-warning text-dark'}`}>{statusLabel(team.status)}</span>
+            </div>
+            <div className="coach-team-card-title"><span className="coach-team-eyebrow">YOUR TEAM</span><h2>{team.team_name}</h2><p><i className="bi bi-trophy-fill"/> {team.tournament_name || 'Tournament not assigned'}</p></div>
+            <div className="coach-team-meta"><span><i className="bi bi-diagram-3"/> {team.division_name || 'Open division'}</span><span><i className="bi bi-people"/> {Number(team.total_players || 0)} verified {Number(team.total_players || 0) === 1 ? 'player' : 'players'}</span></div>
+            <div className="coach-team-actions">
+              <button type="button" className="btn coach-team-primary" onClick={() => viewRoster(team)}><i className="bi bi-people-fill me-2"/>View roster</button>
+              {team.status === 'registered' && <button type="button" className="btn coach-team-secondary" onClick={() => { setInviteTeam(team); setInviteMessage(''); }}><i className="bi bi-person-plus-fill me-2"/>Invite player</button>}
+              <button type="button" className="btn coach-team-icon-action" onClick={() => openEdit(team)} aria-label={`Edit ${team.team_name}`} title="Edit team details"><i className="bi bi-pencil-square"/></button>
+            </div>
+            {team.status !== 'registered' && <p className="coach-team-pending-note"><i className="bi bi-info-circle me-1"/>Player invitations unlock after the organizer approves this application.</p>}
+          </article>)}
+        </section>
       ) : (
         <>
         <div className="d-grid gap-3 d-md-none">
@@ -230,8 +297,8 @@ const TeamManagement = () => {
                       <div className="small text-muted"><i className="bi bi-trophy me-1" />{tm.tournament_name}</div>
                       <div className="small text-muted"><i className="bi bi-diagram-3 me-1" />{tm.division_name || 'Open division'}</div>
                     </div>
-                    <span className={`badge ${tm.status === 'registered' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                      {tm.status.replace('_', ' ')}
+                    <span className={`badge ${statusClass(tm.status)}`}>
+                      {statusLabel(tm.status)}
                     </span>
                   </div>
                 </div>
@@ -241,9 +308,10 @@ const TeamManagement = () => {
                   <i className="bi bi-people-fill me-1" />Roster ({tm.total_players || 0})
                 </button>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Invite player to ${tm.team_name}`} title="Invite player"><i className="bi bi-person-plus-fill" /></button>
+                  {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg"/></button></>}
+                  {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Invite player to ${tm.team_name}`} title="Invite player"><i className="bi bi-person-plus-fill" /></button>}
                   <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team"><i className="bi bi-pencil-square" /></button>
-                  <button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team"><i className="bi bi-trash3" /></button>
+                  {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team"><i className="bi bi-trash3" /></button>}
                 </div>
               </div>
             </article>
@@ -285,22 +353,23 @@ const TeamManagement = () => {
                     <td className="small d-none d-md-table-cell">{tm.coach_name}</td>
                     <td className="small d-none d-md-table-cell"><span className="badge bg-light text-dark border">{tm.total_players || 0} players</span></td>
                     <td>
-                      <span className={`badge ${tm.status === 'registered' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                        {tm.status.replace('_', ' ')}
+                      <span className={`badge ${statusClass(tm.status)}`}>
+                        {statusLabel(tm.status)}
                       </span>
                     </td>
                     <td className="text-nowrap team-actions-column">
-                      {['platform_admin','admin','organization_admin','coach','coach_manager'].includes(user?.role) ? (
+                      {['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'].includes(user?.role) ? (
                         <div className="d-inline-flex align-items-center gap-2 team-action-group">
-                          <button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Invite player to ${tm.team_name}`} title="Invite player">
+                          {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg me-1"/>Reject</button></>}
+                          {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Invite player to ${tm.team_name}`} title="Invite player">
                             <i className="bi bi-person-plus-fill" />
-                          </button>
+                          </button>}
                           <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team">
                             <i className="bi bi-pencil-square" />
                           </button>
-                          <button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team">
+                          {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team">
                             <i className="bi bi-trash3" />
-                          </button>
+                          </button>}
                         </div>
                       ) : (
                         <button className="btn btn-outline-danger btn-sm" onClick={() => navigate('/eligibility')}>
@@ -334,7 +403,7 @@ const TeamManagement = () => {
                   <div className="mb-3"><label className="form-label small fw-semibold">Short Name</label><input maxLength="20" className="form-control" value={formData.short_name} onChange={e=>setFormData({...formData,short_name:e.target.value})} placeholder="e.g. LIN"/></div>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Select Tournament</label>
-                    <select className="form-select" value={formData.tournament_id} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
+                    <select className="form-select" value={formData.tournament_id} disabled={isCoach} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
                       {tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </div>
@@ -363,8 +432,8 @@ const TeamManagement = () => {
               <form onSubmit={sendInvitation}>
                 <div className="modal-body">
                   {inviteMessage && <div className="alert alert-info py-2">{inviteMessage}</div>}
-                  <label className="form-label small fw-semibold">Player email or mobile number</label>
-                  <input className="form-control" value={playerIdentifier} onChange={e => setPlayerIdentifier(e.target.value)} placeholder="player@ or 09XXXXXXXXX" autoComplete="off" required />
+                  <label className="form-label small fw-semibold">Player email or FullCourt ID</label>
+                  <input className="form-control" value={playerIdentifier} onChange={e => setPlayerIdentifier(e.target.value)} placeholder="player@example.com or Player ID" autoComplete="off" required />
                   <small className="text-muted d-block mt-2">The player will receive an invitation in FullCourt Notifications.</small>
                 </div>
                 <div className="modal-footer border-top">
@@ -411,14 +480,15 @@ const TeamManagement = () => {
                         <div className="roster-card-details mt-3 pt-3">
                           <div><span>Jersey</span><strong>{player.jersey_number ? `#${player.jersey_number}` : '—'}</strong></div>
                           <div><span>Position</span><strong>{player.position || 'Not assigned'}</strong></div>
-                          <div><span>Status</span><span className={`badge ${player.eligibility_status === 'verified' ? 'bg-success' : player.eligibility_status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>{player.eligibility_status}</span></div>
+                          <div><span>Age eligibility</span><span className={`badge ${ageEligibilityBadge(player)}`}>{ageEligibilityLabel(player)}</span></div>
+                          <div><span>Review</span><span className={`badge ${player.eligibility_status === 'verified' ? 'bg-success' : player.eligibility_status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>{player.eligibility_status}</span></div>
                         </div>
                       </article>
                     ))}
                   </div>
                   <div className="table-responsive d-none d-md-block">
                     <table className="table table-hover align-middle mb-0">
-                      <thead><tr><th>Player</th><th>Contact</th><th>Jersey</th><th>Position</th><th>Status</th><th className="text-end">Action</th></tr></thead>
+                      <thead><tr><th>Player</th><th>Contact</th><th>Jersey</th><th>Position</th><th>Age Eligibility</th><th>Review</th><th className="text-end">Action</th></tr></thead>
                       <tbody>{rosterPlayers.map(player => (
                         <tr key={player.id}>
                           <td>
@@ -434,6 +504,7 @@ const TeamManagement = () => {
                           <td className="small">{player.email || player.phone_number || 'Not provided'}</td>
                           <td>{player.jersey_number ? `#${player.jersey_number}` : '—'}</td>
                           <td>{player.position || 'Not assigned'}</td>
+                          <td><span className={`badge ${ageEligibilityBadge(player)}`} title={player.age_eligibility_message}>{ageEligibilityLabel(player)}</span><small className="d-block text-muted mt-1">Cutoff: {player.age_cutoff_date || 'Tournament start'}</small></td>
                           <td><span className={`badge ${player.eligibility_status === 'verified' ? 'bg-success' : player.eligibility_status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>{player.eligibility_status}</span></td>
                           <td className="text-end text-nowrap">
                             <button className="btn team-action-btn team-edit-btn" onClick={() => startRosterEdit(player)} aria-label={`Edit ${player.full_name || 'player'}`} title="Edit jersey and position"><i className="bi bi-pencil-square" /></button>

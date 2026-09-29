@@ -26,7 +26,7 @@ class SportsApplication {
                 JOIN tournaments t ON tm.tournament_id = t.id
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON tm.coach_user_id = u.id
-                WHERE t.status IN ('upcoming','ongoing')
+                WHERE t.status IN ('upcoming','ongoing') AND tm.status='registered'
                 ORDER BY CASE t.status WHEN 'ongoing' THEN 1 ELSE 2 END, t.start_date ASC, s.name ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':mineUserId' => $userId, ':mineIdUserId' => $userId]);
@@ -47,6 +47,10 @@ class SportsApplication {
         $check = $this->db->prepare("SELECT id FROM team_players WHERE team_id=:teamId AND user_id=:userId AND eligibility_status IN ('pending','verified') LIMIT 1");
         $check->execute([':teamId'=>$teamId, ':userId'=>$userId]);
         if ($check->fetch()) throw new Exception('You already have an active application for this team.');
+
+        $other=$this->db->prepare("SELECT tp.id FROM team_players tp JOIN teams mine ON mine.id=tp.team_id JOIN teams target ON target.id=:teamId WHERE tp.user_id=:userId AND tp.eligibility_status='verified' AND mine.tournament_id=target.tournament_id LIMIT 1");
+        $other->execute([':teamId'=>$teamId,':userId'=>$userId]);
+        if($other->fetch()) throw new Exception('You already belong to a team in this tournament.');
 
         $capacity = $this->db->prepare("SELECT s.max_players_per_team, COUNT(tp.id) AS approved FROM teams tm JOIN tournaments t ON tm.tournament_id=t.id JOIN sports s ON t.sport_id=s.id LEFT JOIN team_players tp ON tp.team_id=tm.id AND tp.eligibility_status='verified' WHERE tm.id=:teamId GROUP BY tm.id,s.id");
         $capacity->execute([':teamId'=>$teamId]);

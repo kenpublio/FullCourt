@@ -7,11 +7,32 @@ import teamService from "../services/teamService";
 import scheduleService from "../services/scheduleService";
 import { Link } from "react-router-dom";
 
+const divisionPresets = {
+  custom: { name: "", min_age: "", max_age: "" },
+  "12u": { name: "12 Under", min_age: "", max_age: 12 },
+  "14u": { name: "14 Under", min_age: "", max_age: 14 },
+  "16u": { name: "16 Under", min_age: "", max_age: 16 },
+  "18u": { name: "18 Under", min_age: "", max_age: 18 },
+  junior: { name: "Junior Category", min_age: 13, max_age: 21 },
+  senior: { name: "Senior Category", min_age: 25, max_age: "" },
+  open: { name: "Open Age", min_age: "", max_age: "" },
+};
+
+const ageRangeLabel = (division) => {
+  if (division.min_age === null && division.max_age === null) return "Open age · no age restriction";
+  if (division.min_age === null) return `Age ${division.max_age} and below`;
+  if (division.max_age === null) return `Age ${division.min_age} and above`;
+  return `Ages ${division.min_age}–${division.max_age}`;
+};
+
 const TournamentManagement = () => {
   const { user } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [joinTournament, setJoinTournament] = useState(null);
+  const [joinLogo, setJoinLogo] = useState(null);
+  const [joinForm, setJoinForm] = useState({ team_name: '', short_name: '', primary_color: 'red' });
   const [msg, setMsg] = useState("");
   const [divisionTournament, setDivisionTournament] = useState(null);
   const [detailTournament, setDetailTournament] = useState(null);
@@ -23,6 +44,7 @@ const TournamentManagement = () => {
     age_group: "",
     min_age: "",
     max_age: "",
+    age_cutoff_date: "",
     gender_category: "open",
     format: "round_robin",
     max_roster_size: 15,
@@ -85,6 +107,24 @@ const TournamentManagement = () => {
     }
   };
 
+  const submitTeamApplication = async (event) => {
+    event.preventDefault();
+    try {
+      const response=await teamService.registerTeam({...joinForm,tournament_id:joinTournament.id});
+      const teamId=response?.data?.team_id;
+      if (joinLogo && teamId) await teamService.uploadLogo(teamId,joinLogo);
+      setMsg('Team application submitted. Wait for the organizer to approve your team.');
+      setJoinTournament(null);
+      setJoinLogo(null);
+      setJoinForm({team_name:'',short_name:'',primary_color:'red'});
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Unable to submit the team application.');
+    }
+  };
+
+  const applicationLabel=(status)=>status==='draft'?'Application Pending':status==='registered'?'Team Approved':status==='disqualified'?'Application Rejected':'Join Tournament';
+
   const openDivisions = async (tournament) => {
     setDivisionTournament(tournament);
     setDivisions(await operationsService.divisions(tournament.id));
@@ -103,41 +143,61 @@ const TournamentManagement = () => {
   };
   const createDivision = async (event) => {
     event.preventDefault();
-    await operationsService.createDivision(divisionTournament.id, divisionForm);
-    setDivisions(await operationsService.divisions(divisionTournament.id));
-    setDivisionForm({
-      ...divisionForm,
-      name: "",
-      age_group: "",
-      eligibility_requirements: "",
-    });
+    try {
+      await operationsService.createDivision(divisionTournament.id, divisionForm);
+      setDivisions(await operationsService.divisions(divisionTournament.id));
+      setDivisionForm({ ...divisionForm, name: "", age_group: "", min_age: "", max_age: "", age_cutoff_date: "", eligibility_requirements: "" });
+      setMsg("Division added successfully.");
+    } catch (error) {
+      setMsg(error.response?.data?.message || "Unable to add the division.");
+    }
   };
 
+  const applyDivisionPreset = (presetKey) => {
+    const preset = divisionPresets[presetKey];
+    if (!preset) return;
+    setDivisionForm((current) => ({ ...current, ...preset, age_group: presetKey === "open" ? "Open age" : preset.name }));
+  };
+
+  const tournamentStats = {
+    total: tournaments.length,
+    ongoing: tournaments.filter((t) => t.status === "ongoing").length,
+    upcoming: tournaments.filter((t) => t.status === "upcoming").length,
+    teams: tournaments.reduce((sum, t) => sum + Number(t.registered_teams_count || 0), 0),
+  };
+  const canManageTournaments = [
+    "platform_admin",
+    "admin",
+    "organization_admin",
+    "tournament_organizer",
+  ].includes(user?.role);
+
   return (
-    <div className="container-fluid p-0">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h3 className="fw-bold text-dark mb-1">
-            <i className="bi bi-trophy-fill text-evsu-primary me-2"></i>
-            Tournament Operations
-          </h3>
-          <p className="text-muted small mb-0">
+    <div className="container-fluid p-0 tournament-operations-page">
+      <section className="tournament-ops-hero">
+        <div className="tournament-ops-copy">
+          <span className="tournament-ops-eyebrow"><i className="bi bi-dribbble" /> BASKETBALL COMPETITIONS</span>
+          <h1>Tournament Operations</h1>
+          <p>
             {['coach', 'coach_manager'].includes(user?.role)
               ? 'View competitions, divisions, formats, and registration details'
               : 'Create and manage basketball leagues, divisions, and tournament formats'}
           </p>
+          <div className="tournament-ops-meta"><span><i className="bi bi-trophy" /> One place for every competition</span><span><i className="bi bi-shield-check" /> Organized tournament details</span></div>
         </div>
-        {[
-          "platform_admin",
-          "admin",
-          "organization_admin",
-          "tournament_organizer",
-        ].includes(user?.role) && (
-          <button className="btn btn-evsu" onClick={() => setShowModal(true)}>
-            <i className="bi bi-plus-lg me-1"></i> Create Tournament
-          </button>
-        )}
-      </div>
+        <div className="tournament-ops-hero-side">
+          <span className="tournament-ops-emblem"><i className="bi bi-trophy-fill" /></span>
+          {canManageTournaments && <button className="btn btn-evsu tournament-ops-create" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create Tournament</button>}
+        </div>
+        <i className="bi bi-dribbble tournament-ops-watermark" aria-hidden="true" />
+      </section>
+
+      {!loading && <section className="tournament-ops-summary" aria-label="Tournament summary">
+        <div><span className="tournament-ops-stat-icon"><i className="bi bi-trophy" /></span><span><b>{tournamentStats.total}</b><small>Total tournaments</small></span></div>
+        <div><span className="tournament-ops-stat-icon is-live"><i className="bi bi-broadcast" /></span><span><b>{tournamentStats.ongoing}</b><small>Live competitions</small></span></div>
+        <div><span className="tournament-ops-stat-icon is-upcoming"><i className="bi bi-calendar-event" /></span><span><b>{tournamentStats.upcoming}</b><small>Upcoming</small></span></div>
+        <div><span className="tournament-ops-stat-icon is-teams"><i className="bi bi-people" /></span><span><b>{tournamentStats.teams}</b><small>Registered teams</small></span></div>
+      </section>}
 
       {msg && (
         <div className="alert alert-success py-2 px-3 small rounded-3 mb-3">
@@ -148,49 +208,27 @@ const TournamentManagement = () => {
       {loading ? (
         <LoadingSpinner message="Loading tournaments..." />
       ) : (
-        <div className="row g-3">
+        <>
+        <div className="tournament-ops-list-heading"><div><span>COMPETITION DIRECTORY</span><h2>{['coach', 'coach_manager'].includes(user?.role) ? 'Available tournaments' : 'Your tournaments'}</h2></div><small>{tournaments.length} {tournaments.length === 1 ? 'tournament' : 'tournaments'}</small></div>
+        {tournaments.length ? <div className="row g-3 tournament-ops-grid">
           {tournaments.map((t) => (
             <div key={t.id} className="col-12 col-md-6 col-xl-4">
-              <div className="card-custom p-4 h-100 d-flex flex-column justify-content-between">
+              <div className="card-custom tournament-ops-card p-4 h-100 d-flex flex-column justify-content-between">
                 <div>
-                  <div className="d-flex justify-content-between align-items-start mb-2">
-                    <span className="badge bg-evsu-gold text-dark text-uppercase">
-                      <i className="bi bi-dribbble me-1" /> Basketball
-                    </span>
-                    <span
-                      className={`badge ${t.status === "ongoing" ? "bg-danger" : t.status === "completed" ? "bg-secondary" : "bg-success"}`}
-                    >
-                      {t.status}
-                    </span>
+                  <div className="tournament-ops-card-top">
+                    <span className="tournament-ops-sport"><i className="bi bi-dribbble" /> BASKETBALL</span>
+                    <span className={`tournament-ops-status ${t.status === 'ongoing' ? 'is-live' : t.status === 'completed' ? 'is-complete' : 'is-upcoming'}`}><i className="bi bi-circle-fill" /> {t.status || 'upcoming'}</span>
                   </div>
-                  <h5 className="fw-bold text-dark mb-2">{t.name}</h5>
-                  <p className="text-muted small mb-3">
+                  <h3 className="tournament-ops-card-title">{t.name}</h3>
+                  <p className="tournament-ops-card-description">
                     {t.description || "No description provided."}
                   </p>
 
-                  <div className="small text-secondary mb-2">
-                    <i className="bi bi-diagram-3 me-2"></i>Format:{" "}
-                    <strong className="text-dark">
-                      {t.format.replace("_", " ")}
-                    </strong>
-                  </div>
-                  <div className="small text-secondary mb-2">
-                    <i className="bi bi-calendar2-range me-2"></i>Dates:{" "}
-                    <strong className="text-dark">
-                      {t.start_date} to {t.end_date}
-                    </strong>
-                  </div>
-                  <div className="small text-secondary mb-2">
-                    <i className="bi bi-cash-stack me-2"></i>Fee:{" "}
-                    <strong className="text-success">
-                      ₱{parseFloat(t.registration_fee).toFixed(2)}
-                    </strong>
-                  </div>
-                  <div className="small text-secondary">
-                    <i className="bi bi-people me-2"></i>Registered Teams:{" "}
-                    <strong className="text-dark">
-                      {t.registered_teams_count}
-                    </strong>
+                  <div className="tournament-ops-facts">
+                    <div><span><i className="bi bi-diagram-3" /> Format</span><b>{String(t.format || 'Not set').replaceAll('_', ' ')}</b></div>
+                    <div><span><i className="bi bi-calendar2-range" /> Dates</span><b>{t.start_date || 'TBD'} <em>to</em> {t.end_date || 'TBD'}</b></div>
+                    <div><span><i className="bi bi-cash-stack" /> Entry fee</span><b className="fee">₱{Number(t.registration_fee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</b></div>
+                    <div><span><i className="bi bi-people" /> Teams</span><b>{Number(t.registered_teams_count || 0)} registered</b></div>
                   </div>
                 </div>
 
@@ -217,14 +255,35 @@ const TournamentManagement = () => {
                     </button>
                   </div>
                 )}
-                {!['platform_admin','admin','organization_admin','tournament_organizer'].includes(user?.role)&&<div className="mt-4 pt-3 border-top"><button className="btn btn-evsu btn-sm w-100" onClick={()=>openDetails(t)}><i className="bi bi-eye me-1"/>View Tournament</button></div>}
+                {['coach','coach_manager'].includes(user?.role)&&<div className="mt-4 pt-3 border-top">
+                  {t.application_team_id ? <>
+                    <div className={`alert py-2 px-3 small mb-2 ${t.application_status==='registered'?'alert-success':t.application_status==='disqualified'?'alert-danger':'alert-warning'}`}>
+                      <i className={`bi me-2 ${t.application_status==='registered'?'bi-check-circle-fill':t.application_status==='disqualified'?'bi-x-circle-fill':'bi-hourglass-split'}`}/>
+                      <b>{applicationLabel(t.application_status)}</b>{t.application_team_name ? ` · ${t.application_team_name}` : ''}
+                    </div>
+                    {t.application_status==='registered'&&<button className="btn btn-evsu btn-sm w-100" onClick={()=>openDetails(t)}><i className="bi bi-eye me-1"/>View Tournament</button>}
+                  </> : <button className="btn btn-evsu btn-sm w-100" onClick={()=>setJoinTournament(t)}><i className="bi bi-box-arrow-in-right me-1"/>Join Tournament</button>}
+                </div>}
               </div>
             </div>
           ))}
-        </div>
+        </div> : <div className="tournament-ops-empty"><span><i className="bi bi-trophy" /></span><h3>No tournaments yet</h3><p>{canManageTournaments ? 'Create your first basketball competition to get divisions, teams, and schedules organized.' : 'There are no competitions to show right now. Check back when an organizer publishes one.'}</p>{canManageTournaments && <button className="btn btn-evsu" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create first tournament</button>}</div>}
+        </>
       )}
 
       {/* Create Modal */}
+      {joinTournament&&<div className="modal show d-block" style={{backgroundColor:'rgba(0,0,0,.72)'}} role="dialog" aria-modal="true">
+        <div className="modal-dialog modal-dialog-centered"><div className="modal-content card-custom border-0 overflow-hidden">
+          <div className="modal-header border-bottom"><div><small className="text-danger fw-bold">TEAM APPLICATION</small><h5 className="fw-bold mb-0">Join {joinTournament.name}</h5></div><button className="btn-close" onClick={()=>setJoinTournament(null)} aria-label="Close"/></div>
+          <form onSubmit={submitTeamApplication}><div className="modal-body">
+            <div className="alert alert-light border small"><i className="bi bi-info-circle-fill text-danger me-2"/>Submit your team first. After approval, complete your roster, player eligibility, and payment requirements.</div>
+            <div className="mb-3"><label className="form-label small fw-semibold">Team Name</label><input required className="form-control" value={joinForm.team_name} onChange={e=>setJoinForm({...joinForm,team_name:e.target.value})} placeholder="e.g. Barangay Cogon Ballers"/></div>
+            <div className="mb-3"><label className="form-label small fw-semibold">Team Short Name</label><input required maxLength="20" className="form-control" value={joinForm.short_name} onChange={e=>setJoinForm({...joinForm,short_name:e.target.value})} placeholder="e.g. COGON"/></div>
+            <div className="mb-3"><label className="form-label small fw-semibold">Jersey Color</label><div className="d-flex gap-2 align-items-center"><span className="rounded-circle border" style={{width:34,height:34,background:joinForm.primary_color}}/><input required className="form-control" list="application-colors" value={joinForm.primary_color} onChange={e=>setJoinForm({...joinForm,primary_color:e.target.value})}/><datalist id="application-colors"><option value="red"/><option value="blue"/><option value="black"/><option value="white"/><option value="green"/><option value="yellow"/><option value="maroon"/><option value="navy"/></datalist></div></div>
+            <div><label className="form-label small fw-semibold">Team Logo <span className="text-muted">(optional)</span></label><input type="file" className="form-control" accept="image/jpeg,image/png,image/webp" onChange={e=>setJoinLogo(e.target.files?.[0]||null)}/></div>
+          </div><div className="modal-footer border-top"><button type="button" className="btn btn-light" onClick={()=>setJoinTournament(null)}>Cancel</button><button className="btn btn-evsu"><i className="bi bi-send me-1"/>Submit Application</button></div></form>
+        </div></div>
+      </div>}
       {detailTournament && <div className="modal show d-block tournament-detail-modal" style={{backgroundColor:'rgba(0,0,0,.72)'}} role="dialog" aria-modal="true">
         <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div className="modal-content card-custom border-0 overflow-hidden">
           <header className="tournament-detail-hero"><button className="btn-close btn-close-white" aria-label="Close" onClick={()=>setDetailTournament(null)}/><span className="tournament-detail-kicker"><i className="bi bi-dribbble"/> FULLCOURT TOURNAMENT</span><h3>{detailTournament.name}</h3><p>{detailTournament.description||'Basketball tournament managed through FullCourt.'}</p><div className="tournament-detail-chips"><span><i className="bi bi-diagram-3"/>{String(detailTournament.format).replaceAll('_',' ')}</span><span><i className="bi bi-calendar-range"/>{detailTournament.start_date} – {detailTournament.end_date}</span><span><i className="bi bi-circle-fill"/>{detailTournament.status}</span></div></header>
@@ -408,7 +467,8 @@ const TournamentManagement = () => {
                           {d.age_group || "Open age"} · {d.gender_category} ·{" "}
                           {d.format.replaceAll("_", " ")}
                         </small>
-                        {(d.min_age !== null || d.max_age !== null) && <div className="small text-success mt-1"><i className="bi bi-shield-check me-1"/>Auto-validation: ages {d.min_age ?? 0}–{d.max_age ?? 'and above'}</div>}
+                        <div className="small text-success mt-1"><i className="bi bi-shield-check me-1"/>Auto-validation: {ageRangeLabel(d)}</div>
+                        <div className="small text-muted mt-1"><i className="bi bi-calendar-check me-1"/>Cutoff: {d.age_cutoff_date || divisionTournament.start_date || "Tournament start date"}</div>
                       </div>
                     </div>
                   ))}
@@ -419,8 +479,24 @@ const TournamentManagement = () => {
                 <form onSubmit={createDivision}>
                   <h6 className="fw-bold">Add Division</h6>
                   <div className="row g-2">
+                    <div className="col-12">
+                      <label htmlFor="division-preset" className="form-label small fw-semibold">Quick preset</label>
+                      <select id="division-preset" className="form-select" defaultValue="custom" onChange={(e) => applyDivisionPreset(e.target.value)}>
+                        <option value="custom">Custom division</option>
+                        <option value="12u">12 Under</option>
+                        <option value="14u">14 Under</option>
+                        <option value="16u">16 Under</option>
+                        <option value="18u">18 Under</option>
+                        <option value="junior">Junior Category (13–21)</option>
+                        <option value="senior">Senior Category (25 and above)</option>
+                        <option value="open">Open Age</option>
+                      </select>
+                      <div className="form-text">Presets fill the fields below. You can still edit the name and age limits.</div>
+                    </div>
                     <div className="col-md-6">
+                      <label htmlFor="division-name" className="form-label small fw-semibold">Division name</label>
                       <input
+                        id="division-name"
                         required
                         className="form-control"
                         placeholder="Division name"
@@ -434,7 +510,9 @@ const TournamentManagement = () => {
                       />
                     </div>
                     <div className="col-md-6">
+                      <label htmlFor="division-age-label" className="form-label small fw-semibold">Display label (optional)</label>
                       <input
+                        id="division-age-label"
                         className="form-control"
                         placeholder="Age group, e.g. Under 18"
                         value={divisionForm.age_group}
@@ -496,8 +574,10 @@ const TournamentManagement = () => {
                         }
                       />
                     </div>
-                    <div className="col-md-4"><input type="number" min="0" max="99" className="form-control" placeholder="Minimum age" value={divisionForm.min_age} onChange={e=>setDivisionForm({...divisionForm,min_age:e.target.value})}/></div>
-                    <div className="col-md-4"><input type="number" min="0" max="99" className="form-control" placeholder="Maximum age" value={divisionForm.max_age} onChange={e=>setDivisionForm({...divisionForm,max_age:e.target.value})}/></div>
+                    <div className="col-md-4"><label htmlFor="division-min-age" className="form-label small fw-semibold">Minimum age</label><input id="division-min-age" type="number" min="0" max="99" className="form-control" placeholder="No minimum" value={divisionForm.min_age} onChange={e=>setDivisionForm({...divisionForm,min_age:e.target.value})}/></div>
+                    <div className="col-md-4"><label htmlFor="division-max-age" className="form-label small fw-semibold">Maximum age</label><input id="division-max-age" type="number" min="0" max="99" className="form-control" placeholder="No maximum" value={divisionForm.max_age} onChange={e=>setDivisionForm({...divisionForm,max_age:e.target.value})}/></div>
+                    <div className="col-md-4"><label htmlFor="division-cutoff" className="form-label small fw-semibold">Age cutoff date</label><input id="division-cutoff" type="date" className="form-control" value={divisionForm.age_cutoff_date} onChange={e=>setDivisionForm({...divisionForm,age_cutoff_date:e.target.value})}/><div className="form-text">Blank uses tournament start date.</div></div>
+                    <div className="col-12"><div className="alert alert-light border py-2 mb-0 small"><i className="bi bi-info-circle me-2 text-primary"/>{divisionForm.min_age === "" && divisionForm.max_age === "" ? "Open age: no automatic age restriction." : divisionForm.min_age === "" ? `Eligible up to age ${divisionForm.max_age}.` : divisionForm.max_age === "" ? `Eligible from age ${divisionForm.min_age} and above.` : `Eligible from age ${divisionForm.min_age} to ${divisionForm.max_age}.`}</div></div>
                     <div className="col-12">
                       <textarea
                         className="form-control"

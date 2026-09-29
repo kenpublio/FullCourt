@@ -12,6 +12,8 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import tournamentService from "../services/tournamentService";
+import teamService from "../services/teamService";
+import { useAuth } from "../hooks/useAuth";
 import "../styles/reports-analytics.css";
 
 ChartJS.register(
@@ -24,36 +26,50 @@ ChartJS.register(
 );
 
 const ReportsAnalyticsView = () => {
+  const { user } = useAuth();
+  const isCoach=["coach","coach_manager"].includes(user?.role);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("overview");
   const [reportLog, setReportLog] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState("");
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [teamsLoaded, setTeamsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [exportMessage, setExportMessage] = useState("");
   const [exportError, setExportError] = useState("");
   const [exporting, setExporting] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await reportService.getAnalytics();
-      setData(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    load();
-    tournamentService.getTournaments().then((result) => {
-      setTournaments(result.tournaments || []);
-      if (result.tournaments?.[0])
-        setSelectedTournament(String(result.tournaments[0].id));
-    });
-  }, []);
+    let active=true;
+    if(isCoach){
+      teamService.getTeams().then(assignedTeams=>{
+        if(!active)return;
+        setTeams(assignedTeams);
+        setSelectedTeamId(current=>assignedTeams.some(team=>String(team.id)===current)?current:(assignedTeams[0]?String(assignedTeams[0].id):''));
+      }).catch(error=>{if(active)setLoadError(error.response?.data?.message||'Could not load your assigned team.');}).finally(()=>{if(active){setTeamsLoaded(true);setLoading(false);}});
+    }else{
+      Promise.all([reportService.getAnalytics(),tournamentService.getTournaments()]).then(([analytics,result])=>{
+        if(!active)return;
+        setData(analytics);
+        const available=result.tournaments||[];
+        setTournaments(available);
+        if(available[0])setSelectedTournament(String(available[0].id));
+      }).catch(error=>{if(active)setLoadError(error.response?.data?.message||'Could not load basketball reports.');}).finally(()=>{if(active)setLoading(false);});
+    }
+    return()=>{active=false;};
+  },[isCoach]);
+
+  useEffect(()=>{
+    if(!isCoach||!teamsLoaded)return;
+    if(!selectedTeamId){setData(null);setLoading(false);return;}
+    let active=true;
+    setLoading(true);setLoadError('');
+    reportService.getAnalytics(selectedTeamId).then(analytics=>{if(active)setData(analytics);}).catch(error=>{if(active){setData(null);setLoadError(error.response?.data?.message||'Could not load this team’s performance records.');}}).finally(()=>{if(active)setLoading(false);});
+    return()=>{active=false;};
+  },[isCoach,teamsLoaded,selectedTeamId]);
 
   const loadReportLog = async () => {
     try {
@@ -69,36 +85,55 @@ const ReportsAnalyticsView = () => {
 
   const handleExportCSV = async () => {
     if (!data) return;
+    if(isCoach&&!selectedTeamId){setExportError('Choose your assigned team before exporting.');return;}
     setExporting(true);
     setExportMessage("");
     setExportError("");
-    const rows = [
-      ["Metric", "Value"],
+    const selectedTeam=teams.find(team=>String(team.id)===String(selectedTeamId));
+    const selectedTeamTournament=tournaments.find(tournament=>String(tournament.id)===String(selectedTeam?.tournament_id));
+    const metricRows=isCoach?[
+      ["Roster players",data.metrics?.total_users||0],
+      ["Verified players",data.metrics?.verified_players||0],
+      ["Pending eligibility",data.metrics?.pending_eligibility||0],
+      ["Games recorded",data.metrics?.total_matches||0],
+      ["Games in progress",data.metrics?.active_games||0],
+      ["Current standing points",data.top_teams?.[0]?.tournament_points||0],
+      ["Point differential",data.top_teams?.[0]?.net_points||0],
+    ]:[
       ["Total Users", data.metrics?.total_users || 0],
       ["Total Tournaments", data.metrics?.total_tournaments || 0],
       ["Total Teams", data.metrics?.total_teams || 0],
       ["Registered Teams", data.metrics?.registered_teams || 0],
       ["Total Matches", data.metrics?.total_matches || 0],
       ["Verified Players", data.metrics?.verified_players || 0],
-      [
-        "Pending Eligibility",
-        data.eligibility_stats?.find(
-          (item) => item.eligibility_status === "pending",
-        )?.count || 0,
-      ],
+      ["Pending Eligibility",data.eligibility_stats?.find(item=>item.eligibility_status==="pending")?.count||0],
     ];
-    const csv = rows.map((r) => r.map((x) => `"${x}"`).join(",")).join("\n");
+    const rows=isCoach?[
+      ["FULLCOURT · TEAM PERFORMANCE SUMMARY"],
+      ["Team",selectedTeam?.team_name||"Assigned team"],
+      ["Tournament",selectedTeamTournament?.name||selectedTeam?.tournament_name||"—"],
+      ["Report scope","Assigned team only · official recorded data"],
+      ["Generated",new Date().toLocaleString()],
+      [],["Metric","Value"],...metricRows,
+      [],["TEAM PLAYER LEADERS"],["Player","Team","Games","PTS","REB","AST","DEF"],...(data.player_leaders||[]).map(player=>[player.full_name,player.team_name,player.games_played,player.points,player.rebounds,player.assists,player.defensive_plays]),
+      [],["TEAM STANDING"],["Team","Tournament","Points","Point differential","Rank"],...(data.top_teams||[]).map(team=>[team.team_name,team.tournament_name,team.tournament_points,team.net_points,team.rank_position]),
+    ]:[["FULLCOURT · BASKETBALL OPERATIONS ANALYTICS"],["Report scope","Platform-wide basketball overview"],["Generated",new Date().toLocaleString()],["Note","Tournament-specific results are available in the Tournament PDF export."],[],["PLATFORM METRICS"],["Metric","Value"],...metricRows,[],["TEAM LEADERBOARD"],["Team","Tournament","Points","Point differential","Rank"],...(data.top_teams||[]).map(team=>[team.team_name,team.tournament_name,team.tournament_points,team.net_points,team.rank_position]),[],["PLAYER PERFORMANCE LEADERS"],["Player","Team","Games","PTS","REB","AST","DEF"],...(data.player_leaders||[]).map(player=>[player.full_name,player.team_name,player.games_played,player.points,player.rebounds,player.assists,player.defensive_plays]),[],["MATCH OUTCOMES"],["Status","Games"],...(data.match_outcomes||[]).map(item=>[item.status,item.count])];
+    const csv = "\uFEFF"+rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
     const link = document.createElement("a");
-    link.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-    link.download = "FullCourt_Basketball_Analytics_Report.csv";
+    const csvUrl=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    link.href = csvUrl;
+    const safeTeamName=(selectedTeam?.team_name||'Assigned_Team').normalize('NFKD').replace(/[^\w-]+/g,'_').replace(/^_+|_+$/g,'');
+    link.download = isCoach?`FullCourt_${safeTeamName}_Performance_Summary.csv`:"FullCourt_Basketball_Operations_Analytics.csv";
     link.click();
+    window.setTimeout(()=>URL.revokeObjectURL(csvUrl),1000);
     try {
       await reportService.generateReport({
-        report_type: "analytics",
+        report_type: isCoach ? "team_performance_summary" : "analytics",
         format: "csv",
-        tournament_id: selectedTournament || null,
+        tournament_id: isCoach ? (selectedTeam?.tournament_id || null) : null,
+        filters: isCoach ? {team_id:Number(selectedTeamId),scope:'assigned_team_only'} : undefined,
       });
-      setExportMessage("CSV analytics report downloaded successfully.");
+      setExportMessage(isCoach?`Team-only CSV downloaded for ${selectedTeam?.team_name||'your assigned team'}.`:'Platform-wide basketball analytics CSV downloaded. Use Tournament PDF for a tournament-specific report.');
       if (tab === "log") await loadReportLog();
     } catch (error) {
       setExportError(
@@ -121,9 +156,11 @@ const ReportsAnalyticsView = () => {
       const url = URL.createObjectURL(blob),
         link = document.createElement("a");
       link.href = url;
-      link.download = `basketball-tournament-${selectedTournament}-report.pdf`;
+      const tournamentName=tournaments.find(item=>String(item.id)===String(selectedTournament))?.name||`tournament-${selectedTournament}`;
+      const safeTournamentName=tournamentName.normalize('NFKD').replace(/[^\w-]+/g,'_').replace(/^_+|_+$/g,'');
+      link.download = `FullCourt_${safeTournamentName}_Report.pdf`;
       link.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(()=>URL.revokeObjectURL(url),1000);
       setExportMessage("Tournament PDF downloaded successfully.");
       if (tab === "log") await loadReportLog();
     } catch (error) {
@@ -139,12 +176,16 @@ const ReportsAnalyticsView = () => {
   if (loading)
     return <LoadingSpinner message="Calculating analytics metrics..." />;
 
+  if(loadError)return <div className="container-fluid p-0 reports-page"><section className="reports-hero"><span className="reports-eyebrow">{isCoach?'MY TEAM INTELLIGENCE':'BASKETBALL INTELLIGENCE'}</span><h1>{isCoach?'Team Reports & Performance':'Reports & Performance Analytics'}</h1><p>{loadError}</p><button type="button" className="btn btn-evsu btn-sm" onClick={()=>window.location.reload()}><i className="bi bi-arrow-clockwise me-2"/>Try again</button></section></div>;
+
+  if(isCoach&&teamsLoaded&&!selectedTeamId)return <div className="container-fluid p-0 reports-page"><section className="reports-hero reports-coach-hero"><span className="reports-eyebrow">MY TEAM INTELLIGENCE</span><h1>Team Reports &amp; Performance</h1><p>Analytics and performance records for your assigned team only.</p></section><section className="reports-empty-team"><span className="reports-empty-icon"><i className="bi bi-people"/></span><div><span className="reports-eyebrow">TEAM ACCESS</span><h2>No team assigned yet</h2><p>Once an organizer assigns you to a team, its roster, match activity, and performance reports will appear here.</p></div><a className="btn btn-outline-secondary" href="/teams">Open team workspace <i className="bi bi-arrow-right ms-1"/></a></section></div>;
+
   const outcomeChart = {
-    labels: data.match_outcomes?.map((m) => m.status) || [],
+    labels: data?.match_outcomes?.map((m) => m.status) || [],
     datasets: [
       {
         label: "Matches",
-        data: data.match_outcomes?.map((m) => m.count) || [],
+        data: data?.match_outcomes?.map((m) => m.count) || [],
         backgroundColor: "#1a1a2e",
       },
     ],
@@ -155,7 +196,7 @@ const ReportsAnalyticsView = () => {
     datasets: [
       {
         label: "Tournaments",
-        data: [data.metrics?.total_tournaments || 0],
+        data: [data?.metrics?.total_tournaments || 0],
         backgroundColor: "#c8102e",
       },
     ],
@@ -166,7 +207,7 @@ const ReportsAnalyticsView = () => {
     datasets: [
       {
         label: "Teams",
-        data: [data.metrics?.total_teams || 0],
+        data: [data?.metrics?.total_teams || 0],
         backgroundColor: "#18181b",
       },
     ],
@@ -177,8 +218,8 @@ const ReportsAnalyticsView = () => {
       <div className="reports-hero">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div>
-            <span className="reports-eyebrow">BASKETBALL INTELLIGENCE</span>
-            <h3
+            <span className="reports-eyebrow">{isCoach?'MY TEAM INTELLIGENCE':'BASKETBALL INTELLIGENCE'}</span>
+            <h1
               className="fw-bold mb-1"
               style={{
                 fontFamily: "var(--font-display)",
@@ -186,30 +227,32 @@ const ReportsAnalyticsView = () => {
               }}
             >
               <i className="bi bi-bar-chart-line-fill text-evsu-primary me-2" />
-              Reports &amp; Performance Analytics
-            </h3>
+              {isCoach?'Team Reports & Performance':'Reports & Performance Analytics'}
+            </h1>
             <p className="text-muted small mb-0">
-              Basketball operations analytics and real downloadable reports
+              {isCoach?`Analytics and performance records for your assigned team only · ${teams.find(team=>String(team.id)===String(selectedTeamId))?.team_name||'Select a team'}`:'Basketball operations analytics and real downloadable reports'}
             </p>
           </div>
           <div className="reports-controls">
             <select
+              aria-label="Choose analytics report section"
               className="form-select form-select-sm"
               value={tab}
               onChange={(e) => setTab(e.target.value)}
             >
               <option value="overview">Overview</option>
-              <option value="leaderboard">Team Leaderboard</option>
+              <option value="leaderboard">{isCoach?'Team Performance':'Team Leaderboard'}</option>
               <option value="log">Report Log</option>
             </select>
             <button
               className="btn btn-outline-secondary btn-sm"
               onClick={handleExportCSV}
-              disabled={exporting}
+              disabled={exporting||!data||(isCoach&&!selectedTeamId)}
             >
-              <i className="bi bi-filetype-csv me-1" /> Export summary
+              <i className="bi bi-file-earmark-spreadsheet me-1" /> Download CSV
             </button>
-            <select
+            {isCoach?<select aria-label="Choose your assigned team" className="form-select form-select-sm" value={selectedTeamId} onChange={event=>setSelectedTeamId(event.target.value)} disabled={!teams.length}><option value="">{teams.length?'Select your team':'No assigned team'}</option>{teams.map(team=><option value={team.id} key={team.id}>{team.team_name}</option>)}</select>:<select
+              aria-label="Select tournament for report export"
               className="form-select form-select-sm"
               value={selectedTournament}
               onChange={(e) => setSelectedTournament(e.target.value)}
@@ -220,14 +263,14 @@ const ReportsAnalyticsView = () => {
                   {t.name}
                 </option>
               ))}
-            </select>
-            <button
+            </select>}
+            {!isCoach&&<button
               className="btn btn-evsu btn-sm text-nowrap"
               onClick={handleExportPDF}
               disabled={!selectedTournament || exporting}
             >
               <i className="bi bi-file-earmark-pdf me-1" /> Tournament PDF
-            </button>
+            </button>}
           </div>
         </div>
       </div>
@@ -251,28 +294,28 @@ const ReportsAnalyticsView = () => {
             <div className="col-6 col-md-3">
               <div className="report-kpi is-green">
                 <i className="bi bi-patch-check-fill"/><div><span>
-                  Verified Players
+                  {isCoach?'Verified team players':'Verified Players'}
                 </span><strong>
                   {data?.metrics?.verified_players || 0}
-                </strong><small>Eligible competitors</small></div>
+                </strong><small>{isCoach?'On your assigned roster':'Eligible competitors'}</small></div>
               </div>
             </div>
             <div className="col-6 col-md-3">
-              <div className="report-kpi is-red"><i className="bi bi-trophy-fill"/><div><span>Tournaments</span><strong>
+              <div className="report-kpi is-red"><i className="bi bi-trophy-fill"/><div><span>{isCoach?'Team tournament':'Tournaments'}</span><strong>
                   {data?.metrics?.total_tournaments || 0}
-                </strong><small>Managed competitions</small></div>
+                </strong><small>{isCoach?'Competition linked to this team':'Managed competitions'}</small></div>
               </div>
             </div>
             <div className="col-6 col-md-3">
-              <div className="report-kpi is-blue"><i className="bi bi-people-fill"/><div><span>Teams</span><strong>
-                  {data?.metrics?.total_teams || 0}
-                </strong><small>Registered squads</small></div>
+              <div className="report-kpi is-blue"><i className="bi bi-people-fill"/><div><span>{isCoach?'Roster players':'Teams'}</span><strong>
+                  {isCoach?(data?.metrics?.total_users||0):(data?.metrics?.total_teams||0)}
+                </strong><small>{isCoach?'Assigned team only':'Registered squads'}</small></div>
               </div>
             </div>
             <div className="col-6 col-md-3">
-              <div className="report-kpi is-gold"><i className="bi bi-calendar2-event-fill"/><div><span>Matches</span><strong>
+              <div className="report-kpi is-gold"><i className="bi bi-calendar2-event-fill"/><div><span>{isCoach?'Team matches':'Matches'}</span><strong>
                   {data?.metrics?.total_matches || 0}
-                </strong><small>Scheduled game records</small></div>
+                </strong><small>{isCoach?'Games involving your team':'Scheduled game records'}</small></div>
               </div>
             </div>
           </div>
@@ -286,12 +329,13 @@ const ReportsAnalyticsView = () => {
                     className="fw-bold mb-0"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Basketball Competitions
+                    {isCoach?'Your Team Tournament':'Basketball Competitions'}
                   </h6>
                 </div>
                 <div style={{ height: 210 }}>
                   <Bar
                     data={sportsChart}
+                    aria-label="Bar chart showing the number of basketball competitions"
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -313,12 +357,13 @@ const ReportsAnalyticsView = () => {
                     className="fw-bold mb-0"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Registered Basketball Teams
+                    {isCoach?'Assigned Team Roster':'Registered Basketball Teams'}
                   </h6>
                 </div>
                 <div style={{ height: 210 }}>
                   <Bar
                     data={revenueChart}
+                    aria-label="Bar chart showing the number of registered basketball teams"
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -341,12 +386,13 @@ const ReportsAnalyticsView = () => {
                     className="fw-bold mb-0"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    Match Outcomes
+                    {isCoach?'Your Team Match Outcomes':'Match Outcomes'}
                   </h6>
                 </div>
                 <div style={{ height: 210 }}>
                   <Bar
                     data={outcomeChart}
+                    aria-label="Bar chart showing match outcomes"
                     options={{
                       responsive: true,
                       maintainAspectRatio: false,
@@ -367,7 +413,7 @@ const ReportsAnalyticsView = () => {
               style={{ color: "var(--text-primary)" }}
             >
               <i className="bi bi-person-lines-fill text-evsu-primary me-2" />
-              Player Performance Leaders
+              {isCoach?'Your Team Player Leaders':'Player Performance Leaders'}
             </h5>
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0">
@@ -422,7 +468,7 @@ const ReportsAnalyticsView = () => {
           <div className="report-table-panel">
           <h5 className="fw-bold mb-3" style={{ color: "var(--text-primary)" }}>
             <i className="bi bi-award me-2 text-muted" />
-            Top Teams (all tournaments)
+            {isCoach?'Assigned Team Performance':'Top Teams (all tournaments)'}
           </h5>
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
@@ -510,5 +556,11 @@ const ReportsAnalyticsView = () => {
     </div>
   );
 };
+
+function csvCell(value) {
+  let text=String(value??"");
+  if(typeof value==="string"&&/^[=+@\-\t\r]/.test(text))text=`'${text}`;
+  return `"${text.replaceAll('"','""')}"`;
+}
 
 export default ReportsAnalyticsView;

@@ -18,7 +18,7 @@ class ScheduleController {
     }
 
     public function autoSchedule(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         OrganizationAccess::requireTournament($tournamentId,$user);
         $input = json_decode(file_get_contents('php://input'), true);
 
@@ -37,6 +37,15 @@ class ScheduleController {
     public function show(int $tournamentId): void {
         $user=AuthMiddleware::authenticate();OrganizationAccess::requireTournament($tournamentId,$user);
         $schedule = $this->scheduleModel->getMasterSchedule($tournamentId);
+        if (in_array($user['role'], ['coach','coach_manager','player'], true)) {
+            $teamIds = $user['role']==='player'
+                ? $this->playerTeamIds((int)$user['user_id'],$tournamentId)
+                : $this->coachTeamIds((int)$user['user_id'], $tournamentId);
+            $schedule = array_values(array_filter($schedule, static fn(array $match): bool =>
+                in_array((int)($match['team1_id'] ?? 0), $teamIds, true)
+                || in_array((int)($match['team2_id'] ?? 0), $teamIds, true)
+            ));
+        }
         Response::success('Tournament schedule retrieved', ['schedule' => $schedule]);
     }
 
@@ -49,7 +58,7 @@ class ScheduleController {
 
     // PUT /matches/{id}/slot  { scheduled_start_time, court_id }
     public function updateSlot(int $matchId): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         OrganizationAccess::requireMatch($matchId,$user);
         $input = json_decode(file_get_contents('php://input'), true);
         $start = $input['scheduled_start_time'] ?? null;
@@ -57,8 +66,20 @@ class ScheduleController {
         if (!$start) Response::error('scheduled_start_time is required.', 400);
         try {
             $result = $this->scheduleModel->updateMatchSlot($matchId, $start, $courtId);
-            $this->auditLog->log($user['user_id'], 'UPDATE_MATCH_SLOT', 'SCHEDULING', "Rescheduled match ID {$matchId} to {$start}");
-            Response::success('Match slot updated', $result);
+            if (empty($result['scheduled'])) {
+                Response::error('Schedule change blocked by conflicts. Resolve them and try again.', 409,
+                    ['conflicts' => $result['conflicts'] ?? []]);
+            }
+            $changed = strtotime((string)($result['previous_start'] ?? '')) !== strtotime((string)$result['start'])
+                || (int)($result['previous_court_id'] ?? 0) !== (int)($courtId ?? 0);
+            $notified = $changed && !empty($result['was_published'])
+                ? $this->scheduleModel->notifyScheduleChange($matchId, $result)
+                : 0;
+            $oldSlot = $result['previous_start'] ? date('Y-m-d H:i', strtotime($result['previous_start'])) : 'unscheduled';
+            $this->auditLog->log((int)$user['user_id'], 'UPDATE_MATCH_SLOT', 'SCHEDULING',
+                "Match {$matchId}: {$oldSlot} -> {$result['start']}; court ID " . ($result['previous_court_id'] ?? 'none') . " -> " . ($courtId ?? 'none') . ". Participants notified: {$notified}.");
+            Response::success($notified > 0 ? 'Published schedule changed and affected participants notified' : 'Match slot saved; no participant alert was needed',
+                array_merge($result, ['participants_notified' => $notified]));
         } catch (Exception $e) {
             Response::error($e->getMessage(), 400);
         }
@@ -66,7 +87,7 @@ class ScheduleController {
 
     // POST /tournaments/{id}/schedule/constraints  { max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes }
     public function saveConstraints(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         OrganizationAccess::requireTournament($tournamentId,$user);
         $input = json_decode(file_get_contents('php://input'), true);
         $c = [
@@ -94,5 +115,19 @@ class ScheduleController {
         $this->auditLog->log((int)$user['user_id'],'PUBLISH_SCHEDULE','SCHEDULING',"Published {$count} games for tournament {$tournamentId}.");
         $email=(new NotificationMailer())->sendToTournamentParticipants($tournamentId,'Tournament schedule published','The official tournament schedule is now available. Review your game dates, times, venues, and assigned courts.','/schedules');
         Response::success('Schedule published and participants notified',array_merge(['published_games'=>$count],$email));
+    }
+
+    private function coachTeamIds(int $userId, int $tournamentId): array {
+        $db=(new Database())->getConnection();
+        $stmt=$db->prepare('SELECT id FROM teams WHERE tournament_id=:tournament_id AND (coach_user_id=:coach_id OR manager_user_id=:manager_id)');
+        $stmt->execute([':tournament_id'=>$tournamentId,':coach_id'=>$userId,':manager_id'=>$userId]);
+        return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    private function playerTeamIds(int $userId,int $tournamentId):array {
+        $db=(new Database())->getConnection();
+        $stmt=$db->prepare("SELECT DISTINCT tm.id FROM teams tm JOIN team_players tp ON tp.team_id=tm.id WHERE tm.tournament_id=:tournament_id AND tm.status='registered' AND tp.user_id=:user_id AND tp.eligibility_status='verified'");
+        $stmt->execute([':tournament_id'=>$tournamentId,':user_id'=>$userId]);
+        return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 }

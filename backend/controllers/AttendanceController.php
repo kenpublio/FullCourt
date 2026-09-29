@@ -17,6 +17,11 @@ class AttendanceController {
     public function teamQr(int $teamId):void{
         $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['coach','coach_manager']));
         $tournamentId=$this->model->teamTournamentId($teamId);if($tournamentId===null)Response::error('Team not found.',404);
+        if(in_array($user['role'],['coach','coach_manager'],true)){
+            $db=(new Database())->getConnection();$stmt=$db->prepare('SELECT id FROM teams WHERE id=:team_id AND (coach_user_id=:coach_id OR manager_user_id=:manager_id)');
+            $stmt->execute([':team_id'=>$teamId,':coach_id'=>(int)$user['user_id'],':manager_id'=>(int)$user['user_id']]);
+            if(!$stmt->fetchColumn())Response::forbidden('You can only access the QR pass for your assigned team.');
+        }
         OrganizationAccess::requireTournament($tournamentId,$user);$team=$this->model->teamQr($teamId);
         Response::success('Printable team QR retrieved',['team'=>$team]);
     }

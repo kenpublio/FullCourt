@@ -43,7 +43,7 @@ async function api(route) {
     return { roleContext, rolePage };
   };
   let { roleContext: context, rolePage: page } = await openAsOrganizer('/brackets');
-  await page.getByRole('heading', { name: 'Round 1', exact: true }).waitFor({ timeout: 20000 });
+  await page.locator('.bracket-round-title').first().waitFor({ timeout: 20000 });
   const bracketVisible = await page.getByText('Barangay Cogon', { exact: true }).count() > 0;
   await context.close();
   const rosterPictures = firstRoster.filter((player) => player.avatar_url).length;

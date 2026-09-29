@@ -1,0 +1,29 @@
+/* One game-day workflow for either assigned accounts or invited scorers. */
+.scorer-access-card{margin:18px 0 24px;overflow:hidden;border:1px solid var(--surface-border,#34343a);border-radius:18px;background:var(--surface-bg,#17171a);box-shadow:0 16px 40px rgba(0,0,0,.1)}
+.scorer-mode-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:16px 0 9px}
+.scorer-mode-heading small{color:var(--text-muted,#85858f);font-size:.68rem}
+.scorer-access-modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.scorer-access-mode{position:relative;display:flex;align-items:center;gap:11px;min-width:0;padding:14px;border:1px solid var(--surface-border,#36363d);border-radius:11px;background:var(--surface-raised,#202024);cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}
+.scorer-access-mode input{position:absolute;width:1px;height:1px;opacity:0}
+.scorer-access-mode:focus-within{outline:3px solid rgba(220,50,29,.3);outline-offset:2px}
+.scorer-access-mode.active{border-color:#d8321e;background:rgba(216,50,30,.1);box-shadow:inset 3px 0 #d8321e}
+.scorer-mode-icon{display:grid;flex:0 0 39px;width:39px;height:39px;place-items:center;border-radius:9px;background:rgba(216,50,30,.13);color:#f16450;font-size:1.15rem}
+.scorer-access-mode>span:nth-of-type(2){display:grid;gap:4px;min-width:0}
+.scorer-access-mode b{font-size:.78rem}
+.scorer-access-mode small{color:var(--text-muted,#96969f);font-size:.65rem;line-height:1.4}
+.scorer-mode-check{margin-left:auto;color:#e74738;opacity:0}
+.scorer-access-mode.active .scorer-mode-check{opacity:1}
+.scorer-method-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,.42fr) auto;gap:12px;align-items:end;padding:16px 0 4px}
+.scorer-method-form label{display:grid;gap:6px;min-width:0}
+.scorer-method-form label>span{color:var(--text-muted,#96969f);font-size:.63rem;font-weight:850;text-transform:uppercase;letter-spacing:.07em}
+.scorer-method-form input,.scorer-method-form select{height:44px;min-width:0;padding:0 12px;border:1px solid var(--surface-border,#38383e);border-radius:9px;background:var(--surface-raised,#222226);color:var(--text-primary,#fff);font-size:.75rem}
+.scorer-method-form>button,.scorer-action-row>button{height:44px;padding:0 16px;border:0;border-radius:9px;background:#d8321e;color:#fff;font-size:.73rem;font-weight:850;white-space:nowrap}
+.scorer-method-form>button:disabled,.scorer-action-row>button:disabled{opacity:.52;cursor:not-allowed}
+.scorer-action-row{display:flex;gap:10px;align-items:center}
+.scorer-action-row .form-select{flex:1}
+.scorer-empty-hint{display:flex;gap:10px;align-items:flex-start;margin:10px 0 4px;padding:12px;border:1px solid rgba(226,185,86,.25);border-radius:9px;background:rgba(226,185,86,.07);color:var(--text-muted,#aaaab2);font-size:.72rem;line-height:1.5}
+.scorer-empty-hint>i{color:#e3b956;font-size:1rem}
+.scorer-empty-hint b{margin-right:4px;color:var(--text-primary,#fff)}
+.scorer-access-card .scoring-invite-card{margin:16px 0 0}
+@media(max-width:700px){.scorer-access-modes{grid-template-columns:1fr}.scorer-method-form{grid-template-columns:1fr 1fr}.scorer-method-form>button{grid-column:1/-1}.scorer-action-row{align-items:stretch}.scorer-access-card .scoring-invite-card{grid-template-columns:1fr}.scorer-access-card .scoring-pin{grid-area:auto}}
+@media(max-width:480px){.scorer-method-form{grid-template-columns:1fr}.scorer-method-form>button{grid-column:auto}.scorer-action-row{flex-direction:column}.scorer-action-row .btn{width:100%}.scorer-mode-heading{align-items:flex-start;flex-direction:column}}

@@ -6,6 +6,7 @@ import eligibilityService from "../services/eligibilityService";
 import scheduleService from "../services/scheduleService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import MatchupPrediction from "../components/MatchupPrediction";
+import "../styles/dashboard-professional.css";
 
 const CoachDashboard = () => {
   const { user } = useAuth();
@@ -63,8 +64,7 @@ const CoachDashboard = () => {
       <section className="welcome-banner mb-4">
         <div style={{ position: "relative", zIndex: 1 }}>
           <div className="role-hero-topline mb-3">
-            <span className="role-hero-eyebrow"><i className="bi bi-clipboard2-pulse" /> COACH COMMAND</span>
-            <span className="role-hero-live"><i /> ROSTER READY</span>
+            <span className="role-hero-eyebrow"><i className="bi bi-clipboard2-pulse" /> Coach overview</span>
           </div>
           <h3 className="fw-bold text-white mb-1">
             Welcome, {user?.full_name || "Coach"}
@@ -77,7 +77,6 @@ const CoachDashboard = () => {
             <span className="role-hero-date"><i className="bi bi-calendar3" /> {new Date().toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span>
           </div>
         </div>
-        <i className="bi bi-clipboard2-pulse welcome-banner-trophy d-none d-md-block" />
       </section>
       <nav className="role-quick-actions mb-4" aria-label="Coach quick actions">
         {[["Manage Roster","/teams","bi-people-fill"],["Player Eligibility","/eligibility","bi-patch-check-fill"],["Team Schedule","/schedules","bi-calendar-event-fill"],["Team Reports","/reports","bi-bar-chart-fill"]].map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}

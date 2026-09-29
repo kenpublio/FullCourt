@@ -46,45 +46,63 @@ class MatchScore {
         return true;
     }
 
-    public function finalizeMatch(int $matchId, int $winnerTeamId): bool {
-        // Mark match as completed and set winner
-        $sql = "UPDATE matches SET status = 'completed', winner_team_id = :winnerId, actual_end_time = NOW() WHERE id = :mid";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':winnerId' => $winnerTeamId, ':mid' => $matchId]);
-
-        // Advance winner to next round node in bracket
-        $nodeStmt = $this->db->prepare("SELECT * FROM bracket_nodes WHERE match_id = :mid LIMIT 1");
-        $nodeStmt->execute([':mid' => $matchId]);
-        $currentNode = $nodeStmt->fetch();
-
-        if ($currentNode) {
-            $nextRound = $currentNode['round'] + 1;
-            $nextPos = (int) ceil($currentNode['position_in_round'] / 2);
-
-            $nextMatchStmt = $this->db->prepare("SELECT m.id, m.team1_id, m.team2_id FROM bracket_nodes bn JOIN matches m ON bn.match_id = m.id WHERE bn.bracket_id = :bid AND bn.round = :r AND bn.position_in_round = :p LIMIT 1");
-            $nextMatchStmt->execute([':bid' => $currentNode['bracket_id'], ':r' => $nextRound, ':p' => $nextPos]);
-            $nextMatch = $nextMatchStmt->fetch();
-
-            if ($nextMatch) {
-                if ($currentNode['position_in_round'] % 2 != 0) {
-                    $upN = $this->db->prepare("UPDATE matches SET team1_id = :wId WHERE id = :nmId");
-                } else {
-                    $upN = $this->db->prepare("UPDATE matches SET team2_id = :wId WHERE id = :nmId");
-                }
-                $upN->execute([':wId' => $winnerTeamId, ':nmId' => $nextMatch['id']]);
-            }
+    public function finalizeMatch(int $matchId, int $winnerTeamId, int $team1Score, int $team2Score, string $currentPeriod, int $timerSeconds, int $expectedTeam1Score, int $expectedTeam2Score): bool {
+        if ($team1Score === $team2Score) {
+            throw new InvalidArgumentException('The final score is tied. Update the score or record overtime before confirming a winner.');
+        }
+        if (!in_array($currentPeriod, ['Q1','Q2','Q3','Q4','OT1','OT2','OT3','OT4','OT5'], true) || $timerSeconds < 0 || $timerSeconds > 3599) {
+            throw new InvalidArgumentException('The game period or remaining time is invalid.');
         }
 
-        $this->recomputeStandings($this->getTournamentId($matchId));
+        $this->db->beginTransaction();
+        try {
+            $matchStmt = $this->db->prepare("SELECT tournament_id,team1_id,team2_id,status FROM matches WHERE id=:mid FOR UPDATE");
+            $matchStmt->execute([':mid' => $matchId]);
+            $match = $matchStmt->fetch();
+            if (!$match) throw new InvalidArgumentException('Game not found.');
+            if (in_array($match['status'], ['completed','cancelled'], true)) throw new InvalidArgumentException('This game is already closed.');
+            if (!in_array($winnerTeamId, [(int)$match['team1_id'], (int)$match['team2_id']], true)) throw new InvalidArgumentException('The selected winner is not one of the teams in this game.');
+            $scoreWinner = $team1Score > $team2Score ? (int)$match['team1_id'] : (int)$match['team2_id'];
+            if ($winnerTeamId !== $scoreWinner) throw new InvalidArgumentException('The selected winner does not match the final score.');
 
-        return true;
-    }
+            $currentScoreStmt = $this->db->prepare("SELECT team1_score,team2_score FROM match_scores WHERE match_id=:mid FOR UPDATE");
+            $currentScoreStmt->execute([':mid'=>$matchId]);
+            $currentScore = $currentScoreStmt->fetch();
+            if (!$currentScore) throw new InvalidArgumentException('Scoreboard is not ready for this game.');
+            if ((int)$currentScore['team1_score'] !== $expectedTeam1Score || (int)$currentScore['team2_score'] !== $expectedTeam2Score) {
+                throw new InvalidArgumentException('The live score changed after you opened the review. Refresh this game and confirm the updated score.');
+            }
 
-    private function getTournamentId(int $matchId): int {
-        $stmt = $this->db->prepare("SELECT tournament_id FROM matches WHERE id = :mid LIMIT 1");
-        $stmt->execute([':mid' => $matchId]);
-        $row = $stmt->fetch();
-        return (int) ($row['tournament_id'] ?? 0);
+            $scoreStmt = $this->db->prepare("UPDATE match_scores SET team1_score=:s1,team2_score=:s2,current_period=:period,timer_seconds=:seconds,is_timer_running=0 WHERE match_id=:mid");
+            $scoreStmt->execute([':s1'=>$team1Score,':s2'=>$team2Score,':period'=>$currentPeriod,':seconds'=>$timerSeconds,':mid'=>$matchId]);
+
+            $end = $this->db->prepare("UPDATE matches SET status='completed',winner_team_id=:winner,actual_end_time=NOW(),actual_start_time=COALESCE(actual_start_time,NOW()) WHERE id=:mid");
+            $end->execute([':winner'=>$winnerTeamId,':mid'=>$matchId]);
+
+            // Advance the confirmed winner to its next bracket slot.
+            $nodeStmt = $this->db->prepare("SELECT * FROM bracket_nodes WHERE match_id=:mid LIMIT 1");
+            $nodeStmt->execute([':mid'=>$matchId]);
+            $currentNode = $nodeStmt->fetch();
+            if ($currentNode) {
+                $nextRound = $currentNode['round'] + 1;
+                $nextPos = (int) ceil($currentNode['position_in_round'] / 2);
+                $nextMatchStmt = $this->db->prepare("SELECT m.id FROM bracket_nodes bn JOIN matches m ON bn.match_id=m.id WHERE bn.bracket_id=:bid AND bn.round=:round AND bn.position_in_round=:position LIMIT 1");
+                $nextMatchStmt->execute([':bid'=>$currentNode['bracket_id'],':round'=>$nextRound,':position'=>$nextPos]);
+                $nextMatchId = $nextMatchStmt->fetchColumn();
+                if ($nextMatchId) {
+                    $column = ((int)$currentNode['position_in_round'] % 2 !== 0) ? 'team1_id' : 'team2_id';
+                    $advance = $this->db->prepare("UPDATE matches SET {$column}=:winner WHERE id=:next_match");
+                    $advance->execute([':winner'=>$winnerTeamId,':next_match'=>$nextMatchId]);
+                }
+            }
+
+            $this->recomputeStandings((int)$match['tournament_id']);
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
     }
 
     // Rebuild the standings for a tournament from every completed match that

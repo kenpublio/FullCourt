@@ -96,12 +96,11 @@ const Profile = () => {
 
       {user?.role === 'player' && membership?.membership && (
         <div className="card-custom p-4 mb-4">
-          <h4 className="fw-bold text-dark mb-3"><i className="bi bi-trophy-fill text-evsu-primary me-2" />Selected Sport</h4>
+          <h4 className="fw-bold text-dark mb-3"><i className="bi bi-people-fill text-evsu-primary me-2" />Team Membership</h4>
           <div className="row g-3">
-            <div className="col-md-6"><label className="form-label small fw-semibold text-secondary">Sport</label><input type="text" className="form-control" value={membership.membership.sport_name || 'N/A'} disabled /></div>
-            <div className="col-md-6"><label className="form-label small fw-semibold text-secondary">Team</label><input type="text" className="form-control" value={membership.membership.team_name || 'N/A'} disabled /></div>
-            <div className="col-md-6"><label className="form-label small fw-semibold text-secondary">Tournament</label><input type="text" className="form-control" value={membership.membership.tournament_name || 'N/A'} disabled /></div>
-            <div className="col-md-6"><label className="form-label small fw-semibold text-secondary">Membership Status</label><input type="text" className="form-control text-uppercase fw-bold" value={membership.membership.eligibility_status || 'N/A'} disabled /></div>
+            <div className="col-md-4"><label htmlFor="profile-team" className="form-label small fw-semibold text-secondary">Team</label><input id="profile-team" type="text" className="form-control" value={membership.membership.team_name || 'N/A'} disabled /></div>
+            <div className="col-md-5"><label htmlFor="profile-tournament" className="form-label small fw-semibold text-secondary">Tournament</label><input id="profile-tournament" type="text" className="form-control" value={membership.membership.tournament_name || 'N/A'} disabled /></div>
+            <div className="col-md-3"><label htmlFor="profile-roster-status" className="form-label small fw-semibold text-secondary">Roster Status</label><input id="profile-roster-status" type="text" className="form-control text-uppercase fw-bold" value={membership.membership.eligibility_status || 'N/A'} disabled /></div>
           </div>
         </div>
       )}
@@ -116,8 +115,8 @@ const Profile = () => {
 
           <div className="row g-3 mb-3">
             <div className="col-12">
-              <label className="form-label small fw-semibold text-secondary">Assigned System Role</label>
-              <input type="text" className="form-control text-uppercase fw-bold text-evsu-primary" value={user?.role === 'admin' ? 'Administrator' : (user?.role?.replaceAll('_', ' ') || 'PLAYER')} disabled />
+              <label htmlFor="profile-role" className="form-label small fw-semibold text-secondary">Assigned System Role</label>
+              <input id="profile-role" type="text" className="form-control text-uppercase fw-bold text-evsu-primary" value={user?.role === 'admin' ? 'Administrator' : (user?.role?.replaceAll('_', ' ') || 'PLAYER')} disabled />
             </div>
           </div>
 
@@ -127,18 +126,18 @@ const Profile = () => {
           </div>
 
           <div className="mb-3">
-            <label className="form-label small fw-semibold text-secondary">Email Address</label>
-            <input type="email" className="form-control" value={user?.email || ''} disabled />
+            <label htmlFor="profile-email" className="form-label small fw-semibold text-secondary">Email Address</label>
+            <input id="profile-email" type="email" className="form-control" value={user?.email || ''} disabled />
           </div>
 
           {user?.role === 'player' && <div className="row g-3 mb-3">
             <div className="col-md-6">
-              <label className="form-label small fw-semibold text-secondary">Date of Birth</label>
-              <input type="date" className="form-control" value={user?.birth_date || ''} disabled />
+              <label htmlFor="profile-birth-date" className="form-label small fw-semibold text-secondary">Date of Birth</label>
+              <input id="profile-birth-date" type="date" className="form-control" value={user?.birth_date || ''} disabled />
             </div>
             <div className="col-md-6">
-              <label className="form-label small fw-semibold text-secondary">Current Age</label>
-              <input type="text" className="form-control" value={user?.birth_date ? new Date().getFullYear() - new Date(user.birth_date).getFullYear() - (new Date() < new Date(new Date().getFullYear(), new Date(user.birth_date).getMonth(), new Date(user.birth_date).getDate()) ? 1 : 0) : 'N/A'} disabled />
+              <label htmlFor="profile-current-age" className="form-label small fw-semibold text-secondary">Current Age</label>
+              <input id="profile-current-age" type="text" className="form-control" value={user?.birth_date ? new Date().getFullYear() - new Date(user.birth_date).getFullYear() - (new Date() < new Date(new Date().getFullYear(), new Date(user.birth_date).getMonth(), new Date(user.birth_date).getDate()) ? 1 : 0) : 'N/A'} disabled />
             </div>
           </div>}
 

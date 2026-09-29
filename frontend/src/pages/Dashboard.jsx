@@ -8,6 +8,7 @@ import tournamentService from '../services/tournamentService';
 import scheduleService from '../services/scheduleService';
 import basketballAnalyticsService from '../services/basketballAnalyticsService';
 import MatchupPrediction from '../components/MatchupPrediction';
+import '../styles/dashboard-professional.css';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ const Dashboard = () => {
     : dashboardMode === 'organizer'
       ? 'Run competitions, watch active courts, and keep every game operation moving.'
       : 'Your team, next matchup, performance, and tournament journey—together in one place.';
-  const roleEyebrow = dashboardMode === 'admin' ? 'PLATFORM CONTROL' : dashboardMode === 'organizer' ? 'COMPETITION CONTROL' : 'PLAYER COURTSIDE';
+  const roleEyebrow = dashboardMode === 'admin' ? 'Platform overview' : dashboardMode === 'organizer' ? 'Competition overview' : 'Player overview';
   const primaryAction = dashboardMode === 'admin' ? ['/organizations','Review organizations'] : dashboardMode === 'organizer' ? ['/tournaments','Open tournaments'] : ['/schedules','View my schedule'];
   const quickActions = dashboardMode === 'admin' ? [
     ['Organizations','/organizations','bi-buildings-fill'],['Users & Roles','/users','bi-shield-lock-fill'],['Approvals','/eligibility','bi-patch-check-fill'],['System Reports','/reports','bi-file-earmark-bar-graph-fill'],
@@ -130,6 +131,12 @@ const Dashboard = () => {
     ['Recorded Matches', analytics?.metrics?.total_matches || 0, 'bi-clipboard-data-fill', '/schedules'],
     ['Pending Eligibility', analytics?.metrics?.pending_eligibility || 0, 'bi-hourglass-split', '/eligibility'],
   ];
+  const adminControlLinks = [
+    { title: 'Organization access', description: 'Review organization records and platform access.', value: 'Review', icon: 'bi-buildings-fill', path: '/organizations', tone: 'red' },
+    { title: 'Account governance', description: 'Manage users, role assignments, and audit history.', value: analytics ? Number(analytics.metrics?.total_users || 0).toLocaleString() : '—', icon: 'bi-shield-lock-fill', path: '/users', tone: 'gold' },
+    { title: 'Eligibility queue', description: 'Player records waiting for an eligibility decision.', value: analytics ? Number(analytics.metrics?.pending_eligibility || 0).toLocaleString() : '—', icon: 'bi-patch-check-fill', path: '/eligibility', tone: Number(analytics?.metrics?.pending_eligibility || 0) > 0 ? 'red' : 'green' },
+    { title: 'Live game operations', description: 'Monitor active courts and scoring operations.', value: analytics ? Number(analytics.metrics?.active_games || 0).toLocaleString() : '—', icon: 'bi-broadcast-pin', path: '/live-scoring', tone: Number(analytics?.metrics?.active_games || 0) > 0 ? 'green' : 'neutral' },
+  ];
 
   const sportIcon = (sport) => {
     if (sport.toLowerCase().includes('basket'))  return 'bi-dribbble';
@@ -150,10 +157,9 @@ const Dashboard = () => {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div className="role-hero-topline mb-3">
             <span className="role-hero-eyebrow"><i className="bi bi-dribbble" /> {roleEyebrow}</span>
-            <span className="role-hero-live"><i /> SYSTEM ONLINE</span>
           </div>
           <h3 className="fw-bold text-white mb-1" style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem' }}>
-            Welcome back, {user?.full_name?.split(' ')[0] || 'User'}! 👋
+            Welcome back, {user?.full_name?.split(' ')[0] || 'User'}
           </h3>
           <p className="mb-2" style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem' }}>
             Signed in as&nbsp;
@@ -168,14 +174,22 @@ const Dashboard = () => {
             <span className="role-hero-date"><i className="bi bi-calendar3" /> {new Date().toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric'})}</span>
           </div>
         </div>
-        <div className="welcome-banner-trophy d-none d-md-block">
-          <i className="bi bi-trophy-fill" />
-        </div>
       </div>
 
       <nav className="role-quick-actions mb-4" aria-label={`${roleLabel} quick actions`}>
         {quickActions.map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
       </nav>
+
+      {dashboardMode === 'admin' && <section className="admin-control-board mb-4" aria-label="Platform control priorities">
+        <header className="admin-control-board-head"><div><span>PLATFORM CONTROL</span><h4>Oversight at a glance</h4><p>Key places to review access, eligibility, and live basketball operations.</p></div><span className="admin-control-status"><i/> Platform workspace</span></header>
+        <div className="admin-control-board-grid">
+          {adminControlLinks.map(item => <Link to={item.path} className={`admin-control-link tone-${item.tone}`} key={item.title}>
+            <span className="admin-control-icon"><i className={`bi ${item.icon}`}/></span>
+            <span className="admin-control-copy"><b>{item.title}</b><small>{item.description}</small></span>
+            <span className="admin-control-value">{item.value}<i className="bi bi-arrow-up-right"/></span>
+          </Link>)}
+        </div>
+      </section>}
 
       {!hasTeamAccess && (
         <div className="player-dashboard-notice mb-4">

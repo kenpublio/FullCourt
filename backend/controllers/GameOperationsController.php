@@ -20,10 +20,14 @@ class GameOperationsController {
     }
     public function assign(int $matchId): void {
         $user=AuthMiddleware::authorizeRoles(self::MANAGERS); OrganizationAccess::requireMatch($matchId,$user); $in=$this->input();
-        if (empty($in['user_id']) || !in_array($in['assignment_role'] ?? '',['referee','scorer','statistician'],true)) Response::error('Valid user and assignment role are required.',422);
-        $id=$this->model->assign($matchId,(int)$in['user_id'],$in['assignment_role']);
-        $this->audit->log((int)$user['user_id'],'ASSIGN_OFFICIAL','GAME_OPERATIONS',"Assigned {$in['assignment_role']} to match {$matchId}.");
-        Response::success('Game official assigned',['id'=>$id],201);
+        if (empty($in['user_id'])) Response::error('Select a statistician to assign.',422);
+        $statisticianId=(int)$in['user_id'];
+        if (!$this->model->canAssignStatistician($matchId,$statisticianId,OrganizationAccess::isPlatform($user))) {
+            Response::error('Select an active statistician from this tournament organization.',422);
+        }
+        $id=$this->model->assign($matchId,$statisticianId,'statistician');
+        $this->audit->log((int)$user['user_id'],'ASSIGN_STATISTICIAN','GAME_OPERATIONS',"Assigned statistician to match {$matchId}.");
+        Response::success('Statistician assigned',['id'=>$id],201);
     }
     public function respond(int $id): void {
         $user=AuthMiddleware::authenticate(); $status=$this->input()['status'] ?? '';
@@ -32,7 +36,7 @@ class GameOperationsController {
         Response::success('Assignment response saved');
     }
     public function lineup(int $matchId): void {
-        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['coach','coach_manager','official','statistician'])); OrganizationAccess::requireMatch($matchId,$user);
+        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['coach','coach_manager','statistician'])); OrganizationAccess::requireMatch($matchId,$user);
         if($user['role']==='statistician' && !$this->model->hasAcceptedStatisticianAssignment($matchId,(int)$user['user_id'])) Response::forbidden('An accepted statistician assignment is required for this game.');
         try { $this->model->saveLineup($matchId,$this->input()['players'] ?? [],(int)$user['user_id']); }
         catch (InvalidArgumentException $e) { Response::error($e->getMessage(),422); }
@@ -56,16 +60,25 @@ class GameOperationsController {
     public function boxScore(int $matchId): void { $user=AuthMiddleware::authenticate(); OrganizationAccess::requireMatch($matchId,$user); Response::success('Box score retrieved',['players'=>$this->model->boxScore($matchId)]); }
     public function corrections(): void { $user=AuthMiddleware::authorizeRoles(self::MANAGERS); Response::success('Corrections retrieved',['corrections'=>$this->model->corrections((int)$user['user_id'],OrganizationAccess::isPlatform($user))]); }
     public function requestCorrection(int $matchId): void {
-        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['official','statistician'])); OrganizationAccess::requireMatch($matchId,$user); $in=$this->input();
+        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['statistician'])); OrganizationAccess::requireMatch($matchId,$user); $in=$this->input();
         if (!isset($in['home_score'],$in['away_score']) || empty($in['reason'])) Response::error('Corrected scores and reason are required.',422);
-        $id=$this->model->requestCorrection($matchId,$in,(int)$user['user_id']); Response::success('Correction submitted',['id'=>$id],201);
+        $id=$this->model->requestCorrection($matchId,$in,(int)$user['user_id']);
+        $correction=$this->model->correctionDetails($id);
+        $this->audit->log((int)$user['user_id'],'REQUEST_SCORE_CORRECTION','GAME_OPERATIONS',
+            "Correction #{$id}, match {$matchId}: " . ($correction['original_home_score'] ?? '?') . '-' . ($correction['original_away_score'] ?? '?')
+            . ' -> ' . (int)$in['home_score'] . '-' . (int)$in['away_score'] . '; reason: ' . trim((string)$in['reason']));
+        Response::success('Correction submitted and recorded in the audit history',['id'=>$id],201);
     }
     public function reviewCorrection(int $id): void {
         $user=AuthMiddleware::authorizeRoles(self::MANAGERS); $tid=$this->model->correctionTournamentId($id);if($tid===null)Response::error('Correction not found.',404);OrganizationAccess::requireTournament($tid,$user); $status=$this->input()['status'] ?? '';
         if (!in_array($status,['approved','rejected'],true)) Response::error('Invalid review status.',422);
+        $correction=$this->model->correctionDetails($id);
+        if (!$correction) Response::error('Correction not found.',404);
         $this->model->reviewCorrection($id,$status,(int)$user['user_id']);
-        $this->audit->log((int)$user['user_id'],'REVIEW_SCORE_CORRECTION','GAME_OPERATIONS',"Set correction {$id} to {$status}.");
-        Response::success('Correction reviewed and standings recalculated');
+        $this->audit->log((int)$user['user_id'],'REVIEW_SCORE_CORRECTION','GAME_OPERATIONS',
+            "Correction #{$id}, match {$correction['match_id']}: " . $correction['original_home_score'] . '-' . $correction['original_away_score']
+            . ' -> ' . $correction['requested_home_score'] . '-' . $correction['requested_away_score'] . "; decision: {$status}; reason: " . $correction['reason']);
+        Response::success('Correction reviewed; decision and score history recorded');
     }
     private function input(): array { return json_decode(file_get_contents('php://input'),true) ?: []; }
     private function requireAssignedStatistician(int $matchId): array {

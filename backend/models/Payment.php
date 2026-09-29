@@ -85,7 +85,7 @@ class Payment {
     }
 
     public function belongsToUser(int $paymentId, int $userId, string $role): bool {
-        if ($role === 'coach_manager') {
+        if (in_array($role,['coach','coach_manager'],true)) {
             $sql = "SELECT p.id FROM payments p
                     JOIN teams tm ON p.team_id = tm.id
                     WHERE p.id = :pid AND (tm.coach_user_id = :uid OR tm.manager_user_id = :uid) LIMIT 1";

@@ -9,8 +9,8 @@ class OrganizationAccess {
     public static function canAccessTournament(int $tournamentId,array $user):bool{
         if(self::isPlatform($user))return true;$db=self::db();$stmt=$db->prepare("SELECT t.id FROM tournaments t
             LEFT JOIN organization_members om ON om.organization_id=t.organization_id AND om.user_id=:member_user AND om.status='active' AND EXISTS (SELECT 1 FROM organizations approved_org WHERE approved_org.id=om.organization_id AND approved_org.status='active')
-            LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id AND (coach_team.coach_user_id=:coach_user OR coach_team.manager_user_id=:manager_user)
-            LEFT JOIN teams player_team ON player_team.tournament_id=t.id LEFT JOIN team_players tp ON tp.team_id=player_team.id AND tp.user_id=:player_user
+            LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id AND coach_team.status='registered' AND (coach_team.coach_user_id=:coach_user OR coach_team.manager_user_id=:manager_user)
+            LEFT JOIN teams player_team ON player_team.tournament_id=t.id AND player_team.status='registered' LEFT JOIN team_players tp ON tp.team_id=player_team.id AND tp.user_id=:player_user AND tp.eligibility_status='verified'
             LEFT JOIN matches m ON m.tournament_id=t.id LEFT JOIN game_assignments ga ON ga.match_id=m.id AND ga.user_id=:official_user
             WHERE t.id=:tournament_id AND (om.id IS NOT NULL OR coach_team.id IS NOT NULL OR tp.id IS NOT NULL OR ga.id IS NOT NULL OR t.created_by=:creator_user) LIMIT 1");
         $uid=(int)$user['user_id'];$stmt->execute([':member_user'=>$uid,':coach_user'=>$uid,':manager_user'=>$uid,':player_user'=>$uid,':official_user'=>$uid,':tournament_id'=>$tournamentId,':creator_user'=>$uid]);return(bool)$stmt->fetch();

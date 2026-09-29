@@ -23,6 +23,21 @@ class Venue {
         return $stmt->fetchAll();
     }
 
+    public function getForOrganizationUser(int $userId):array {
+        $stmt=$this->db->prepare("SELECT DISTINCT v.*,o.name organization_name,submitter.full_name submitted_by_name,reviewer.full_name reviewed_by_name,(SELECT COUNT(*) FROM courts c WHERE c.venue_id=v.id) court_count FROM organization_members om JOIN organizations o ON o.id=om.organization_id AND o.status='active' JOIN venues v ON v.organization_id=o.id LEFT JOIN users submitter ON submitter.id=v.submitted_by LEFT JOIN users reviewer ON reviewer.id=v.reviewed_by WHERE om.user_id=:user_id AND om.status='active' ORDER BY v.name");
+        $stmt->execute([':user_id'=>$userId]);return$stmt->fetchAll();
+    }
+
+    public function getApproved():array {
+        return $this->db->query("SELECT v.*,o.name organization_name,(SELECT COUNT(*) FROM courts c WHERE c.venue_id=v.id) court_count FROM venues v LEFT JOIN organizations o ON o.id=v.organization_id WHERE v.approval_status='approved' ORDER BY v.name")->fetchAll();
+    }
+
+    public function canManage(int $venueId,int $userId):bool {
+        $stmt=$this->db->prepare("SELECT v.id FROM venues v JOIN organization_members om ON om.organization_id=v.organization_id AND om.user_id=:user_id AND om.status='active' WHERE v.id=:venue_id LIMIT 1");$stmt->execute([':venue_id'=>$venueId,':user_id'=>$userId]);return(bool)$stmt->fetchColumn();
+    }
+
+    public function courtVenueId(int $courtId):?int {$stmt=$this->db->prepare('SELECT venue_id FROM courts WHERE id=:id');$stmt->execute([':id'=>$courtId]);$id=$stmt->fetchColumn();return$id===false?null:(int)$id;}
+
     public function getById(int $id): ?array {
         $stmt = $this->db->prepare("SELECT * FROM venues WHERE id = :id LIMIT 1");
         $stmt->execute([':id' => $id]);
@@ -32,8 +47,9 @@ class Venue {
 
     public function getCourts(int $venueId): array {
         $stmt = $this->db->prepare("
-            SELECT c.*, s.name AS sport_name
+            SELECT c.*, v.name AS venue_name, s.name AS sport_name
             FROM courts c
+            JOIN venues v ON v.id=c.venue_id
             LEFT JOIN sports s ON c.sport_id = s.id
             WHERE c.venue_id = :venue_id
             ORDER BY c.court_name ASC

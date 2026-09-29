@@ -18,7 +18,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const account = await login(email, password);
+      const account = await login(email, password, 'user');
       const homeByRole = {
         platform_admin: '/platform', admin: '/platform',
         organization_admin: '/organizer', tournament_organizer: '/organizer',
@@ -38,7 +38,7 @@ const Login = () => {
       <div className="auth-page-heading mb-4">
         <span className="auth-page-icon"><i className="bi bi-person-check-fill" /></span>
         <span className="auth-page-kicker">Your courtside access</span>
-        <h2>Welcome back.</h2>
+        <h1 className="auth-form-title">Welcome back.</h1>
         <p>Your team is waiting. Sign in to pick up where you left off.</p>
       </div>
 
@@ -49,16 +49,18 @@ const Login = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} autoComplete="off">
         <div className="auth-field mb-3">
-          <label htmlFor="login-contact">Email or mobile number</label>
+          <label htmlFor="login-email">Email address</label>
           <div className="auth-input-wrap"><i className="bi bi-person" />
             <input
-              type="text"
-              id="login-contact"
-              autoComplete="username"
+              type="email"
+              id="login-email"
+              inputMode="email"
+              name="login_identifier"
+              autoComplete="off"
               className="form-control"
-              placeholder="name@gmail.com or 09XXXXXXXXX"
+              placeholder="Enter your registered email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -72,7 +74,8 @@ const Login = () => {
             <input
               type={showPassword ? 'text' : 'password'}
               id="login-password"
-              autoComplete="current-password"
+              name="login_secret"
+              autoComplete="new-password"
               className="form-control"
               placeholder="••••••••"
               value={password}

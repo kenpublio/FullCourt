@@ -26,6 +26,11 @@ export const teamService = {
     return res.data;
   },
 
+  async reviewApplication(id, decision) {
+    const res = await api.put(`/teams/${id}/application`, { decision });
+    return res.data;
+  },
+
   async getRoster(id) {
     const res = await api.get(`/teams/${id}/players`);
     return res.data?.data || { team: null, players: [] };

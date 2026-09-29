@@ -18,7 +18,9 @@ class TournamentController {
 
     public function index(): void {
         $user=AuthMiddleware::authenticate();
-        $tournaments = $this->tournamentModel->getAll((int)$user['user_id'],OrganizationAccess::isPlatform($user));
+        $tournaments = in_array($user['role'], ['coach','coach_manager'], true)
+            ? $this->tournamentModel->getAvailableForCoach((int)$user['user_id'])
+            : $this->tournamentModel->getAll((int)$user['user_id'],OrganizationAccess::isPlatform($user));
         $sports = $this->tournamentModel->getSports();
         Response::success('Tournaments retrieved', [
             'tournaments' => $tournaments,
@@ -36,7 +38,7 @@ class TournamentController {
     }
 
     public function store(): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['name']) || empty($input['start_date']) || empty($input['end_date'])) {
@@ -60,7 +62,7 @@ class TournamentController {
     }
 
     public function update(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         OrganizationAccess::requireTournament($id,$user);
         $input = json_decode(file_get_contents('php://input'), true);
 
@@ -76,7 +78,7 @@ class TournamentController {
     }
 
     public function destroy(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         OrganizationAccess::requireTournament($id,$user);
         $existing = $this->tournamentModel->getById($id);
         if (!$existing) {

@@ -17,7 +17,7 @@ class UserController {
     }
 
     public function index(): void {
-        $currentUser = AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
+        $currentUser = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
         $users = OrganizationAccess::isPlatform($currentUser)
             ? $this->userModel->getAll()
             : $this->userModel->getForOrganizationUser((int)$currentUser['user_id']);
@@ -66,11 +66,11 @@ class UserController {
     }
 
     public function updateRole(int $id): void {
-        $currentUser = AuthMiddleware::authorizeRoles(['admin']);
+        $currentUser = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
         $role = trim($input['role'] ?? '');
 
-        $validRoles = ['platform_admin','organization_admin','tournament_organizer','coach','player','official','statistician'];
+        $validRoles = ['platform_admin','organization_admin','tournament_organizer','coach','player','statistician'];
 
         if (!in_array($role, $validRoles, true)) {
             Response::error('Invalid role specified.', 400);
@@ -96,7 +96,7 @@ class UserController {
     }
 
     public function update(int $id): void {
-        $currentUser = AuthMiddleware::authorizeRoles(['admin']);
+        $currentUser = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $targetUser = $this->userModel->findById($id);
         if (!$targetUser) Response::error('Target user not found.', 404);
@@ -105,7 +105,7 @@ class UserController {
         $phone = preg_replace('/[\s-]+/', '', trim((string)($input['phone_number'] ?? '')));
         $address = trim((string)($input['address'] ?? ''));
         $role = trim((string)($input['role'] ?? ''));
-        $validRoles = ['platform_admin','organization_admin','tournament_organizer','coach','player','official','statistician'];
+        $validRoles = ['platform_admin','organization_admin','tournament_organizer','coach','player','statistician'];
         if ($fullName === '' || $email === '') Response::error('Full name and email/login are required.', 422);
         if ($phone !== '' && !preg_match('/^(09\d{9}|\+639\d{9})$/', $phone)) Response::error('Enter a valid Philippine mobile number.', 422);
         if (!in_array($role, $validRoles, true)) Response::error('Invalid role specified.', 422);
@@ -118,7 +118,7 @@ class UserController {
     }
 
     public function remove(int $id): void {
-        $currentUser = AuthMiddleware::authorizeRoles(['admin']);
+        $currentUser = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $targetUser = $this->userModel->findById($id);
         if (!$targetUser) Response::error('Target user not found.', 404);
         if ((int)$targetUser['id'] === (int)$currentUser['user_id']) Response::error('You cannot remove your own Administrator account.', 422);
@@ -128,7 +128,7 @@ class UserController {
     }
 
     public function toggleStatus(int $id): void {
-        $currentUser = AuthMiddleware::authorizeRoles(['admin']);
+        $currentUser = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
         $isActive = (bool) ($input['is_active'] ?? true);
 
@@ -157,8 +157,8 @@ class UserController {
     }
 
     public function getAuditLogs(): void {
-        AuthMiddleware::authorizeRoles(['admin', 'tournament_organizer']);
-        $logs = $this->auditLogModel->getRecent(100);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        $logs = OrganizationAccess::isPlatform($user) ? $this->auditLogModel->getRecent(100) : $this->auditLogModel->getRecentForOrganizationUser((int)$user['user_id'],100);
         Response::success('Audit logs retrieved', ['logs' => $logs]);
     }
 }

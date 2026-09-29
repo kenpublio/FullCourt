@@ -10,7 +10,7 @@ const pages = {
       ['Why we use it','To create accounts, validate age and division eligibility, manage competitions, publish approved schedules and statistics, prevent fraud, deliver reminders, and protect the platform.'],
       ['Public and restricted data','Schedules, team names, scores, standings, and approved awards may be public. Contact details, passwords, receipts, eligibility documents, and exact birth dates are restricted to the account owner and authorized personnel.'],
       ['Children and youth players','A parent or legal guardian should approve registration and document submission for minors. Organizers must collect only the records required for eligibility and must avoid publishing a minor’s contact details, exact birth date, or private documents.'],
-      ['Sharing and storage','Data may be processed by hosting, database, email, SMS, and payment providers needed to operate FullCourt. We do not sell personal data. Access is limited by account role. Records are retained only while needed for operations, audit, dispute handling, or legal duties.'],
+      ['Sharing and storage','Data may be processed by hosting, database, email, and payment providers needed to operate FullCourt. We do not sell personal data. Access is limited by account role. Records are retained only while needed for operations, audit, dispute handling, or legal duties.'],
       ['Your choices','You may request access, correction, export, restriction, or deletion of eligible personal information. Some official results and audit records may be retained when needed to preserve tournament integrity.'],
     ]
   },

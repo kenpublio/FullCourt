@@ -37,7 +37,7 @@ export const eligibilityService = {
   }
   ,async documents(playerId) { return (await api.get(`/eligibility/${playerId}/documents`)).data?.data?.documents || []; }
   ,async uploadDocument(playerId, documentType, file) { const form=new FormData();form.append('document_type',documentType);form.append('document',file);return (await api.post(`/eligibility/${playerId}/documents`,form)).data; }
-  ,async uploadIdentity(playerId,{idType,last4,idBirthDate,idFile,selfie,consent}) { const form=new FormData();form.append('document_type','Identity Verification');form.append('id_type',idType);form.append('id_number_last4',last4);form.append('id_birth_date',idBirthDate);form.append('consent_confirmed',consent?'1':'');form.append('document',idFile);form.append('selfie',selfie);return (await api.post(`/eligibility/${playerId}/documents`,form)).data; }
+  ,async uploadIdentity(playerId,{idType,idBirthDate,idFile,selfie,consent}) { const form=new FormData();form.append('document_type','Identity Verification');form.append('id_type',idType);form.append('id_birth_date',idBirthDate);form.append('consent_confirmed',consent?'1':'');form.append('document',idFile);form.append('selfie',selfie);return (await api.post(`/eligibility/${playerId}/documents`,form)).data; }
   ,async privateImage(id,selfie=false) { const path=selfie?`/eligibility/documents/${id}/selfie`:`/eligibility/documents/${id}/download`;const res=await api.get(path,{responseType:'blob'});return URL.createObjectURL(res.data); }
   ,async reviewDocument(id,status,notes='') { return (await api.put(`/eligibility/documents/${id}/review`,{status,notes})).data; }
 };

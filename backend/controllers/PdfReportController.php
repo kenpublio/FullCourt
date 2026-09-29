@@ -40,7 +40,7 @@ class PdfReportController {
             FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id JOIN teams tm ON tm.id=e.team_id JOIN users u ON u.id=tp.user_id
             WHERE e.match_id=:id AND e.is_void=0 GROUP BY tm.id,tm.team_name,tp.id,tp.jersey_number,u.full_name ORDER BY tm.id,tp.jersey_number",$matchId);
         $pdf->section('Player Box Score');$pdf->row(['Team','#','Player','PTS','2FG','3FG','FT','REB','AST','PF'],[95,25,145,35,35,35,35,40,40,35],true);foreach($players as $r)$pdf->row(array_values($r),[95,25,145,35,35,35,35,40,40,35]);
-        $pdf->paragraph("\nReferee signature: _________________________     Statistician signature: _________________________\nThis digital score sheet was generated from the official FullCourt basketball event log.");
+        $pdf->paragraph("\nStatistician signature: _________________________\nThis digital score sheet was generated from the verified FullCourt basketball event log.");
         $this->send($pdf->output(),'match-'.$matchId.'-score-sheet.pdf',null,'FIBA_SCORE_SHEET',(int)$m['tournament_id']);
     }
 

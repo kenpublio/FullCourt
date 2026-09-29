@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import gameOperationsService from "../services/gameOperationsService";
 import scorekeeperService from "../services/scorekeeperService";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -45,6 +45,7 @@ const BasketballStatistician = () => {
     [subOut, setSubOut] = useState(""),
     [subIn, setSubIn] = useState(""),
     [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState(""),
     [message, setMessage] = useState(""),
     [tournamentFilter, setTournamentFilter] = useState("all");
   const isStatistician = user?.role === "statistician";
@@ -60,21 +61,28 @@ const BasketballStatistician = () => {
     () => statisticianAssignments.filter((assignment) => tournamentFilter === "all" || assignment.tournament_name === tournamentFilter),
     [statisticianAssignments, tournamentFilter],
   );
-  useEffect(() => {
-    gameOperationsService
-      .assignments()
-      .then((rows) => setAssignments(isStatistician ? rows.filter((row) => row.assignment_role === "statistician" && row.status === "accepted") : rows))
-      .finally(() => setLoading(false));
+  const loadAssignments = useCallback(async () => {
+    setLoading(true);setLoadError("");
+    try {
+      const rows = await gameOperationsService.assignments();
+      setAssignments(isStatistician ? rows.filter((row) => row.assignment_role === "statistician" && row.status === "accepted") : rows);
+    } catch (error) {
+      setLoadError(error.response?.data?.message || "Could not load assigned games. Check your connection and try again.");
+    } finally { setLoading(false); }
   }, [isStatistician]);
+  useEffect(() => { loadAssignments(); }, [loadAssignments]);
   const open = async (assignment) => {
     setMatch(assignment);
-    const [score, lineup] = await Promise.all([
-      scorekeeperService.getScoreboard(assignment.match_id),
-      gameOperationsService.lineup(assignment.match_id),
-    ]);
-    setBoard(score);
-    setPlayers(lineup);
-    setSelected(lineup[0] || null);
+    setLoadError("");
+    try {
+      const [score, lineup] = await Promise.all([
+        scorekeeperService.getScoreboard(assignment.match_id),
+        gameOperationsService.lineup(assignment.match_id),
+      ]);
+      setBoard(score);setPlayers(lineup);setSelected(lineup[0] || null);
+    } catch (error) {
+      setBoard(null);setLoadError(error.response?.data?.message || "Could not open this game console. Refresh the assignment list and try again.");
+    }
   };
   const refresh = async () => {
     if (!match) return;
@@ -151,24 +159,26 @@ const BasketballStatistician = () => {
   if (!isStatistician) {
     const uniqueGames = new Set(oversightRows.map((assignment) => assignment.match_id)).size;
     const accepted = oversightRows.filter((assignment) => assignment.status === "accepted").length;
+    const readyGames = new Set(oversightRows.filter((assignment) => assignment.status === "accepted").map((assignment) => assignment.match_id)).size;
+    const readinessRate = uniqueGames ? Math.round((readyGames / uniqueGames) * 100) : 0;
     const pending = oversightRows.filter((assignment) => assignment.status === "pending").length;
     const active = new Set(oversightRows.filter((assignment) => assignment.match_status === "in_progress").map((assignment) => assignment.match_id)).size;
     return (
       <div className="container-fluid p-0 ops-page statistician-oversight-page">
         <div className="ops-page-head">
-          <div><span className="ops-eyebrow">GAME DATA CONTROL</span><h3 className="fw-bold mb-1"><i className="bi bi-clipboard-data-fill text-evsu-primary me-2"/>Statistics Operations Oversight</h3><p className="text-muted small mb-0">Monitor assigned statisticians, courtside readiness, and game-statistics coverage across tournaments.</p></div>
+          <div><span className="ops-eyebrow">GAME DATA CONTROL</span><h1 className="fw-bold mb-1"><i className="bi bi-clipboard-data-fill text-evsu-primary me-2"/>Statistics Operations Oversight</h1><p className="text-muted small mb-0">Monitor assigned statisticians, courtside readiness, and game-statistics coverage across tournaments.</p><div className="stat-oversight-meta"><span><i className="bi bi-shield-check"/> Assignment oversight</span><span><i className="bi bi-graph-up-arrow"/> Live game coverage</span></div></div>
           <select className="form-select" aria-label="Filter tournament" value={tournamentFilter} onChange={(event) => setTournamentFilter(event.target.value)}><option value="all">All tournaments</option>{tournamentNames.map((name) => <option value={name} key={name}>{name}</option>)}</select>
         </div>
         <section className="officials-command-grid" aria-label="Statistics operations summary">
           <article><span className="officials-stat-icon is-red"><i className="bi bi-calendar2-event"/></span><div><small>Covered games</small><strong>{uniqueGames}</strong><p>Games with statistician assignment</p></div></article>
-          <article><span className="officials-stat-icon is-green"><i className="bi bi-person-check"/></span><div><small>Confirmed</small><strong>{accepted}</strong><p>Accepted statistician duties</p></div></article>
+          <article className="stat-readiness-card"><span className="officials-stat-icon is-green"><i className="bi bi-person-check"/></span><div><small>Courtside ready</small><strong>{readyGames}<em> / {uniqueGames} games</em></strong><p>{accepted} accepted assignments</p><span className="stat-readiness-track"><i style={{width:`${readinessRate}%`}}/></span></div></article>
           <article><span className="officials-stat-icon is-gold"><i className="bi bi-hourglass-split"/></span><div><small>Needs response</small><strong>{pending}</strong><p>Pending confirmations</p></div></article>
           <article><span className="officials-stat-icon is-blue"><i className="bi bi-broadcast-pin"/></span><div><small>Live coverage</small><strong>{active}</strong><p>Games currently in progress</p></div></article>
         </section>
-        <div className="ops-table-shell">
-          <div className="stat-oversight-title"><div><span>STATISTICIAN COVERAGE</span><h5>Game assignments and courtside readiness</h5></div><span className="badge rounded-pill text-bg-dark">{oversightRows.length} assignments</span></div>
-          <div className="table-responsive"><table className="table table-modern align-middle mb-0"><thead><tr><th>Game</th><th>Tournament</th><th>Statistician</th><th>Schedule & venue</th><th>Duty status</th><th>Game status</th></tr></thead><tbody>
-            {oversightRows.map((assignment) => <tr key={assignment.id}><td><b>{assignment.home_team || "TBD"} vs {assignment.away_team || "TBD"}</b><small className="d-block text-muted">Game #{assignment.match_id}</small></td><td>{assignment.tournament_name}</td><td><i className="bi bi-person-badge me-2 text-evsu-primary"/>{assignment.assignee_name || "Not assigned"}</td><td>{assignment.scheduled_start_time ? new Date(assignment.scheduled_start_time).toLocaleString() : "Schedule pending"}<small className="d-block text-muted">{assignment.court_name || assignment.venue_name || "Court TBA"}</small></td><td><span className={`badge ${assignment.status === "accepted" ? "bg-success" : assignment.status === "declined" ? "bg-danger" : "bg-warning text-dark"}`}>{assignment.status}</span></td><td><span className="stat-game-status">{String(assignment.match_status || "scheduled").replaceAll("_", " ")}</span></td></tr>)}
+        <div className={`ops-table-shell ${oversightRows.length ? '' : 'is-empty'}`}>
+          <div className="stat-oversight-title"><div><span>STATISTICIAN COVERAGE</span><h2>Game assignments and courtside readiness</h2></div><span className="badge rounded-pill text-bg-dark">{oversightRows.length} assignments</span></div>
+          <div className="table-responsive"><table className="table table-modern align-middle mb-0 stat-oversight-table"><thead><tr><th>Game</th><th>Tournament</th><th>Statistician</th><th>Schedule & venue</th><th>Duty status</th><th>Game status</th></tr></thead><tbody>
+            {oversightRows.map((assignment) => <tr key={assignment.id}><td><b>{assignment.home_team || "TBD"} <span className="stat-vs">vs</span> {assignment.away_team || "TBD"}</b><small className="d-block text-muted">Game #{assignment.match_id}</small></td><td>{assignment.tournament_name}</td><td><span className="stat-assignee"><i className="bi bi-person-badge"/>{assignment.assignee_name || "Not assigned"}</span></td><td><span className="stat-schedule-time"><i className="bi bi-calendar-event"/>{assignment.scheduled_start_time ? new Date(assignment.scheduled_start_time).toLocaleString() : "Schedule pending"}</span><small className="d-block text-muted stat-court"><i className="bi bi-geo-alt"/>{assignment.court_name || assignment.venue_name || "Court TBA"}</small></td><td><span className={`badge ${assignment.status === "accepted" ? "bg-success" : assignment.status === "declined" ? "bg-danger" : "bg-warning text-dark"}`}>{assignment.status}</span></td><td><span className={`stat-game-status is-${String(assignment.match_status || "scheduled").replaceAll("_", "-")}`}>{String(assignment.match_status || "scheduled").replaceAll("_", " ")}</span></td></tr>)}
             {!oversightRows.length && <tr><td colSpan="6"><div className="ops-empty border-0"><i className="bi bi-clipboard-x"/><strong>No statistician coverage found</strong><p>No statistician assignments are available for the selected tournament.</p></div></td></tr>}
           </tbody></table></div>
         </div>
@@ -199,6 +209,7 @@ const BasketballStatistician = () => {
       </div>
       {message && <div className="alert alert-info py-2">{message}</div>}
       <div className="row g-4">
+        {loadError && <div className="col-12"><div className="alert alert-danger d-flex justify-content-between align-items-center gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={loadAssignments}>Try again</button></div></div>}
         <div className="col-lg-3">
           <div className="card-custom p-3">
             <h6 className="fw-bold">Assigned Games</h6>
@@ -217,7 +228,7 @@ const BasketballStatistician = () => {
               </button>
             ))}
             {!assignments.length && (
-              <p className="text-muted small">No assigned games.</p>
+              <div className="ops-empty py-4"><i className="bi bi-calendar2-x"/><strong>No games assigned yet</strong><p>{isStatistician ? "Your assigned games will appear here after an organizer assigns you or sends a valid scoring link." : "Games will appear after the tournament schedule is generated and published."}</p></div>
             )}
           </div>
         </div>
