@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import paymentService from '../services/paymentService';
 import LoadingSpinner from '../components/LoadingSpinner';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8767/api';
+const receiptUrl = (path) => path ? new URL(path, API_BASE_URL).toString() : '#';
+
 const PlayerPayments = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,8 +64,10 @@ const PlayerPayments = () => {
                 </td>
                 <td>
                   {p.receipt_photo_url
-                    ? <a className="btn btn-sm btn-outline-secondary" href={p.receipt_photo_url} target="_blank" rel="noreferrer"><i className="bi bi-receipt me-1" />View</a>
-                    : <button className="btn btn-sm btn-evsu" onClick={() => setReceiptTarget(p)}><i className="bi bi-upload me-1" />Upload</button>}
+                    ? <a className="btn btn-sm btn-outline-secondary" href={receiptUrl(p.receipt_photo_url)} target="_blank" rel="noreferrer"><i className="bi bi-receipt me-1" />View</a>
+                    : p.status === 'pending'
+                      ? <button className="btn btn-sm btn-evsu" onClick={() => setReceiptTarget(p)}><i className="bi bi-upload me-1" />Upload</button>
+                      : <span className="small text-muted">No receipt</span>}
                 </td>
               </tr>
             ))}

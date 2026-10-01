@@ -15,15 +15,16 @@ const receiptUrl = (path) => {
 const PaymentVerificationView = () => {
   const { user } = useAuth();
   const canSubmitPayment = ['platform_admin','admin','coach','coach_manager','player'].includes(user?.role);
-  const canVerifyPayment = ['platform_admin','admin','finance_officer'].includes(user?.role);
+  const canVerifyPayment = ['platform_admin','admin','finance_officer','organization_admin','tournament_organizer'].includes(user?.role);
   const isCoach = ['coach','coach_manager'].includes(user?.role);
   const [payments, setPayments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [formData, setFormData] = useState({ team_id: '', tournament_id: '', payment_method: 'gcash', reference_number: '', amount: 500 });
+  const [formData, setFormData] = useState({ team_id: '', tournament_id: '', payment_method: 'gcash', reference_number: '', amount: '' });
   const [receiptFile, setReceiptFile] = useState(null);
+  const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
   const [loadError, setLoadError] = useState('');
 
   const loadData = useCallback(async () => {
@@ -38,21 +39,30 @@ const PaymentVerificationView = () => {
       setPayments(pData);
       setTeams(tData);
       setTournaments(tourRes.tournaments || []);
-      if (tData.length > 0) setFormData(prev => ({ ...prev, team_id: tData[0].id, tournament_id: isCoach ? (tData[0].tournament_id || '') : (tourRes.tournaments?.[0]?.id || prev.tournament_id) }));
+      if (tData.length > 0) {
+        const firstTeam=tData[0];
+        const teamTournament=(tourRes.tournaments||[]).find(tournament=>String(tournament.id)===String(firstTeam.tournament_id));
+        setFormData(prev => ({ ...prev, team_id: firstTeam.id, tournament_id: firstTeam.tournament_id || '', amount: teamTournament?.registration_fee ?? '' }));
+      }
     } catch (err) {
       console.error(err);
       setLoadError(err.response?.data?.message || 'We could not load payment records. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, [isCoach]);
+  }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
     try {
-      const res = await paymentService.submitPayment(formData);
+      const amount=selectedTournament?.registration_fee;
+      if(!(Number(amount)>0)){
+        alert('This tournament has no registration fee to submit.');
+        return;
+      }
+      const res = await paymentService.submitPayment({ ...formData, amount });
       if (res?.data?.id && receiptFile) {
         try {
           await paymentService.uploadReceipt(res.data.id, receiptFile);
@@ -62,20 +72,41 @@ const PaymentVerificationView = () => {
       }
       setShowSubmitModal(false);
       setReceiptFile(null);
-      loadData();
+      await loadData();
     } catch (err) {
       alert(err.response?.data?.message || 'Payment submission failed');
     }
   };
 
   const handleVerify = async (paymentId, status) => {
-    const remarks = prompt(`Enter remarks for marking as ${status}:`, 'Verified by Finance Officer');
+    const remarks = prompt(status === 'approved' ? 'Optional approval note:' : 'Reason for rejecting this payment:', status === 'approved' ? 'Reviewed and approved' : '');
     if (remarks === null) return;
+    if (status === 'rejected' && !remarks.trim()) {
+      alert('Add a short reason so the team knows what to correct.');
+      return;
+    }
     try {
       await paymentService.verifyPayment(paymentId, status, remarks);
-      loadData();
+      await loadData();
     } catch (err) {
       alert(err.response?.data?.message || 'Verification failed');
+    }
+  };
+
+  const handleReceiptUpload = async (paymentId, file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Receipt image must be 5MB or smaller.');
+      return;
+    }
+    setUploadingReceiptId(paymentId);
+    try {
+      await paymentService.uploadReceipt(paymentId, file);
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Receipt upload failed. Please try again.');
+    } finally {
+      setUploadingReceiptId(null);
     }
   };
 
@@ -85,7 +116,10 @@ const PaymentVerificationView = () => {
     return summary;
   }, { pending: 0, approved: 0, rejected: 0, approvedAmount: 0 });
   const selectedTeam = teams.find(team => String(team.id) === String(formData.team_id));
-  const allowedTournaments = isCoach ? tournaments.filter(tournament => String(tournament.id) === String(selectedTeam?.tournament_id)) : tournaments;
+  const allowedTournaments = selectedTeam?.tournament_id
+    ? tournaments.filter(tournament => String(tournament.id) === String(selectedTeam.tournament_id))
+    : [];
+  const selectedTournament = allowedTournaments.find(tournament => String(tournament.id) === String(formData.tournament_id));
 
   const downloadReport = () => {
     const escapeCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -171,7 +205,12 @@ const PaymentVerificationView = () => {
                       <td>
                         {p.receipt_photo_url
                           ? <a href={receiptUrl(p.receipt_photo_url)} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-secondary"><i className="bi bi-image me-1" />View</a>
-                          : <span className="text-muted small">No receipt</span>}
+                          : canSubmitPayment && p.status === 'pending'
+                            ? <label className="btn btn-sm btn-outline-secondary mb-0">
+                                <i className={`bi ${uploadingReceiptId===p.id?'bi-hourglass-split':'bi-upload'} me-1`}/>{uploadingReceiptId===p.id?'Uploading…':'Add receipt'}
+                                <input type="file" className="visually-hidden" accept="image/jpeg,image/png,image/webp" disabled={uploadingReceiptId===p.id} onChange={e=>{handleReceiptUpload(p.id,e.target.files?.[0]);e.target.value='';}} />
+                              </label>
+                            : <span className="text-muted small">No receipt</span>}
                       </td>
                       <td>
                         <span className={`badge ${p.status === 'approved' ? 'bg-success' : p.status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>
@@ -211,13 +250,13 @@ const PaymentVerificationView = () => {
                 <div className="modal-body">
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Select Team</label>
-                    <select className="form-select" value={formData.team_id} onChange={e => {const team=teams.find(item=>String(item.id)===String(e.target.value));setFormData({...formData,team_id:e.target.value,tournament_id:isCoach?(team?.tournament_id||''):formData.tournament_id});}}>
+                    <select className="form-select" required value={formData.team_id} disabled={!teams.length} onChange={e => {const team=teams.find(item=>String(item.id)===String(e.target.value));const tournament=tournaments.find(item=>String(item.id)===String(team?.tournament_id));setFormData({...formData,team_id:e.target.value,tournament_id:team?.tournament_id||'',amount:tournament?.registration_fee??''});}}>
                       {teams.map(tm => <option key={tm.id} value={tm.id}>{tm.team_name}</option>)}
                     </select>
                   </div>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Select Tournament</label>
-                    <select className="form-select" value={formData.tournament_id} disabled={isCoach} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
+                    <select className="form-select" required value={formData.tournament_id} disabled={!selectedTeam?.tournament_id} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
                       {allowedTournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </div>
@@ -232,9 +271,10 @@ const PaymentVerificationView = () => {
                     </div>
                     <div className="col-6">
                       <label className="form-label small fw-semibold">Amount (₱)</label>
-                      <input type="number" step="0.01" className="form-control" required value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                      <input type="number" step="0.01" min="0.01" className="form-control" required readOnly value={selectedTournament?.registration_fee ?? ''} aria-describedby="payment-fee-note" />
                     </div>
                   </div>
+                  <small id="payment-fee-note" className="text-muted d-block mb-3">Amount is set by the tournament organizer and cannot be changed here.</small>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Reference Number</label>
                     <input type="text" className="form-control" required value={formData.reference_number} onChange={e => setFormData({...formData, reference_number: e.target.value})} placeholder="e.g. GCASH-1002394812" />
@@ -253,7 +293,7 @@ const PaymentVerificationView = () => {
                 </div>
                 <div className="modal-footer border-top">
                   <button type="button" className="btn btn-light btn-sm" onClick={() => setShowSubmitModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-evsu btn-sm">Submit for Verification</button>
+                  <button type="submit" className="btn btn-evsu btn-sm" disabled={!selectedTeam || !selectedTournament || Number(selectedTournament.registration_fee)<=0}>Submit for Verification</button>
                 </div>
               </form>
             </div>

@@ -29,7 +29,7 @@ const menuItems = [
     { title: 'Reports', path: '/reports', icon: 'bi-file-earmark-bar-graph-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
   ]},
   { section: 'Operations', items: [
-    { title: 'Payments', path: '/payments', icon: 'bi-credit-card-fill', roles: ['platform_admin','admin','finance_officer','coach','coach_manager'] },
+    { title: 'Payments', path: '/payments', icon: 'bi-credit-card-fill', roles: ['platform_admin','admin','finance_officer','organization_admin','tournament_organizer','coach','coach_manager'] },
     { title: 'QR Game Access', path: '/qr-attendance', icon: 'bi-qr-code-scan', roles: ['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'] },
     { title: 'Game-Day Control', path: '/game-day', icon: 'bi-clipboard2-pulse-fill', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
   ]},

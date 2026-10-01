@@ -67,7 +67,12 @@ class Payment {
         if(!$row)return ['valid'=>false,'message'=>'The selected team does not belong to this tournament.'];
         if(in_array($role,['coach','coach_manager'],true)&&(int)$row['coach_user_id']!==$userId&&(int)($row['manager_user_id']??0)!==$userId)return ['valid'=>false,'message'=>'You can only submit a payment for your own team.'];
         if($role==='player'&&!$row['player_member'])return ['valid'=>false,'message'=>'You can only submit a payment for your verified team.'];
-        $fee=(float)$row['registration_fee'];if($fee>0&&abs($amount-$fee)>.009)return ['valid'=>false,'message'=>'Payment amount must match the tournament registration fee of ₱'.number_format($fee,2).'.'];
+        $pending=$this->db->prepare("SELECT id FROM payments WHERE team_id=:team_id AND tournament_id=:tournament_id AND status IN ('pending','approved') LIMIT 1");
+        $pending->execute([':team_id'=>$teamId,':tournament_id'=>$tournamentId]);
+        if($pending->fetch())return ['valid'=>false,'message'=>'This team already has a pending or approved payment for this tournament.'];
+        $fee=(float)$row['registration_fee'];
+        if($fee<=0)return ['valid'=>false,'message'=>'This tournament has no registration fee to pay.'];
+        if(abs($amount-$fee)>.009)return ['valid'=>false,'message'=>'Payment amount must match the tournament registration fee of ₱'.number_format($fee,2).'.'];
         return ['valid'=>true];
     }
 
@@ -101,8 +106,25 @@ class Payment {
     }
 
     public function attachReceipt(int $id, string $url): bool {
-        $stmt = $this->db->prepare("UPDATE payments SET receipt_photo_url = :url WHERE id = :id");
-        return $stmt->execute([':url' => $url, ':id' => $id]);
+        $stmt = $this->db->prepare("UPDATE payments SET receipt_photo_url = :url WHERE id = :id AND status = 'pending'");
+        return $stmt->execute([':url' => $url, ':id' => $id]) && $stmt->rowCount() === 1;
+    }
+
+    public function canVerifyForOrganization(int $paymentId, int $userId): bool {
+        $sql = "SELECT p.id
+                FROM payments p
+                JOIN tournaments t ON t.id=p.tournament_id
+                LEFT JOIN organizations o ON o.id=t.organization_id
+                WHERE p.id=:payment_id AND p.status='pending'
+                  AND ((t.organization_id IS NOT NULL AND o.status='active' AND EXISTS (
+                        SELECT 1 FROM organization_members om
+                        WHERE om.organization_id=t.organization_id AND om.user_id=:member_user
+                          AND om.status='active' AND om.role IN ('organization_admin','organizer','tournament_organizer')
+                  )) OR t.created_by=:creator_user)
+                LIMIT 1";
+        $stmt=$this->db->prepare($sql);
+        $stmt->execute([':payment_id'=>$paymentId,':member_user'=>$userId,':creator_user'=>$userId]);
+        return (bool)$stmt->fetchColumn();
     }
 
     public function submitPayment(array $data): int {
@@ -122,26 +144,26 @@ class Payment {
     }
 
     public function verifyPayment(int $id, string $status, int $verifierId, ?string $remarks): bool {
-        $sql = "UPDATE payments SET status = :status, verified_by = :verifierId, remarks = :remarks, verified_at = NOW() WHERE id = :id";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':status' => $status,
-            ':verifierId' => $verifierId,
-            ':remarks' => $remarks,
-            ':id' => $id
-        ]);
+        $this->db->beginTransaction();
+        try {
+            $sql = "UPDATE payments
+                    SET status=:status, verified_by=:verifier_id, remarks=:remarks, verified_at=NOW()
+                    WHERE id=:id AND status='pending'
+                    RETURNING team_id";
+            $stmt=$this->db->prepare($sql);
+            $stmt->execute([':status'=>$status,':verifier_id'=>$verifierId,':remarks'=>$remarks,':id'=>$id]);
+            $teamId=$stmt->fetchColumn();
+            if($teamId===false){$this->db->rollBack();return false;}
 
-        // If approved, update team status to registered
-        if ($status === 'approved') {
-            $pStmt = $this->db->prepare("SELECT team_id FROM payments WHERE id = :id LIMIT 1");
-            $pStmt->execute([':id' => $id]);
-            $pay = $pStmt->fetch();
-            if ($pay) {
-                $tStmt = $this->db->prepare("UPDATE teams SET status = 'registered' WHERE id = :tid");
-                $tStmt->execute([':tid' => $pay['team_id']]);
+            if($status==='approved'){
+                $team=$this->db->prepare("UPDATE teams SET status='registered' WHERE id=:team_id");
+                $team->execute([':team_id'=>$teamId]);
             }
+            $this->db->commit();
+            return true;
+        } catch (Throwable $error) {
+            if($this->db->inTransaction())$this->db->rollBack();
+            throw $error;
         }
-
-        return true;
     }
 }

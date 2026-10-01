@@ -108,7 +108,7 @@ const AppRoutes = () => {
         <Route path="/live-scoring" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><LiveScoringView /></ProtectedRoute>} />
         <Route path="/scorekeeper" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','statistician']}><BasketballStatistician /></ProtectedRoute>} />
         <Route path="/standings" element={<StandingsView />} />
-        <Route path="/payments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','finance_officer','coach','coach_manager']}><PaymentVerificationView /></ProtectedRoute>} />
+        <Route path="/payments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','finance_officer','organization_admin','tournament_organizer','coach','coach_manager']}><PaymentVerificationView /></ProtectedRoute>} />
         <Route path="/qr-attendance" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']}><QRAttendanceView /></ProtectedRoute>} />
         <Route path="/game-day" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><GameDayOperations /></ProtectedRoute>} />
         <Route path="/notifications" element={<NotificationsView />} />
