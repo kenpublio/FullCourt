@@ -32,10 +32,12 @@ const GuestScoringConsole = () => {
   const [pin, setPin] = useState('');
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [subOut, setSubOut] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [clockBusy, setClockBusy] = useState(false);
+  const [subBusy, setSubBusy] = useState(false);
   const [period, setPeriod] = useState('Q1');
   const [clockMinutes, setClockMinutes] = useState('10');
   const [clockSeconds, setClockSeconds] = useState('00');
@@ -61,7 +63,9 @@ const GuestScoringConsole = () => {
         setClockSeconds(String(seconds % 60).padStart(2, '0'));
       }
       setData(result);
-      setSelected((current) => result.players.find((player) => player.team_player_id === current?.team_player_id) || result.players[0] || null);
+      const eligiblePlayers = result.players.filter((player) => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
+      setSelected((current) => eligiblePlayers.find((player) => player.team_player_id === current?.team_player_id) || eligiblePlayers[0] || null);
+      setSubOut((current) => result.players.find((player) => player.team_player_id === current?.team_player_id && player.eligibility_status === 'verified' && Number(player.is_on_court) === 1) || null);
       setError('');
     } catch (loadError) {
       setError(loadError.response?.data?.message || 'This scoring session is unavailable.');
@@ -98,7 +102,7 @@ const GuestScoringConsole = () => {
   };
 
   const record = async (eventType) => {
-    if (!selected) return setMessage('Select a player first.');
+    if (!selected || selected.eligibility_status !== 'verified' || Number(selected.is_present) !== 1) return setMessage('Only an eligible, present player can be selected for statistics.');
     setBusy(true);
     try {
       await scoringAccessService.stat(session, {
@@ -115,6 +119,28 @@ const GuestScoringConsole = () => {
       setError(statError.response?.data?.message || 'Unable to record the statistic.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const substitute = async (playerIn) => {
+    if (!subOut || !playerIn || subBusy) return;
+    setSubBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await scoringAccessService.substitute(session, {
+        player_out_id: Number(subOut.team_player_id),
+        player_in_id: Number(playerIn.team_player_id),
+        current_period: data.game.current_period || period,
+        game_clock_seconds: remainingSeconds,
+      });
+      setMessage(`${subOut.full_name} subbed out; ${playerIn.full_name} subbed in.`);
+      setSubOut(null);
+      await load();
+    } catch (subError) {
+      setError(subError.response?.data?.message || 'Unable to record this substitution.');
+    } finally {
+      setSubBusy(false);
     }
   };
 
@@ -235,12 +261,33 @@ const GuestScoringConsole = () => {
     </form>
     {(message || error) && <div className={`courtside-alert ${error ? 'is-error' : ''}`} role={error ? 'alert' : 'status'}><i className={`bi ${error ? 'bi-exclamation-triangle' : 'bi-check-circle'}`}/>{error || message}<button type="button" onClick={() => { setError(''); setMessage(''); }}>×</button></div>}
     <div className="courtside-workspace">
-      <aside><span className="score-kicker">ACTIVE ROSTERS</span><h3>Select a player</h3>
-        {teams.map((team) => <section key={team.id}><h4>{team.name}</h4>{data.players.filter((player) => Number(player.team_id) === Number(team.id)).map((player) =>
-          <button className={selected?.team_player_id === player.team_player_id ? 'active' : ''} onClick={() => setSelected(player)} key={player.team_player_id}>
-            <span>#{player.jersey_number || '—'}</span><div><b>{player.full_name}</b><small>{player.position || 'Player'} · {Math.round((player.seconds_played || 0) / 6) / 10} min</small></div>{Number(player.is_on_court) === 1 && <i>ON</i>}
-          </button>)}
-        </section>)}
+      <aside><span className="score-kicker">GAME ROSTERS</span><h3>Players &amp; substitutions</h3>
+        <p className="courtside-roster-help">All roster players are shown. Only verified, present players can be scored.</p>
+        {teams.map((team) => {
+          const roster = data.players.filter((player) => Number(player.team_id) === Number(team.id));
+          const available = roster.filter((player) => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
+          const onCourt = available.filter((player) => Number(player.is_on_court) === 1);
+          const bench = available.filter((player) => Number(player.is_on_court) !== 1);
+          const unavailable = roster.filter((player) => player.eligibility_status !== 'verified' || Number(player.is_present) !== 1);
+          const playerRow = (player, location) => <div className={`courtside-roster-row ${player.eligibility_status !== 'verified' || Number(player.is_present) !== 1 ? 'is-locked' : ''}`} key={player.team_player_id}>
+            <button type="button" disabled={player.eligibility_status !== 'verified' || Number(player.is_present) !== 1} className={`courtside-player-pick ${selected?.team_player_id === player.team_player_id ? 'active' : ''}`} onClick={() => setSelected(player)}>
+              <span>#{player.jersey_number || '—'}</span><div><b>{player.full_name}</b><small>{player.position || 'Player'} · {Math.round((player.seconds_played || 0) / 6) / 10} min</small></div>
+              {player.eligibility_status !== 'verified' || Number(player.is_present) !== 1
+                ? <i className="roster-status">{player.eligibility_status === 'verified' ? 'ABSENT' : (player.eligibility_status || 'PENDING').replaceAll('_', ' ').toUpperCase()}</i>
+                : <i className="roster-status is-ready">{location === 'court' ? 'ON COURT' : 'BENCH'}</i>}
+            </button>
+            {location === 'court' && player.eligibility_status === 'verified' && <button type="button" className={`roster-sub-action ${subOut?.team_player_id === player.team_player_id ? 'is-selected' : ''}`} disabled={subBusy} onClick={() => setSubOut(subOut?.team_player_id === player.team_player_id ? null : player)}>{subOut?.team_player_id === player.team_player_id ? 'Selected out' : 'Sub out'}</button>}
+            {location === 'bench' && player.eligibility_status === 'verified' && <button type="button" className="roster-sub-action is-in" disabled={subBusy || !subOut || Number(subOut.team_id) !== Number(player.team_id)} onClick={() => substitute(player)}>{subBusy ? 'Saving…' : 'Swap in'}</button>}
+          </div>;
+          return <section className="courtside-team-roster" key={team.id}><h4>{team.name} <small>{available.length} eligible</small></h4>
+            <div className="roster-group-heading">ON COURT <span>{onCourt.length}/5</span></div>
+            {onCourt.length ? onCourt.map((player) => playerRow(player, 'court')) : <p className="roster-empty">Starting lineup not confirmed yet.</p>}
+            <div className="roster-group-heading">BENCH <span>{bench.length}</span></div>
+            {bench.length ? bench.map((player) => playerRow(player, 'bench')) : <p className="roster-empty">No eligible bench players.</p>}
+            {!!unavailable.length && <><div className="roster-group-heading is-muted">NOT CLEARED <span>{unavailable.length}</span></div>{unavailable.map((player) => playerRow(player, 'locked'))}</>}
+          </section>;
+        })}
+        <p className="courtside-sub-hint">{subOut ? `Choose a bench player from ${subOut.team_name} to complete the substitution.` : 'Choose “Sub out” beside an on-court player to make a substitution.'}</p>
       </aside>
       <section className="courtside-actions">
         <div className="selected-player"><div><span className="score-kicker">RECORDING FOR</span><h2>{selected ? `#${selected.jersey_number || '—'} ${selected.full_name}` : 'Select a player'}</h2><p>{selected?.team_name || 'Choose an active roster player to begin.'}</p></div><i className="bi bi-person-bounding-box"/></div>

@@ -95,11 +95,11 @@ class GameOperations {
     }
 
     public function lineup(int $matchId): array {
-        $stmt=$this->db->prepare("SELECT tp.id team_player_id,tp.team_id,tp.user_id,tp.jersey_number,tp.position,
+        $stmt=$this->db->prepare("SELECT tp.id team_player_id,tp.team_id,tp.user_id,tp.jersey_number,tp.position,tp.eligibility_status,
             u.full_name,tm.team_name,COALESCE(gl.is_present,1) is_present,COALESCE(gl.is_starter,0) is_starter,
-            COALESCE(pgm.seconds_played,0) seconds_played,COALESCE(pgm.is_on_court,0) is_on_court
+            COALESCE(pgm.seconds_played,0) seconds_played,COALESCE(pgm.is_on_court,CASE WHEN COALESCE(gl.is_present,1)=1 THEN COALESCE(gl.is_starter,0) ELSE 0 END,0) is_on_court
             FROM matches m JOIN teams tm ON tm.id IN (m.team1_id,m.team2_id)
-            JOIN team_players tp ON tp.team_id=tm.id AND tp.eligibility_status='verified'
+            JOIN team_players tp ON tp.team_id=tm.id
             JOIN users u ON u.id=tp.user_id LEFT JOIN game_lineups gl ON gl.match_id=m.id AND gl.team_player_id=tp.id
             LEFT JOIN player_game_minutes pgm ON pgm.match_id=m.id AND pgm.team_player_id=tp.id
             WHERE m.id=:match_id ORDER BY tm.id,tp.jersey_number,u.full_name");
@@ -110,6 +110,19 @@ class GameOperations {
         $elapsed=max(0,(max(1,$period)-1)*600+(600-max(0,min(600,$clock))));
         $this->db->beginTransaction();
         try {
+            $roster=$this->db->prepare("SELECT tp.id,tp.team_id,tp.eligibility_status,COALESCE(gl.is_present,1) is_present
+                FROM team_players tp JOIN matches m ON tp.team_id IN (m.team1_id,m.team2_id)
+                LEFT JOIN game_lineups gl ON gl.match_id=m.id AND gl.team_player_id=tp.id
+                WHERE m.id=:match_id AND tp.id IN (:out_id,:in_id)");
+            $roster->execute([':match_id'=>$matchId,':out_id'=>$playerOutId,':in_id'=>$playerInId]);$eligible=$roster->fetchAll(PDO::FETCH_UNIQUE|PDO::FETCH_ASSOC);
+            if(empty($eligible[$playerOutId])||empty($eligible[$playerInId])||$eligible[$playerOutId]['eligibility_status']!=='verified'||$eligible[$playerInId]['eligibility_status']!=='verified'||(int)$eligible[$playerOutId]['is_present']!==1||(int)$eligible[$playerInId]['is_present']!==1||(int)$eligible[$playerOutId]['team_id']!==(int)$eligible[$playerInId]['team_id']) throw new InvalidArgumentException('Substitutions are allowed only between verified, present players on the same team.');
+            $initialize=$this->db->prepare("INSERT INTO player_game_minutes (match_id,team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court)
+                SELECT m.id,tp.id,0,CASE WHEN COALESCE(gl.is_starter,0)=1 AND COALESCE(gl.is_present,1)=1 THEN 0 ELSE NULL END,
+                    CASE WHEN COALESCE(gl.is_present,1)=1 THEN COALESCE(gl.is_starter,0) ELSE 0 END
+                FROM matches m JOIN team_players tp ON tp.team_id IN (m.team1_id,m.team2_id) AND tp.eligibility_status='verified'
+                LEFT JOIN game_lineups gl ON gl.match_id=m.id AND gl.team_player_id=tp.id
+                WHERE m.id=:match_id ON CONFLICT (match_id,team_player_id) DO NOTHING");
+            $initialize->execute([':match_id'=>$matchId]);
             $lock=$this->db->prepare("SELECT team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court FROM player_game_minutes WHERE match_id=:match_id AND team_player_id IN (:out_id,:in_id) FOR UPDATE");
             $lock->execute([':match_id'=>$matchId,':out_id'=>$playerOutId,':in_id'=>$playerInId]);$rows=$lock->fetchAll(PDO::FETCH_UNIQUE|PDO::FETCH_ASSOC);
             if(empty($rows[$playerOutId])||empty($rows[$playerInId])||!(int)$rows[$playerOutId]['is_on_court']||(int)$rows[$playerInId]['is_on_court']) throw new InvalidArgumentException('Select one on-court player out and one bench player in.');
@@ -139,6 +152,16 @@ class GameOperations {
 
     private function recordStatWithinTransaction(int $matchId,array $data,int $userId):int {
             $points = ['2pt_made'=>2,'3pt_made'=>3,'ft_made'=>1][$data['event_type']] ?? 0;
+            $teamId=(int)($data['team_id']??0);$playerId=(int)($data['team_player_id']??0);
+            $match=$this->db->prepare("SELECT 1 FROM matches WHERE id=:match_id AND :team_id IN (team1_id,team2_id) AND status NOT IN ('completed','cancelled','awaiting_confirmation')");
+            $match->execute([':match_id'=>$matchId,':team_id'=>$teamId]);
+            if(!$match->fetchColumn()) throw new InvalidArgumentException('This team cannot be scored in the selected game.');
+            if($playerId>0){
+                $player=$this->db->prepare("SELECT 1 FROM team_players tp LEFT JOIN game_lineups gl ON gl.match_id=:match_id AND gl.team_player_id=tp.id
+                    WHERE tp.id=:player_id AND tp.team_id=:team_id AND tp.eligibility_status='verified' AND COALESCE(gl.is_present,1)=1");
+                $player->execute([':match_id'=>$matchId,':player_id'=>$playerId,':team_id'=>$teamId]);
+                if(!$player->fetchColumn()) throw new InvalidArgumentException('Only verified players on the selected team can receive game statistics.');
+            } elseif(($data['event_type']??'')!=='timeout') throw new InvalidArgumentException('Select an eligible player before recording this statistic.');
             $stmt = $this->db->prepare("INSERT INTO basketball_stat_events
                 (event_uuid,match_id,team_id,team_player_id,event_type,period,game_clock_seconds,metadata_json,recorded_by)
                 VALUES (:uuid,:match_id,:team_id,:player_id,:type,:period,:clock,:metadata,:recorded_by)");

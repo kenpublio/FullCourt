@@ -8,6 +8,7 @@ const CARD_TYPES = [
   { value: 'final_score', label: 'Final score', icon: 'bi-trophy' },
   { value: 'standings', label: 'Tournament standings', icon: 'bi-bar-chart-line' },
   { value: 'player', label: 'Player spotlight', icon: 'bi-person-bounding-box' },
+  { value: 'player_of_game', label: 'Player of the Game', icon: 'bi-stars' },
   { value: 'award', label: 'Award winner', icon: 'bi-award' },
 ];
 
@@ -44,8 +45,9 @@ const ShareCards = () => {
   const tournamentStandings = useMemo(() => data.standings.filter((row) => row.tournament_name === tournament?.name || String(row.tournament_id) === tournamentId), [data.standings, tournament, tournamentId]);
   const confirmedAwards = useMemo(() => awards.filter((award) => award.status === 'confirmed' && award.user_id), [awards]);
   const selectedAward = confirmedAwards[0];
-  const selectedPlayer = boxScore[0];
-  const ready = Boolean(tournament && (type === 'final_score' ? selectedMatch : type === 'standings' ? tournamentStandings.length : type === 'award' ? selectedAward : selectedPlayer));
+  const selectedPlayer = type === 'player_of_game' ? pickPlayerOfGame(boxScore) : boxScore[0];
+  const needsFinalMatch = ['final_score', 'player', 'player_of_game'].includes(type);
+  const ready = Boolean(tournament && (needsFinalMatch ? selectedMatch && (!['player', 'player_of_game'].includes(type) || selectedPlayer) : type === 'standings' ? tournamentStandings.length : type === 'award' ? selectedAward : selectedPlayer));
 
   useEffect(() => {
     if (!tournamentId) { setAwards([]); return undefined; }
@@ -116,12 +118,12 @@ const ShareCards = () => {
           <label className="share-field"><span>Tournament</span><select className="form-select" aria-label="Select tournament for share card" value={tournamentId} onChange={(event) => changeTournament(event.target.value)}>
             {data.tournaments.length ? data.tournaments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>) : <option value="">No tournaments available</option>}
           </select></label>
-          {type === 'final_score' && <label className="share-field"><span>Final game</span><select className="form-select" aria-label="Select completed game for share card" value={matchId} onChange={(event) => setMatchId(event.target.value)}>
+          {needsFinalMatch && <label className="share-field"><span>Completed game</span><select className="form-select" aria-label="Select completed game for share card" value={matchId} onChange={(event) => setMatchId(event.target.value)}>
             {finalMatches.length ? finalMatches.map((match) => <option value={match.id} key={match.id}>{match.team1_name} vs {match.team2_name}</option>) : <option value="">No completed games yet</option>}
           </select></label>}
-          <div className="share-data-note"><i className="bi bi-patch-check-fill" /><span><b>Official data only</b><small>Scores, standings and confirmed honors.</small></span></div>
+          <div className="share-data-note"><i className="bi bi-patch-check-fill" /><span><b>Official data only</b><small>{type === 'player_of_game' ? 'Finalized game stats determine the performance leader.' : 'Scores, standings and confirmed honors.'}</small></span></div>
           <div className="share-editor-actions"><button className="btn share-download-btn" disabled={!ready} onClick={download}><i className="bi bi-download" /> Download PNG</button><button className="btn share-facebook-btn" disabled={!ready} onClick={shareOnFacebook}><i className="bi bi-facebook" /> Share on Facebook</button></div>
-          {!ready && <p className="share-unavailable"><i className="bi bi-info-circle" />{unavailableMessage(type, data.tournaments.length, finalMatches.length, tournamentStandings.length, confirmedAwards.length)}</p>}
+          {!ready && <p className="share-unavailable"><i className="bi bi-info-circle" />{unavailableMessage(type, data.tournaments.length, finalMatches.length, tournamentStandings.length, confirmedAwards.length, boxScore.length)}</p>}
           {notice && <p className="share-notice" role="status"><i className="bi bi-check-circle-fill" />{notice}</p>}
           {error && <p className="share-error" role="alert"><i className="bi bi-exclamation-triangle-fill" />{error}</p>}
         </section>
@@ -138,11 +140,13 @@ const ShareCards = () => {
 
 function isFinal(match) { return ['completed', 'final', 'finished'].includes(String(match.status || '').toLowerCase()); }
 function slug(value) { return String(value || 'tournament').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
-function unavailableMessage(type, tournaments, games, standings, awards) {
+function unavailableMessage(type, tournaments, games, standings, awards, players = 0) {
   if (!tournaments) return 'Create or publish a tournament to start a share card.';
   if (type === 'final_score' && !games) return 'A card becomes available when a game has an official final score.';
   if (type === 'standings' && !standings) return 'Standings will appear after teams have recorded results.';
   if (type === 'award' && !awards) return 'Only confirmed award recipients can be published.';
+  if (['player', 'player_of_game'].includes(type) && !games) return 'Player cards are available after an official game is finalized.';
+  if (type === 'player_of_game' && !players) return 'The Player of the Game card needs official player statistics from the selected final.';
   if (type === 'player') return 'Player spotlight will be available when official game stats are recorded.';
   return 'Select available official tournament data to continue.';
 }
@@ -180,6 +184,7 @@ function drawCard(ctx, { type, tournament, match, standings, award, player }) {
   if (type === 'final_score' && match) drawFinal(ctx, match, red, gold);
   else if (type === 'standings' && standings.length) drawStandings(ctx, standings, red, gold);
   else if (type === 'award' && award) drawAward(ctx, award, red, gold);
+  else if (type === 'player_of_game' && player) drawPlayerOfGame(ctx, player, match, red, gold);
   else if (type === 'player' && player) drawPlayer(ctx, player, red, gold);
   else drawEmptyCard(ctx, type, red, gold);
 
@@ -224,6 +229,34 @@ function drawPlayer(ctx, player, red, gold) {
     ctx.fillStyle = red; ctx.font = '900 58px Arial'; ctx.fillText(String(value ?? 0), x + 22, 685);
     ctx.fillStyle = '#c9c4c8'; ctx.font = '800 17px Arial'; ctx.fillText(label, x + 24, 737);
   });
+}
+function pickPlayerOfGame(players) {
+  return [...players].sort((a, b) => impactScore(b) - impactScore(a)
+    || Number(b.points || 0) - Number(a.points || 0)
+    || Number(b.rebounds || 0) - Number(a.rebounds || 0)
+    || String(a.full_name || '').localeCompare(String(b.full_name || '')))[0] || null;
+}
+function impactScore(player) {
+  return Number(player.points || 0) + Number(player.rebounds || 0) * 1.2
+    + Number(player.assists || 0) * 1.5 + Number(player.steals || 0) * 2
+    + Number(player.blocks || 0) * 2 - Number(player.turnovers || 0);
+}
+function drawPlayerOfGame(ctx, player, match, red, gold) {
+  ctx.fillStyle = gold; ctx.font = '800 19px Arial'; ctx.fillText('PLAYER OF THE GAME  ·  STATISTICAL LEADER', 82, 376);
+  roundedRect(ctx, 82, 410, 916, 400, 24, 'rgba(255,255,255,.045)', 'rgba(241,198,91,.3)');
+  ctx.textAlign = 'center'; ctx.fillStyle = gold; ctx.font = '900 76px Arial'; ctx.fillText('★', 540, 510);
+  fitText(ctx, player.full_name || 'Game leader', 130, 585, 820, 48, '#fff', 900);
+  ctx.fillStyle = '#c3bdc2'; ctx.font = '700 22px Arial'; ctx.fillText(`${player.team_name || 'Tournament player'}  ·  #${player.jersey_number || '–'}`, 540, 630);
+  const metrics = [['PTS', player.points], ['REB', player.rebounds], ['AST', player.assists], ['STL', player.steals]];
+  metrics.forEach(([label, value], index) => {
+    const x = 111 + index * 222;
+    roundedRect(ctx, x, 665, 194, 105, 16, 'rgba(255,255,255,.055)', 'rgba(255,255,255,.1)');
+    ctx.fillStyle = red; ctx.font = '900 40px Arial'; ctx.fillText(String(value ?? 0), x + 97, 716);
+    ctx.fillStyle = '#c9c4c8'; ctx.font = '800 14px Arial'; ctx.fillText(label, x + 97, 747);
+  });
+  ctx.textAlign = 'left'; ctx.fillStyle = '#aaa4a9'; ctx.font = '700 17px Arial';
+  ctx.fillText(`${match?.team1_name || 'Home'}  ${match?.team1_score ?? 0}  —  ${match?.team2_score ?? 0}  ${match?.team2_name || 'Away'}`, 82, 862);
+  ctx.fillStyle = '#817b82'; ctx.font = '600 14px Arial'; ctx.fillText('Performance leader calculated from the finalized box score.', 82, 896);
 }
 function drawEmptyCard(ctx, type, red, gold) {
   ctx.textAlign = 'center'; ctx.fillStyle = gold; ctx.font = '900 78px Arial'; ctx.fillText('◎', 540, 525);

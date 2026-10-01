@@ -45,7 +45,8 @@ class ScoringAccessController {
         $access=$this->session();$in=$this->input();$allowed=['2pt_made','2pt_missed','3pt_made','3pt_missed','ft_made','ft_missed','off_rebound','def_rebound','assist','steal','block','turnover','personal_foul','timeout'];
         if(empty($in['event_uuid'])||empty($in['team_id'])||!in_array($in['event_type']??'',$allowed,true))Response::error('Select a player and a valid basketball statistic.',422);
         $in['period']=$this->periodNumber($in['current_period']??$in['period']??'Q1');
-        $id=$this->operations->recordStat((int)$access['match_id'],$in,(int)$access['created_by']);
+        try{$id=$this->operations->recordStat((int)$access['match_id'],$in,(int)$access['created_by']);}
+        catch(InvalidArgumentException $e){Response::error($e->getMessage(),422);}
         Response::success('Basketball statistic recorded',['id'=>$id],201);
     }
 

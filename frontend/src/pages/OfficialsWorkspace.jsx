@@ -9,6 +9,31 @@ import scoringAccessService from "../services/scoringAccessService";
 import "../styles/operations-polish.css";
 import "../styles/scorer-access.css";
 
+const copyToClipboard = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall back for browsers that block clipboard access on this page.
+    }
+  }
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  field.style.pointerEvents = 'none';
+  document.body.appendChild(field);
+  field.focus();
+  field.select();
+  field.setSelectionRange(0, field.value.length);
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch { copied = false; }
+  field.remove();
+  return copied;
+};
+
 const OfficialsWorkspace = () => {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState([]);
@@ -112,8 +137,10 @@ const OfficialsWorkspace = () => {
   };
   const copyScoringInvite = async () => {
     if(!scoringAccess)return;
-    await navigator.clipboard.writeText(`FullCourt scoring access\nLink: ${scoringAccess.url}\nPIN: ${scoringAccess.pin}\nFor: ${scoringAccess.operator_label}\nDo not forward this private game link.`);
-    setAssignmentMessage("Scoring link and PIN copied. You can now send it through Messenger or email.");
+    const copied = await copyToClipboard(`FullCourt scoring access\nLink: ${scoringAccess.url}\nPIN: ${scoringAccess.pin}\nFor: ${scoringAccess.operator_label}\nDo not forward this private game link.`);
+    setAssignmentMessage(copied
+      ? "Scoring link and PIN copied. You can now send them through Messenger or email."
+      : "Copy was blocked by this browser. Select the link or PIN above and copy it manually.");
   };
   const revokeScoringLink = async () => {
     if(!scoringAccess)return;await scoringAccessService.revoke(scoringAccess.id);setScoringAccess(null);setAssignmentMessage("The scoring link has been revoked and can no longer be used.");
@@ -169,7 +196,7 @@ const OfficialsWorkspace = () => {
           <label><span>Link expires after</span><select value={linkHours} onChange={event=>setLinkHours(event.target.value)}><option value="4">4 hours</option><option value="8">8 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label>
           <button disabled={linkBusy||!selectedMatch||!linkOperator.trim()}>{linkBusy?"Generating…":<><i className="bi bi-send-fill"/> Generate secure link</>}</button>
         </form>
-        {scoringAccess&&<div className="scoring-invite-card"><div><small>READY TO SEND</small><h5>{scoringAccess.operator_label}</h5><p>Expires {new Date(scoringAccess.expires_at).toLocaleString()}</p></div><label><span>Secure game link</span><input readOnly value={scoringAccess.url}/></label><div className="scoring-pin"><span>ACCESS PIN</span><strong>{scoringAccess.pin}</strong></div><div className="scoring-invite-actions"><button onClick={copyScoringInvite}><i className="bi bi-copy"/> Copy invitation</button><a href={scoringAccess.url} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"/> Preview</a><button className="danger" onClick={revokeScoringLink}><i className="bi bi-x-circle"/> Revoke</button></div><p className="scoring-link-warning"><i className="bi bi-exclamation-triangle"/> Send the link and PIN only to the designated scorer. Creating another link for this game automatically disables the previous one.</p></div>}
+        {scoringAccess&&<div className="scoring-invite-card"><div><small>READY TO SEND</small><h5>{scoringAccess.operator_label}</h5><p>Expires {new Date(scoringAccess.expires_at).toLocaleString()}</p></div><label><span>Secure game link</span><input readOnly value={scoringAccess.url}/></label><div className="scoring-pin"><span>ACCESS PIN</span><strong>{scoringAccess.pin}</strong></div><div className="scoring-invite-actions"><button type="button" onClick={copyScoringInvite}><i className="bi bi-copy"/> Copy invitation</button><a href={scoringAccess.url} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"/> Preview</a><button type="button" className="danger" onClick={revokeScoringLink}><i className="bi bi-x-circle"/> Revoke</button></div><p className="scoring-link-warning"><i className="bi bi-exclamation-triangle"/> Send the link and PIN only to the designated scorer. Creating another link for this game automatically disables the previous one.</p></div>}
       </section>}
       <div className="nav nav-pills gap-2 mb-4">
         <button

@@ -97,6 +97,27 @@
 .courtside-workspace > aside, .courtside-actions { min-width: 0; border: 1px solid var(--court-line); border-radius: 12px; background: var(--court-panel); }
 .courtside-workspace > aside { padding: 19px; }
 .courtside-workspace > aside > h3 { margin: 6px 0 18px; font-size: 1.12rem; }
+.courtside-roster-help, .courtside-sub-hint { color: #a8b5c0; font-size: .68rem; line-height: 1.5; }
+.courtside-roster-help { margin: -9px 0 18px; }
+.courtside-workspace > aside .courtside-team-roster h4 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; color: #e4ebf0; font-size: .72rem; letter-spacing: .03em; }
+.courtside-team-roster h4 small { color: #92a3b1; font-size: .6rem; font-weight: 600; letter-spacing: 0; }
+.roster-group-heading { display: flex; justify-content: space-between; margin: 12px 0 7px; color: #74dba9; font-size: .57rem; font-weight: 900; letter-spacing: .11em; }
+.roster-group-heading span { color: #9dafbb; letter-spacing: 0; }
+.roster-group-heading.is-muted { color: #e3b65d; }
+.roster-empty { margin: 0 0 8px; padding: 9px; border: 1px dashed rgba(226,239,249,.14); border-radius: 7px; color: #8999a6; font-size: .64rem; }
+.courtside-roster-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; align-items: stretch; margin-bottom: 6px; }
+.courtside-workspace > aside .courtside-team-roster .courtside-player-pick { min-width: 0; min-height: 52px; margin: 0; padding: 7px; }
+.courtside-player-pick > span { flex-basis: 32px !important; width: 32px !important; height: 32px !important; }
+.courtside-player-pick > div { flex: 1; }
+.courtside-workspace > aside .courtside-team-roster .roster-status { max-width: 73px; color: #75dfa9; font-size: .5rem; line-height: 1.25; text-align: right; }
+.courtside-workspace > aside .courtside-team-roster .roster-status.is-ready { color: #96a8b7; }
+.courtside-workspace > aside .courtside-team-roster .is-locked .courtside-player-pick { border-color: rgba(226,239,249,.08); background: #151f28; color: #81909c; cursor: not-allowed; opacity: .75; }
+.courtside-workspace > aside .courtside-team-roster .is-locked .roster-status { color: #f0c168; }
+.courtside-workspace > aside .courtside-team-roster .roster-sub-action { width: auto; min-width: 58px; min-height: 32px; align-self: center; margin: 0; padding: 5px 7px; border-color: rgba(231,118,64,.28); background: rgba(231,118,64,.1); color: #ffb078; font-size: .56rem; font-weight: 800; text-align: center; }
+.courtside-workspace > aside .courtside-team-roster .roster-sub-action.is-selected { border-color: #f4b45a; background: rgba(244,180,90,.2); color: #ffdb9a; }
+.courtside-workspace > aside .courtside-team-roster .roster-sub-action.is-in { border-color: rgba(54,199,138,.28); background: rgba(54,199,138,.1); color: #82e1b2; }
+.courtside-workspace > aside .courtside-team-roster .roster-sub-action:disabled { opacity: .38; cursor: not-allowed; }
+.courtside-sub-hint { margin: 14px 0 0; padding: 9px; border-left: 2px solid var(--court-orange); background: rgba(255,255,255,.025); }
 .courtside-workspace > aside section + section { margin-top: 21px; }
 .courtside-workspace > aside h4 { margin-bottom: 8px; color: #a9b7c3; font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
 .courtside-workspace > aside section button { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 10px; margin-bottom: 7px; padding: 9px; border: 1px solid transparent; border-radius: 8px; background: #1c2a37; color: #f5f7fa; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }

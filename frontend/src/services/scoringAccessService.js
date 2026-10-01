@@ -12,5 +12,6 @@ const scoringAccessService={
   async console(session){return(await guest.get('/scoring-session/console',sessionConfig(session))).data?.data;},
   async stat(session,payload){return(await guest.post('/scoring-session/stats',payload,sessionConfig(session))).data;},
   async updateClock(session,payload){return(await guest.put('/scoring-session/clock',payload,sessionConfig(session))).data?.data;},
+  async substitute(session,payload){return(await guest.post('/scoring-session/substitutions',payload,sessionConfig(session))).data;},
 };
 export default scoringAccessService;
