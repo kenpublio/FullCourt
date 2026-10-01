@@ -23,28 +23,16 @@ class Payment {
     }
 
     public function getForUser(int $userId, string $role): array {
-        if (in_array($role, ['coach','coach_manager'], true)) {
-            $sql = "SELECT p.*, tm.team_name, t.name AS tournament_name, u.full_name AS verifier_name
-                    FROM payments p
-                    JOIN teams tm ON p.team_id = tm.id
-                    JOIN tournaments t ON p.tournament_id = t.id
-                    LEFT JOIN users u ON p.verified_by = u.id
-                    WHERE tm.coach_user_id = :coachId OR tm.manager_user_id = :managerId
-                    ORDER BY p.created_at DESC";
-        } else {
-            $sql = "SELECT DISTINCT p.*, tm.team_name, t.name AS tournament_name, v.full_name AS verifier_name
-                    FROM payments p
-                    JOIN teams tm ON p.team_id = tm.id
-                    JOIN tournaments t ON p.tournament_id = t.id
-                    JOIN team_players tp ON tp.team_id = tm.id
-                    LEFT JOIN users v ON p.verified_by = v.id
-                    WHERE tp.user_id = :userId AND tp.eligibility_status = 'verified'
-                    ORDER BY p.created_at DESC";
-        }
+        if (!in_array($role, ['coach','coach_manager'], true)) return [];
+        $sql = "SELECT p.*, tm.team_name, t.name AS tournament_name, u.full_name AS verifier_name
+                FROM payments p
+                JOIN teams tm ON p.team_id = tm.id
+                JOIN tournaments t ON p.tournament_id = t.id
+                LEFT JOIN users u ON p.verified_by = u.id
+                WHERE tm.coach_user_id = :coachId OR tm.manager_user_id = :managerId
+                ORDER BY p.created_at DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(in_array($role, ['coach','coach_manager'], true)
-            ? [':coachId' => $userId, ':managerId' => $userId]
-            : [':userId' => $userId]);
+        $stmt->execute([':coachId' => $userId, ':managerId' => $userId]);
         return $stmt->fetchAll();
     }
 
@@ -60,13 +48,11 @@ class Payment {
     public function validateSubmission(int $teamId,int $tournamentId,int $userId,string $role,string $reference,float $amount): array {
         $duplicate=$this->db->prepare("SELECT id FROM payments WHERE LOWER(reference_number)=LOWER(:reference) LIMIT 1");
         $duplicate->execute([':reference'=>$reference]);if($duplicate->fetch())return ['valid'=>false,'message'=>'This payment reference number has already been submitted.'];
-        $stmt=$this->db->prepare("SELECT tm.coach_user_id,tm.manager_user_id,t.registration_fee,
-            EXISTS(SELECT 1 FROM team_players tp WHERE tp.team_id=tm.id AND tp.user_id=:player AND tp.eligibility_status='verified') player_member
+        $stmt=$this->db->prepare("SELECT tm.coach_user_id,tm.manager_user_id,t.registration_fee
             FROM teams tm JOIN tournaments t ON t.id=tm.tournament_id WHERE tm.id=:team AND t.id=:tournament");
-        $stmt->execute([':player'=>$userId,':team'=>$teamId,':tournament'=>$tournamentId]);$row=$stmt->fetch();
+        $stmt->execute([':team'=>$teamId,':tournament'=>$tournamentId]);$row=$stmt->fetch();
         if(!$row)return ['valid'=>false,'message'=>'The selected team does not belong to this tournament.'];
         if(in_array($role,['coach','coach_manager'],true)&&(int)$row['coach_user_id']!==$userId&&(int)($row['manager_user_id']??0)!==$userId)return ['valid'=>false,'message'=>'You can only submit a payment for your own team.'];
-        if($role==='player'&&!$row['player_member'])return ['valid'=>false,'message'=>'You can only submit a payment for your verified team.'];
         $pending=$this->db->prepare("SELECT id FROM payments WHERE team_id=:team_id AND tournament_id=:tournament_id AND status IN ('pending','approved') LIMIT 1");
         $pending->execute([':team_id'=>$teamId,':tournament_id'=>$tournamentId]);
         if($pending->fetch())return ['valid'=>false,'message'=>'This team already has a pending or approved payment for this tournament.'];
@@ -90,16 +76,10 @@ class Payment {
     }
 
     public function belongsToUser(int $paymentId, int $userId, string $role): bool {
-        if (in_array($role,['coach','coach_manager'],true)) {
-            $sql = "SELECT p.id FROM payments p
-                    JOIN teams tm ON p.team_id = tm.id
-                    WHERE p.id = :pid AND (tm.coach_user_id = :uid OR tm.manager_user_id = :uid) LIMIT 1";
-        } else {
-            $sql = "SELECT p.id FROM payments p
-                    JOIN teams tm ON p.team_id = tm.id
-                    JOIN team_players tp ON tp.team_id = tm.id
-                    WHERE p.id = :pid AND tp.user_id = :uid AND tp.eligibility_status = 'verified' LIMIT 1";
-        }
+        if (!in_array($role,['coach','coach_manager'],true)) return false;
+        $sql = "SELECT p.id FROM payments p
+                JOIN teams tm ON p.team_id = tm.id
+                WHERE p.id = :pid AND (tm.coach_user_id = :uid OR tm.manager_user_id = :uid) LIMIT 1";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':pid' => $paymentId, ':uid' => $userId]);
         return (bool) $stmt->fetch();

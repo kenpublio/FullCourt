@@ -14,7 +14,7 @@ const receiptUrl = (path) => {
 
 const PaymentVerificationView = () => {
   const { user } = useAuth();
-  const canSubmitPayment = ['platform_admin','admin','coach','coach_manager','player'].includes(user?.role);
+  const canSubmitPayment = ['platform_admin','admin','coach','coach_manager'].includes(user?.role);
   const canVerifyPayment = ['platform_admin','admin','finance_officer','organization_admin','tournament_organizer'].includes(user?.role);
   const isCoach = ['coach','coach_manager'].includes(user?.role);
   const [payments, setPayments] = useState([]);

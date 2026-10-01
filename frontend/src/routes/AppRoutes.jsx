@@ -33,7 +33,6 @@ const PublicSportsPortal = lazy(() => import('../pages/PublicSportsPortal'));
 const PublicTournamentDetails = lazy(() => import('../pages/PublicTournamentDetails'));
 const VenueManagement = lazy(() => import('../pages/VenueManagement'));
 const SportsHistory = lazy(() => import('../pages/SportsHistory'));
-const PlayerPayments = lazy(() => import('../pages/PlayerPayments'));
 const OrganizationManagement = lazy(() => import('../pages/OrganizationManagement'));
 const OfficialsWorkspace = lazy(() => import('../pages/OfficialsWorkspace'));
 const AwardsManagement = lazy(() => import('../pages/AwardsManagement'));
@@ -113,7 +112,6 @@ const AppRoutes = () => {
         <Route path="/game-day" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><GameDayOperations /></ProtectedRoute>} />
         <Route path="/notifications" element={<NotificationsView />} />
         <Route path="/history" element={<ProtectedRoute allowedRoles={['player']}><SportsHistory /></ProtectedRoute>} />
-        <Route path="/my-payments" element={<ProtectedRoute allowedRoles={['player']}><PlayerPayments /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']}><ReportsAnalyticsView /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','player']}><SettingsView /></ProtectedRoute>} />
       </Route>
