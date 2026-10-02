@@ -11,6 +11,11 @@ export const tournamentService = {
     return res.data;
   },
 
+  async reviewTournament(id, status, notes = '') {
+    const res = await api.put(`/tournaments/${id}/review`, { status, notes });
+    return res.data;
+  },
+
   async deleteTournament(id) {
     const res = await api.delete(`/tournaments/${id}`);
     return res.data;

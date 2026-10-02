@@ -73,6 +73,197 @@
 .app-footer-badge { color: #8f210e; }
 .bg-success-subtle.text-success { color: #146c43 !important; }
 .court-site .hub-team-top > span:first-child { color: #666672; }
+
+/* Unified product-wide appearance tokens. Page-specific accents remain intact,
+   while shared surfaces, controls, navigation and tables stay consistent. */
+:root[data-fullcourt-theme="light"] {
+  color-scheme: light;
+  --surface-bg: #f2f4f7;
+  --surface-card: #ffffff;
+  --surface-card-hover: #f8fafc;
+  --surface-border: #dce2e9;
+  --surface-border-soft: rgba(49, 66, 86, .1);
+  --text-primary: #17212f;
+  --text-secondary: #526173;
+  --text-muted: #657386;
+  --sidebar-bg-top: #ffffff;
+  --sidebar-bg-bottom: #f6f8fb;
+  --sidebar-link: #526173;
+  --sidebar-link-hover: #17212f;
+  --sidebar-active-bg: #fff0eb;
+  --shadow-xs: 0 1px 3px rgba(27,39,54,.045);
+  --shadow-sm: 0 5px 16px rgba(27,39,54,.055);
+  --shadow-md: 0 12px 28px rgba(27,39,54,.085);
+  --bs-body-bg: var(--surface-bg);
+  --bs-body-color: var(--text-primary);
+  --bs-border-color: var(--surface-border);
+}
+:root[data-fullcourt-theme="dark"] {
+  color-scheme: dark;
+  --surface-bg: #101216;
+  --surface-card: #191c22;
+  --surface-card-hover: #20252d;
+  --surface-border: #303741;
+  --surface-border-soft: rgba(221,229,239,.11);
+  --text-primary: #f3f5f8;
+  --text-secondary: #c0c8d3;
+  --text-muted: #a4afbd;
+  --sidebar-bg-top: #191c22;
+  --sidebar-bg-bottom: #111318;
+  --sidebar-link: #c0c8d3;
+  --sidebar-link-hover: #ffffff;
+  --sidebar-active-bg: rgba(220,50,29,.15);
+  --shadow-xs: 0 1px 3px rgba(0,0,0,.24);
+  --shadow-sm: 0 5px 16px rgba(0,0,0,.24);
+  --shadow-md: 0 12px 28px rgba(0,0,0,.32);
+  --bs-body-bg: var(--surface-bg);
+  --bs-body-color: var(--text-primary);
+  --bs-border-color: var(--surface-border);
+}
+:root[data-fullcourt-theme="light"] body,
+:root[data-fullcourt-theme="dark"] body { background: var(--surface-bg); color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .main-content,
+:root[data-fullcourt-theme="dark"] .main-content { background: var(--surface-bg); color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-wrapper {
+  color: var(--text-primary);
+  background: linear-gradient(180deg,var(--sidebar-bg-top),var(--sidebar-bg-bottom));
+  border-color: var(--surface-border);
+}
+:root[data-fullcourt-theme="dark"] .app-container:not(.admin-console) .sidebar-wrapper {
+  color: var(--text-primary);
+  background: linear-gradient(180deg,var(--sidebar-bg-top),var(--sidebar-bg-bottom));
+  border-color: var(--surface-border);
+}
+:root[data-fullcourt-theme] .app-container:not(.admin-console) .sidebar-link { color: var(--sidebar-link); }
+:root[data-fullcourt-theme] .app-container:not(.admin-console) .sidebar-link:hover { color: var(--sidebar-link-hover); }
+:root[data-fullcourt-theme] .app-container:not(.admin-console) .sidebar-link.active { background: var(--sidebar-active-bg); }
+:root[data-fullcourt-theme="dark"] .app-container:not(.admin-console) .top-navbar {
+  color: var(--text-primary);
+  background: rgba(25,28,34,.94);
+  border-color: var(--surface-border);
+  box-shadow: 0 3px 14px rgba(0,0,0,.16);
+}
+:root[data-fullcourt-theme="dark"] .app-page .card,
+:root[data-fullcourt-theme="dark"] .app-page .card-custom,
+:root[data-fullcourt-theme="dark"] .app-page .modal-content,
+:root[data-fullcourt-theme="dark"] .app-page .list-group-item {
+  color: var(--text-primary);
+  background-color: var(--surface-card);
+  border-color: var(--surface-border);
+}
+:root[data-fullcourt-theme="light"] .app-page .card,
+:root[data-fullcourt-theme="light"] .app-page .card-custom,
+:root[data-fullcourt-theme="light"] .app-page .modal-content,
+:root[data-fullcourt-theme="light"] .app-page .list-group-item {
+  color: var(--text-primary);
+  background-color: var(--surface-card);
+  border-color: var(--surface-border);
+}
+:root[data-fullcourt-theme="light"] .app-page .form-control,
+:root[data-fullcourt-theme="light"] .app-page .form-select,
+:root[data-fullcourt-theme="light"] .app-page .input-group-text {
+  color: var(--text-primary);
+  background-color: #fff;
+  border-color: #cfd7e0;
+}
+:root[data-fullcourt-theme="dark"] .app-page .form-control,
+:root[data-fullcourt-theme="dark"] .app-page .form-select,
+:root[data-fullcourt-theme="dark"] .app-page .input-group-text {
+  color: var(--text-primary);
+  background-color: #20242b;
+  border-color: #39414c;
+}
+:root[data-fullcourt-theme="dark"] .app-page .form-control::placeholder { color: #9aa5b3; opacity: 1; }
+:root[data-fullcourt-theme="light"] .app-page .form-control::placeholder { color: #657386; opacity: .85; }
+:root[data-fullcourt-theme] .app-page .form-control:focus,
+:root[data-fullcourt-theme] .app-page .form-select:focus {
+  border-color: #c94734;
+  box-shadow: 0 0 0 .2rem rgba(205,45,23,.14);
+}
+:root[data-fullcourt-theme="dark"] .app-page .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
+  --bs-table-border-color: var(--surface-border);
+  --bs-table-striped-bg: rgba(255,255,255,.025);
+  --bs-table-hover-bg: rgba(255,255,255,.045);
+}
+:root[data-fullcourt-theme="light"] .app-page .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
+  --bs-table-border-color: var(--surface-border);
+  --bs-table-striped-bg: #f7f9fb;
+  --bs-table-hover-bg: #f3f6f9;
+}
+:root[data-fullcourt-theme="dark"] .app-page :is(.table-light, .table thead th) {
+  --bs-table-bg: #22262d;
+  --bs-table-color: #e8edf4;
+  background: #22262d;
+  color: #e8edf4;
+}
+:root[data-fullcourt-theme="light"] .app-page :is(.table-light, .table thead th) {
+  --bs-table-bg: #edf1f5;
+  --bs-table-color: #3e4b5b;
+  background: #edf1f5;
+  color: #3e4b5b;
+}
+.admin-console {
+  --admin-accent: #c8321d;
+}
+.admin-console:not(.admin-console-dark) {
+  --admin-bg: #f2f4f7;
+  --admin-panel: #fff;
+  --admin-panel-soft: #f7f9fb;
+  --admin-border: #dce2e9;
+  --admin-text: #17212f;
+  --admin-muted: #526173;
+}
+.admin-console-dark {
+  --admin-bg: #101216;
+  --admin-panel: #191c22;
+  --admin-panel-soft: #20252d;
+  --admin-border: #303741;
+  --admin-text: #f3f5f8;
+  --admin-muted: #a4afbd;
+  --admin-accent: #ff896f;
+}
+.admin-console .sidebar-wrapper,
+.admin-console .top-navbar { border-color: var(--admin-border); }
+.admin-console .app-page { background: var(--admin-bg); color: var(--admin-text); }
+.admin-console .card-custom,
+.admin-console .app-page .card { color: var(--admin-text); background: var(--admin-panel); border-color: var(--admin-border); }
+.admin-console-dark :is(.form-control, .form-select, .input-group-text) {
+  color: var(--admin-text);
+  background: #20242b;
+  border-color: #39414c;
+}
+.admin-console-light :is(.form-control, .form-select, .input-group-text) {
+  color: var(--admin-text);
+  background: #fff;
+  border-color: #cfd7e0;
+}
+.admin-console :is(.form-control, .form-select):focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 .2rem rgba(205,45,23,.14);
+}
+.admin-console .table {
+  --bs-table-color: var(--admin-text);
+  --bs-table-border-color: var(--admin-border);
+}
+.admin-console-light .table { --bs-table-bg: transparent; --bs-table-striped-bg: #f7f9fb; --bs-table-hover-bg: #f3f6f9; }
+.admin-console-dark .table { --bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,.025); --bs-table-hover-bg: rgba(255,255,255,.045); }
+.user-theme-toggle { color: var(--text-primary) !important; background: var(--surface-card) !important; border-color: var(--surface-border) !important; }
+.user-theme-toggle:hover { color: #fff !important; background: #c8321d !important; border-color: #c8321d !important; }
+:root[data-fullcourt-theme] :is(a, button, input, select, textarea):focus-visible,
+.admin-console :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(205,45,23,.32);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-fullcourt-theme] .app-page :is(.card-custom, .card, .list-group-item),
+  :root[data-fullcourt-theme] .app-page .table tbody tr {
+    transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+  }
+}
 :root[data-fullcourt-theme] .admin-console .text-muted,
 :root[data-fullcourt-theme] .admin-console .form-text,
 :root[data-fullcourt-theme] .admin-console .text-secondary { color: var(--admin-muted) !important; }

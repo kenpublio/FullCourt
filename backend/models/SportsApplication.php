@@ -26,7 +26,7 @@ class SportsApplication {
                 JOIN tournaments t ON tm.tournament_id = t.id
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON tm.coach_user_id = u.id
-                WHERE t.status IN ('upcoming','ongoing') AND tm.status='registered'
+                WHERE t.approval_status='approved' AND t.status IN ('upcoming','ongoing') AND tm.status='registered'
                 ORDER BY CASE t.status WHEN 'ongoing' THEN 1 ELSE 2 END, t.start_date ASC, s.name ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':mineUserId' => $userId, ':mineIdUserId' => $userId]);

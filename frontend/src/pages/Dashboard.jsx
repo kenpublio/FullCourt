@@ -158,12 +158,12 @@ const Dashboard = () => {
           <div className="role-hero-topline mb-3">
             <span className="role-hero-eyebrow"><i className="bi bi-dribbble" /> {roleEyebrow}</span>
           </div>
-          <h3 className="fw-bold text-white mb-1" style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem' }}>
+          <h3 className="fw-bold mb-1 dashboard-welcome-title">
             Welcome back, {user?.full_name?.split(' ')[0] || 'User'}
           </h3>
-          <p className="mb-2" style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem' }}>
+          <p className="mb-2 dashboard-welcome-meta">
             Signed in as&nbsp;
-            <span className="badge" style={{ background: 'rgba(244,196,48,0.25)', color: '#fde68a', border: '1px solid rgba(244,196,48,0.4)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+            <span className="badge dashboard-role-badge">
               {roleLabel}
             </span>
             &nbsp;· FullCourt
@@ -247,7 +247,7 @@ const Dashboard = () => {
         </article>
       </section>}
 
-      {['platform_admin','admin','organization_admin','tournament_organizer'].includes(role) && <div className="card-custom p-4 mb-4">
+      {['platform_admin','admin','organization_admin','tournament_organizer'].includes(role) && <div className="card-custom p-4 mb-4 dashboard-live-ops">
         <div className="d-flex justify-content-between align-items-center mb-3"><div><h5 className="fw-bold mb-1"><i className="bi bi-broadcast-pin text-danger me-2"/>Multi-Court Command Center</h5><small className="text-muted">All active and today&apos;s published basketball games · refreshes every 5 seconds</small></div><span className="live-badge">{liveGames.filter(g=>g.status==='in_progress').length} LIVE</span></div>
         <div className="row g-3">{liveGames.map(g=><div className="col-md-6 col-xl-4" key={g.id}><div className={`border rounded-3 p-3 h-100 ${g.status==='in_progress'?'border-danger':''}`}><div className="d-flex justify-content-between"><small className="fw-bold text-muted">{g.court_name||g.venue_name||'Court TBA'}</small><span className={`badge ${g.status==='in_progress'?'bg-danger':'bg-primary'}`}>{g.status.replaceAll('_',' ')}</span></div><div className="d-flex justify-content-between align-items-center my-3"><b>{g.home_team||'TBD'}</b><span className="fs-4 fw-bold">{g.home_score}–{g.away_score}</span><b className="text-end">{g.away_team||'TBD'}</b></div><small>{g.current_period||'Pre-game'} · {Math.floor((g.timer_seconds||0)/60)}:{String((g.timer_seconds||0)%60).padStart(2,'0')} · {g.officials_ready} officials ready</small></div></div>)}{!liveGames.length&&<div className="col-12 text-center text-muted py-3">No active or scheduled games today.</div>}</div>
       </div>}

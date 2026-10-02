@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import operationsService from "../services/operationsService";
 import teamService from "../services/teamService";
 import scheduleService from "../services/scheduleService";
+import venueService from "../services/venueService";
 import { Link } from "react-router-dom";
 
 const divisionPresets = {
@@ -28,8 +29,10 @@ const ageRangeLabel = (division) => {
 const TournamentManagement = () => {
   const { user } = useAuth();
   const [tournaments, setTournaments] = useState([]);
+  const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [courtSelectionError, setCourtSelectionError] = useState("");
   const [joinTournament, setJoinTournament] = useState(null);
   const [joinLogo, setJoinLogo] = useState(null);
   const [joinForm, setJoinForm] = useState({ team_name: '', short_name: '', primary_color: 'red' });
@@ -38,6 +41,7 @@ const TournamentManagement = () => {
   const [detailTournament, setDetailTournament] = useState(null);
   const [detailData, setDetailData] = useState({ divisions: [], teams: [], matches: [] });
   const [detailLoading, setDetailLoading] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
   const [divisions, setDivisions] = useState([]);
   const [divisionForm, setDivisionForm] = useState({
     name: "",
@@ -61,13 +65,18 @@ const TournamentManagement = () => {
     rules: "",
     description: "",
     status: "upcoming",
+    court_ids: [],
   });
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await tournamentService.getTournaments();
+      const [res, venueRes] = await Promise.all([
+        tournamentService.getTournaments(),
+        venueService.getVenues().catch(() => ({ venues: [] })),
+      ]);
       setTournaments(res.tournaments || []);
+      setVenues((venueRes.venues || []).filter((venue) => venue.approval_status === "approved"));
       const basketballSports = (res.sports || []).filter(
         (s) => s.name.toLowerCase() === "basketball",
       );
@@ -87,9 +96,13 @@ const TournamentManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.court_ids.length) {
+      setCourtSelectionError("Choose at least one approved court for this tournament.");
+      return;
+    }
     try {
       await tournamentService.createTournament(formData);
-      setMsg("Tournament created successfully!");
+      setMsg("Tournament application submitted. It will appear to teams after admin approval.");
       setShowModal(false);
       loadData();
     } catch (err) {
@@ -104,6 +117,31 @@ const TournamentManagement = () => {
       loadData();
     } catch (err) {
       alert(err.response?.data?.message || "Error deleting tournament");
+    }
+  };
+
+  const handleReview = async (tournament, status) => {
+    let notes = '';
+    if (status === 'rejected') {
+      const reason = window.prompt('Add a short reason for rejecting this tournament application:');
+      if (reason === null) return;
+      notes = reason.trim();
+      if (!notes) {
+        alert('Please enter a reason so the organizer knows what to fix.');
+        return;
+      }
+    } else if (!window.confirm(`Approve and publish “${tournament.name}”? Teams will be able to view and apply.`)) {
+      return;
+    }
+    try {
+      setReviewingId(tournament.id);
+      await tournamentService.reviewTournament(tournament.id, status, notes);
+      setMsg(status === 'approved' ? 'Tournament approved and published.' : 'Tournament rejected. The organizer can review the decision.');
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Unable to save the tournament decision. Refresh and try again.');
+    } finally {
+      setReviewingId(null);
     }
   };
 
@@ -165,12 +203,25 @@ const TournamentManagement = () => {
     upcoming: tournaments.filter((t) => t.status === "upcoming").length,
     teams: tournaments.reduce((sum, t) => sum + Number(t.registered_teams_count || 0), 0),
   };
-  const canManageTournaments = [
-    "platform_admin",
-    "admin",
-    "organization_admin",
-    "tournament_organizer",
-  ].includes(user?.role);
+  const canCreateTournaments = ["organization_admin", "tournament_organizer"].includes(user?.role);
+  const canReviewTournaments = ["platform_admin", "admin"].includes(user?.role);
+  const canViewTournamentOperations = canCreateTournaments || canReviewTournaments;
+  const selectedCourtCount = formData.court_ids.length;
+  const bookableCourtCount = venues.reduce((count, venue) => count + (venue.courts || []).filter((court) => Boolean(Number(court.is_available))).length, 0);
+  const selectedVenueCount = new Set(
+    venues.filter((venue) => (venue.courts || []).some((court) => formData.court_ids.includes(String(court.id))))
+      .map((venue) => String(venue.id)),
+  ).size;
+  const toggleTournamentCourt = (courtId) => {
+    const id = String(courtId);
+    setCourtSelectionError("");
+    setFormData((current) => ({
+      ...current,
+      court_ids: current.court_ids.includes(id)
+        ? current.court_ids.filter((selectedId) => selectedId !== id)
+        : [...current.court_ids, id],
+    }));
+  };
 
   return (
     <div className="container-fluid p-0 tournament-operations-page">
@@ -181,13 +232,15 @@ const TournamentManagement = () => {
           <p>
             {['coach', 'coach_manager'].includes(user?.role)
               ? 'View competitions, divisions, formats, and registration details'
-              : 'Create and manage basketball leagues, divisions, and tournament formats'}
+              : canReviewTournaments
+                ? 'Review organizer applications and publish approved basketball competitions'
+                : 'Create and manage your basketball leagues, divisions, and tournament formats'}
           </p>
           <div className="tournament-ops-meta"><span><i className="bi bi-trophy" /> One place for every competition</span><span><i className="bi bi-shield-check" /> Organized tournament details</span></div>
         </div>
         <div className="tournament-ops-hero-side">
           <span className="tournament-ops-emblem"><i className="bi bi-trophy-fill" /></span>
-          {canManageTournaments && <button className="btn btn-evsu tournament-ops-create" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create Tournament</button>}
+          {canCreateTournaments && <button className="btn btn-evsu tournament-ops-create" onClick={() => { setCourtSelectionError(""); setShowModal(true); }}><i className="bi bi-plus-lg me-1" /> Create Tournament</button>}
         </div>
         <i className="bi bi-dribbble tournament-ops-watermark" aria-hidden="true" />
       </section>
@@ -209,7 +262,7 @@ const TournamentManagement = () => {
         <LoadingSpinner message="Loading tournaments..." />
       ) : (
         <>
-        <div className="tournament-ops-list-heading"><div><span>COMPETITION DIRECTORY</span><h2>{['coach', 'coach_manager'].includes(user?.role) ? 'Available tournaments' : 'Your tournaments'}</h2></div><small>{tournaments.length} {tournaments.length === 1 ? 'tournament' : 'tournaments'}</small></div>
+        <div className="tournament-ops-list-heading"><div><span>{canReviewTournaments ? 'PLATFORM REVIEW' : 'COMPETITION DIRECTORY'}</span><h2>{canReviewTournaments ? 'Tournament applications' : ['coach', 'coach_manager'].includes(user?.role) ? 'Available tournaments' : 'Your tournaments'}</h2></div><small>{tournaments.length} {tournaments.length === 1 ? 'tournament' : 'tournaments'}</small></div>
         {tournaments.length ? <div className="row g-3 tournament-ops-grid">
           {tournaments.map((t) => (
             <div key={t.id} className="col-12 col-md-6 col-xl-4">
@@ -219,6 +272,8 @@ const TournamentManagement = () => {
                     <span className="tournament-ops-sport"><i className="bi bi-dribbble" /> BASKETBALL</span>
                     <span className={`tournament-ops-status ${t.status === 'ongoing' ? 'is-live' : t.status === 'completed' ? 'is-complete' : 'is-upcoming'}`}><i className="bi bi-circle-fill" /> {t.status || 'upcoming'}</span>
                   </div>
+                  {(canReviewTournaments || canCreateTournaments) && <div className={`tournament-ops-status mt-2 ${t.approval_status === 'pending' ? 'is-upcoming' : t.approval_status === 'rejected' ? 'is-complete' : 'is-live'}`}><i className="bi bi-circle-fill" /> Approval: {t.approval_status || 'approved'}</div>}
+                  {canCreateTournaments && t.approval_status === 'rejected' && t.approval_notes && <p className="small text-danger mt-2 mb-0"><b>Admin feedback:</b> {t.approval_notes}</p>}
                   <h3 className="tournament-ops-card-title">{t.name}</h3>
                   <p className="tournament-ops-card-description">
                     {t.description || "No description provided."}
@@ -232,27 +287,26 @@ const TournamentManagement = () => {
                   </div>
                 </div>
 
-                {[ 
-                  "platform_admin",
-                  "admin",
-                  "organization_admin",
-                  "tournament_organizer",
-                ].includes(user?.role) && (
+                {canViewTournamentOperations && (
                   <div className="mt-4 pt-3 border-top d-flex justify-content-end gap-2 flex-wrap">
                     <button className="btn btn-evsu btn-sm" onClick={()=>openDetails(t)}><i className="bi bi-eye me-1"/>View Tournament</button>
-                    <button
+                    {canCreateTournaments && <button
                       className="btn btn-outline-dark btn-sm"
                       onClick={() => openDivisions(t)}
                     >
                       <i className="bi bi-layers me-1" />
                       Divisions
-                    </button>
-                    <button
+                    </button>}
+                    {canCreateTournaments && <button
                       className="btn btn-outline-danger btn-sm"
                       onClick={() => handleDelete(t.id)}
                     >
                       <i className="bi bi-trash"></i> Delete
-                    </button>
+                    </button>}
+                    {canReviewTournaments && t.approval_status === 'pending' && <>
+                      <button className="btn btn-success btn-sm" disabled={reviewingId === t.id} onClick={() => handleReview(t, 'approved')}><i className="bi bi-check-lg me-1"/>{reviewingId === t.id ? 'Saving…' : 'Approve & publish'}</button>
+                      <button className="btn btn-outline-danger btn-sm" disabled={reviewingId === t.id} onClick={() => handleReview(t, 'rejected')}><i className="bi bi-x-lg me-1"/>Reject</button>
+                    </>}
                   </div>
                 )}
                 {['coach','coach_manager'].includes(user?.role)&&<div className="mt-4 pt-3 border-top">
@@ -267,7 +321,7 @@ const TournamentManagement = () => {
               </div>
             </div>
           ))}
-        </div> : <div className="tournament-ops-empty"><span><i className="bi bi-trophy" /></span><h3>No tournaments yet</h3><p>{canManageTournaments ? 'Create your first basketball competition to get divisions, teams, and schedules organized.' : 'There are no competitions to show right now. Check back when an organizer publishes one.'}</p>{canManageTournaments && <button className="btn btn-evsu" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create first tournament</button>}</div>}
+        </div> : <div className="tournament-ops-empty"><span><i className="bi bi-trophy" /></span><h3>{canReviewTournaments ? 'No tournaments to review' : 'No tournaments yet'}</h3><p>{canCreateTournaments ? 'Create a tournament application. Teams will see it after platform admin approval.' : canReviewTournaments ? 'Organizer submissions waiting for review will appear here.' : 'There are no approved competitions to show right now. Check back when an organizer submits one and it is approved.'}</p>{canCreateTournaments && <button className="btn btn-evsu" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create first tournament</button>}</div>}
         </>
       )}
 
@@ -293,7 +347,7 @@ const TournamentManagement = () => {
               <div className="row g-4 mt-1"><div className="col-lg-7"><section className="tournament-content-panel"><header><div><small>PARTICIPANTS</small><h5>Registered Teams</h5></div><Link to="/teams">Manage teams <i className="bi bi-arrow-up-right"/></Link></header><div className="tournament-team-grid">{detailData.teams.map(team=><article key={team.id}><span style={{background:team.primary_color||'#cd2d17'}}>{team.logo_url?<img src={team.logo_url} alt=""/>:team.team_name.slice(0,2).toUpperCase()}</span><div><b>{team.team_name}</b><small>{team.division_name||'Open division'} · {team.status}</small></div></article>)}{!detailData.teams.length&&<p className="tournament-detail-empty">No registered teams yet.</p>}</div></section></div><div className="col-lg-5"><section className="tournament-content-panel"><header><div><small>COMPETITION STRUCTURE</small><h5>Divisions</h5></div></header><div className="tournament-division-list">{detailData.divisions.map(division=><div key={division.id}><span><i className="bi bi-layers"/></span><div><b>{division.name}</b><small>{division.age_group||'Open age'} · {division.gender_category} · {division.team_count} teams</small></div></div>)}{!detailData.divisions.length&&<p className="tournament-detail-empty">No divisions created yet.</p>}</div></section></div></div>
             </>}
           </div>
-          <footer className="modal-footer"><Link to={`/sports/tournaments/${detailTournament.id}`} className="btn btn-outline-secondary btn-sm" target="_blank"><i className="bi bi-box-arrow-up-right me-1"/>Public tournament page</Link><button className="btn btn-light btn-sm" onClick={()=>setDetailTournament(null)}>Close</button></footer>
+          <footer className="modal-footer">{detailTournament.approval_status === 'approved' && <Link to={`/sports/tournaments/${detailTournament.id}`} className="btn btn-outline-secondary btn-sm" target="_blank"><i className="bi bi-box-arrow-up-right me-1"/>Public tournament page</Link>}<button className="btn btn-light btn-sm" onClick={()=>setDetailTournament(null)}>Close</button></footer>
         </div></div>
       </div>}
       {showModal && (
@@ -304,9 +358,7 @@ const TournamentManagement = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content card-custom border-0">
               <div className="modal-header border-bottom">
-                <h5 className="fw-bold text-dark mb-0">
-                  Create New Tournament
-                </h5>
+                <div><h5 className="fw-bold text-dark mb-0">Submit Tournament for Review</h5><small className="text-muted">The tournament becomes visible to teams after admin approval.</small></div>
                 <button
                   type="button"
                   className="btn-close"
@@ -415,6 +467,39 @@ const TournamentManagement = () => {
                       }
                     />
                   </div>
+                  <section className="tournament-venue-picker" aria-labelledby="tournament-venue-heading">
+                    <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                      <div>
+                        <label id="tournament-venue-heading" className="form-label small fw-bold mb-1">Game venues &amp; courts <span className="text-danger">*</span></label>
+                        <p className="small text-muted mb-0">Pick the approved courts available to this tournament. The scheduler will use only these courts.</p>
+                      </div>
+                      <span className="tournament-venue-count" aria-live="polite">{selectedVenueCount} venues · {selectedCourtCount} courts</span>
+                    </div>
+                    {bookableCourtCount === 0 ? (
+                      <div className="tournament-venue-empty"><i className="bi bi-info-circle"/><span>{venues.length === 0 ? "No approved venue courts are available yet." : "Your approved venues do not have any available courts yet."} Add a venue and courts in <Link to="/venues" onClick={() => setShowModal(false)}>Venue Management</Link>, then wait for admin approval.</span></div>
+                    ) : (
+                      <div className="tournament-venue-list">
+                        {venues.map((venue) => {
+                          const availableCourts = (venue.courts || []).filter((court) => Boolean(Number(court.is_available)));
+                          const selectedInVenue = availableCourts.filter((court) => formData.court_ids.includes(String(court.id))).length;
+                          if (!availableCourts.length) return null;
+                          return <article className={`tournament-venue-option ${selectedInVenue ? "is-selected" : ""}`} key={venue.id}>
+                            <div className="tournament-venue-option-head"><div><strong><i className="bi bi-geo-alt-fill"/> {venue.name}</strong><small>{venue.location}</small></div><span>{selectedInVenue}/{availableCourts.length} courts selected</span></div>
+                            <div className="tournament-venue-courts">{availableCourts.map((court) => {
+                              const checked = formData.court_ids.includes(String(court.id));
+                              return <label className={`tournament-court-choice ${checked ? "is-checked" : ""}`} key={court.id}>
+                                <input type="checkbox" checked={checked} onChange={() => toggleTournamentCourt(court.id)} />
+                                <i className={`bi ${checked ? "bi-check2-square" : "bi-square"}`} aria-hidden="true" />
+                                <span>{court.court_name}</span>
+                              </label>;
+                            })}</div>
+                          </article>;
+                        })}
+                      </div>
+                    )}
+                    {!formData.court_ids.length && venues.length > 0 && <small className="text-danger d-block mt-2">Select at least one court to submit this tournament.</small>}
+                    {courtSelectionError && <small className="text-danger d-block mt-2" role="alert">{courtSelectionError}</small>}
+                  </section>
                 </div>
                 <div className="modal-footer border-top">
                   <button
@@ -424,8 +509,8 @@ const TournamentManagement = () => {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-evsu btn-sm">
-                    Create Tournament
+                  <button type="submit" className="btn btn-evsu btn-sm" disabled={!formData.court_ids.length}>
+                    Submit for admin review
                   </button>
                 </div>
               </form>

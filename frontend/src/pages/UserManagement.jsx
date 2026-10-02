@@ -181,21 +181,24 @@ const UserManagement = () => {
             </div>
 
             <div className="col-md-6 col-lg-4 ms-auto">
-              <div className="d-flex align-items-center gap-2">
-                <label className="small text-muted fw-semibold text-nowrap" htmlFor="user-role-filter">Filter role</label>
+              <div className="user-role-filter-control">
+                <label htmlFor="user-role-filter"><i className="bi bi-funnel-fill" aria-hidden="true"/><span>Filter by role</span></label>
                 <select
                   id="user-role-filter"
                   aria-label="Filter users by role"
-                  className="form-select form-select-sm"
+                  className="form-select"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
                 >
-                  <option value="all">All Roles</option>
+                  <option value="all">Every role</option>
                   <option value="platform_admin">Platform Administrator</option>
+                  <option value="admin">Administrator</option>
                   <option value="organization_admin">Organization Administrator</option>
                   <option value="tournament_organizer">Tournament Organizer</option>
                   <option value="coach">Coach</option>
+                  <option value="coach_manager">Coach Manager</option>
                   <option value="statistician">Statistician</option>
+                  <option value="finance_officer">Finance Officer</option>
                   <option value="player">Player</option>
                 </select>
               </div>

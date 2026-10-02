@@ -210,7 +210,7 @@ const TeamManagement = () => {
   };
 
   return (
-    <div className="container-fluid p-0">
+    <div className="container-fluid p-0 team-roster-page">
       {isCoach ? <section className="coach-roster-heading mb-4">
         <div className="coach-roster-heading-copy">
           <span className="coach-roster-kicker"><i className="bi bi-diagram-3-fill"/> COACH WORKSPACE</span>
@@ -221,15 +221,19 @@ const TeamManagement = () => {
           <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/schedules')}><i className="bi bi-calendar3 me-2"/>Team schedule</button>
           <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/standings')}><i className="bi bi-list-ol me-2"/>Standings</button>
         </div>
-      </section> : <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-        <div>
-          <h3 className="fw-bold text-dark mb-1"><i className="bi bi-people-fill text-evsu-primary me-2"></i>Team Roster Management</h3>
-          <p className="text-muted small mb-0">Manage registered teams, logos, coaches, and rosters</p>
+      </section> : <section className="team-directory-hero mb-4">
+        <div className="team-directory-copy">
+          <span className="team-directory-kicker"><i className="bi bi-dribbble"/> COMPETITION OPERATIONS</span>
+          <h1>Team Roster Management</h1>
+          <p>Manage registered teams, logos, coaches, and rosters</p>
         </div>
-        <button className="btn btn-evsu align-self-start align-self-lg-center rounded-pill px-4" onClick={openCreate} disabled={!selectedTournament}>
-          <i className="bi bi-plus-lg me-1"></i> New Team
-        </button>
-      </div>}
+        <div className="team-directory-actions">
+          <span className="team-directory-emblem" aria-hidden="true"><i className="bi bi-people-fill"/></span>
+          <button className="btn btn-evsu" onClick={openCreate} disabled={!selectedTournament}>
+            <i className="bi bi-plus-lg me-1"></i> New Team
+          </button>
+        </div>
+      </section>}
 
       {pageMessage && (
         <div className="alert alert-info alert-dismissible fade show py-2" role="status">
@@ -245,6 +249,7 @@ const TeamManagement = () => {
       </section>}
 
       {!isCoach && <section className="card-custom p-3 p-md-4 mb-4 team-tournament-picker">
+        <div className="team-picker-heading"><span><i className="bi bi-funnel-fill"/></span><div><h2>Choose a competition</h2><p>Select a tournament first to load its teams and roster activity.</p></div></div>
         <div className="row g-3 align-items-end">
           <div className="col-md-7"><label htmlFor="team-tournament-filter" className="form-label small fw-bold"><i className="bi bi-trophy me-2 text-evsu-primary"/>Select Tournament</label><select id="team-tournament-filter" className="form-select" value={selectedTournament} onChange={e=>{setSelectedTournament(e.target.value);setSelectedDivision('');}}><option value="">Choose a tournament to manage</option>{tournaments.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
           <div className="col-md-5"><label htmlFor="team-division-filter" className="form-label small fw-bold"><i className="bi bi-diagram-3 me-2 text-evsu-primary"/>Division</label><select id="team-division-filter" className="form-select" value={selectedDivision} disabled={!selectedTournament||!filterDivisions.length} onChange={e=>setSelectedDivision(e.target.value)}><option value="">All divisions</option>{filterDivisions.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
@@ -318,7 +323,7 @@ const TeamManagement = () => {
           ))}
         </div>
 
-        <div className="card-custom p-4 d-none d-md-block">
+        <div className="card-custom p-4 d-none d-md-block team-roster-table-shell">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">

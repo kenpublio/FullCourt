@@ -19,12 +19,13 @@ class Tournament {
                 JOIN users u ON t.created_by = u.id
                 WHERE LOWER(s.name) = 'basketball'";
         if (!$platform && $userId !== null) {
+            $sql .= " AND (t.approval_status='approved' OR t.created_by=:creator_id)";
             $sql .= " AND (t.created_by=:user_id OR EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:member_id AND om.status='active') OR EXISTS (SELECT 1 FROM teams own_tm LEFT JOIN team_players own_tp ON own_tp.team_id=own_tm.id WHERE own_tm.tournament_id=t.id AND (own_tm.coach_user_id=:coach_id OR own_tm.manager_user_id=:manager_id OR own_tp.user_id=:player_id)))";
         }
         $sql .= "
                 ORDER BY t.created_at DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(!$platform && $userId !== null ? [':user_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
+        $stmt->execute(!$platform && $userId !== null ? [':creator_id'=>$userId,':user_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
         return $stmt->fetchAll();
     }
 
@@ -39,6 +40,7 @@ class Tournament {
                 LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id
                   AND (coach_team.coach_user_id=:coach_id OR coach_team.manager_user_id=:manager_id)
                 WHERE LOWER(s.name)='basketball'
+                  AND t.approval_status='approved'
                   AND (t.status IN ('upcoming','ongoing') OR coach_team.id IS NOT NULL)
                 ORDER BY CASE WHEN coach_team.id IS NOT NULL THEN 0 ELSE 1 END, t.start_date ASC";
         $stmt=$this->db->prepare($sql);
@@ -58,11 +60,21 @@ class Tournament {
         return $row ?: null;
     }
 
+    public function canUseCourts(array $courtIds, int $organizationId, int $basketballSportId): bool {
+        if (!$courtIds || !$organizationId) return false;
+        $placeholders=implode(',',array_fill(0,count($courtIds),'?'));
+        $stmt=$this->db->prepare("SELECT COUNT(DISTINCT c.id) FROM courts c JOIN venues v ON v.id=c.venue_id WHERE c.id IN ({$placeholders}) AND c.is_available=1 AND (c.sport_id IS NULL OR c.sport_id=?) AND v.organization_id=? AND v.approval_status='approved'");
+        $stmt->execute([...$courtIds,$basketballSportId,$organizationId]);
+        return (int)$stmt->fetchColumn()===count(array_unique($courtIds));
+    }
+
     public function create(array $data): int {
-        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_fee, status, created_by)
-                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_fee, :status, :created_by)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
+        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_fee, status, approval_status, created_by)
+                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_fee, 'upcoming', 'pending', :created_by)";
+        $this->db->beginTransaction();
+        try {
+          $stmt = $this->db->prepare($sql);
+          $stmt->execute([
             ':organization_id' => $data['organization_id'] ?? null,
             ':name' => $data['name'],
             ':sport_id' => $data['sport_id'],
@@ -72,11 +84,21 @@ class Tournament {
             ':start_date' => $data['start_date'],
             ':end_date' => $data['end_date'],
             ':registration_fee' => $data['registration_fee'] ?? 0.00,
-            ':status' => $data['status'] ?? 'upcoming',
             ':created_by' => $data['created_by']
-        ]);
-
-        return (int) $this->db->lastInsertId();
+          ]);
+          $id=(int)$this->db->lastInsertId();
+          if (!empty($data['court_ids'])) {
+            $link=$this->db->prepare('INSERT INTO tournament_courts (tournament_id,court_id) VALUES (:tournament_id,:court_id)');
+            foreach (array_unique(array_map('intval',$data['court_ids'])) as $courtId) {
+              $link->execute([':tournament_id'=>$id,':court_id'=>$courtId]);
+            }
+          }
+          $this->db->commit();
+          return $id;
+        } catch (Throwable $error) {
+          if ($this->db->inTransaction()) $this->db->rollBack();
+          throw $error;
+        }
     }
 
     public function update(int $id, array $data): bool {
@@ -103,6 +125,20 @@ class Tournament {
     public function delete(int $id): bool {
         $stmt = $this->db->prepare("DELETE FROM tournaments WHERE id = :id");
         return $stmt->execute([':id' => $id]);
+    }
+
+    public function review(int $id, string $status, int $reviewerId, ?string $notes): bool {
+        $stmt = $this->db->prepare("UPDATE tournaments
+            SET approval_status=:status, approval_notes=:notes, reviewed_by=:reviewer,
+                reviewed_at=NOW(), is_published=CASE WHEN :published_status='approved' THEN 1 ELSE 0 END
+            WHERE id=:id AND approval_status='pending'");
+        return $stmt->execute([
+            ':status' => $status,
+            ':notes' => $notes,
+            ':reviewer' => $reviewerId,
+            ':published_status' => $status,
+            ':id' => $id,
+        ]) && $stmt->rowCount() === 1;
     }
 
     public function getSports(): array {

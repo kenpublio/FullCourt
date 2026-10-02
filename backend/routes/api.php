@@ -99,6 +99,7 @@ function routeRequest(string $uri, string $method) {
     // 3. Tournament Routes
     if ($path === '/tournaments' && $method === 'GET') { (new TournamentController())->index(); return; }
     if ($path === '/tournaments' && $method === 'POST') { (new TournamentController())->store(); return; }
+    if (preg_match('#^/tournaments/(\d+)/review$#', $path, $m) && $method === 'PUT') { (new TournamentController())->review((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'GET') { (new TournamentController())->show((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'PUT') { (new TournamentController())->update((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'DELETE') { (new TournamentController())->destroy((int)$m[1]); return; }

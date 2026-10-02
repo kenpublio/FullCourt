@@ -59,10 +59,10 @@ const BracketEngineView = () => {
     <div className="container-fluid p-0 bracket-ops-page">
       <header className="bracket-ops-hero">
         <div className="bracket-ops-title">
-          <span>TOURNAMENT STRUCTURE</span>
+          <span>BRACKET &amp; COMPETITION PATH</span>
           <h1>Automated Bracket Engine</h1>
-          <p>Generate seeded matchups and follow every team’s path to the championship.</p>
-          <small className="bracket-ops-note"><i className="bi bi-info-circle"/> Brackets use approved teams and advance winners as results are finalized.</small>
+          <p>Build the tournament path, track each matchup, and see who advances to the final.</p>
+          <small className="bracket-ops-note"><i className="bi bi-shield-check"/> Only approved teams are included. Winners advance when results are finalized.</small>
         </div>
         <div className="bracket-ops-controls">
           <label><span>Select tournament</span><select className="form-select" value={selectedTournament} onChange={e => setSelectedTournament(e.target.value)} disabled={!tournaments.length}><option value="" disabled>{tournaments.length ? 'Choose a tournament' : 'No tournaments available'}</option>{tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>

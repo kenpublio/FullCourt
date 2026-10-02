@@ -68,6 +68,45 @@
 .fc-auth :is(a,button):focus-visible { outline: 3px solid #d4a72c; outline-offset: 4px; }
 .fc-auth .auth-mobile-brand { color: #18181b; }
 .fc-auth .auth-mobile-brand i { color: #cd2d17; }
+.auth-theme-toggle { position: absolute; z-index: 5; top: 18px; right: 22px; display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; border: 1px solid #d8dce2; border-radius: 999px; background: rgba(255,255,255,.92); color: #344154; font-size: .72rem; font-weight: 750; box-shadow: 0 4px 14px rgba(20,30,44,.08); }
+.auth-theme-toggle:hover { border-color: #c8321d; color: #a82a19; }
+:root[data-fullcourt-theme="dark"] .fc-auth.auth-shell { color-scheme: dark; color: #f2f4f8; background: radial-gradient(ellipse at 15% 10%,rgba(200,50,29,.14),transparent 36%),#101318; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-web-card { border-color: #202630; background: #171c24; box-shadow: 0 28px 90px rgba(0,0,0,.42); }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-story-panel { background: #11151b; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-form-panel { color: #f2f4f8; background: #191e26; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-page-heading h1,
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-page-heading h2,
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-heading h1,
+:root[data-fullcourt-theme="dark"] .fc-auth .form-step h4,
+:root[data-fullcourt-theme="dark"] .fc-auth .role-grid button b { color: #f2f4f8 !important; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-page-heading p,
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-field label,
+:root[data-fullcourt-theme="dark"] .fc-auth .field label,
+:root[data-fullcourt-theme="dark"] .fc-auth .form-step > label,
+:root[data-fullcourt-theme="dark"] .fc-auth .form-step > p,
+:root[data-fullcourt-theme="dark"] .fc-auth .role-grid button small,
+:root[data-fullcourt-theme="dark"] .fc-auth .text-muted,
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-copyright { color: #aeb8c6 !important; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-page-icon { color: #ff8a72; background: #2b201f; border-color: #50302c; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-input-wrap,
+:root[data-fullcourt-theme="dark"] .fc-auth .modern-input { color: #f2f4f8; background: #11161d; border-color: #37414e; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-input-wrap input { color: #f2f4f8; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-input-wrap input::placeholder,
+:root[data-fullcourt-theme="dark"] .fc-auth .modern-input::placeholder { color: #8290a0; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-input-wrap > i,
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-password-toggle { color: #aeb8c6; }
+:root[data-fullcourt-theme="dark"] .fc-auth .auth-register-prompt { border-color: #303844; }
+:root[data-fullcourt-theme="dark"] .fc-auth .stepper::before { background: #37414e; }
+:root[data-fullcourt-theme="dark"] .fc-auth .step span { color: #aeb8c6; background: #202630; border-color: #394350; }
+:root[data-fullcourt-theme="dark"] .fc-auth .step small { color: #aeb8c6; }
+:root[data-fullcourt-theme="dark"] .fc-auth .role-grid button { background: #171c24; border-color: #37414e; }
+:root[data-fullcourt-theme="dark"] .fc-auth .role-grid button > i { color: #ff8a72; background: #2b201f; }
+:root[data-fullcourt-theme="dark"] .fc-auth .role-grid button.selected { background: #2a1c1c; border-color: #c8321d; }
+:root[data-fullcourt-theme="dark"] .fc-auth .role-grid button.selected::after { background: #171c24; }
+:root[data-fullcourt-theme="dark"] .fc-auth .btn-soft,
+:root[data-fullcourt-theme="dark"] .fc-auth .btn-outline-secondary { color: #dce3ec; border-color: #536071; }
+:root[data-fullcourt-theme="dark"] .auth-theme-toggle { color: #f2f4f8; background: #202630; border-color: #3a4552; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+:root[data-fullcourt-theme="dark"] .auth-theme-toggle:hover { color: #ffb09d; border-color: #c8321d; }
 @media (max-width: 1050px) {
  .fc-auth .auth-web-card { grid-template-columns: .9fr 1.1fr; }
  .fc-auth .auth-story-panel { padding: 28px; }

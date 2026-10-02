@@ -1197,6 +1197,7 @@ UNLOCK TABLES;
 -- Table structure for table `tournaments`
 --
 
+DROP TABLE IF EXISTS `tournament_courts`;
 DROP TABLE IF EXISTS `tournaments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -1228,6 +1229,16 @@ CREATE TABLE `tournaments` (
   CONSTRAINT `tournaments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+-- Tournament-specific courts selected by the organizer.
+CREATE TABLE `tournament_courts` (
+  `tournament_id` int(11) NOT NULL,
+  `court_id` int(11) NOT NULL,
+  PRIMARY KEY (`tournament_id`,`court_id`),
+  KEY `tournament_courts_court_id_idx` (`court_id`),
+  CONSTRAINT `tournament_courts_tournament_fk` FOREIGN KEY (`tournament_id`) REFERENCES `tournaments` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `tournament_courts_court_fk` FOREIGN KEY (`court_id`) REFERENCES `courts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `tournaments`
@@ -1378,5 +1389,12 @@ UNLOCK TABLES;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Tournament review workflow; legacy events remain approved after import.
+ALTER TABLE `tournaments` ADD COLUMN IF NOT EXISTS `approval_status` VARCHAR(12) NOT NULL DEFAULT 'approved';
+ALTER TABLE `tournaments` ADD COLUMN IF NOT EXISTS `approval_notes` TEXT DEFAULT NULL;
+ALTER TABLE `tournaments` ADD COLUMN IF NOT EXISTS `reviewed_by` INT(11) DEFAULT NULL;
+ALTER TABLE `tournaments` ADD COLUMN IF NOT EXISTS `reviewed_at` DATETIME DEFAULT NULL;
+CREATE INDEX IF NOT EXISTS `tournaments_approval_status_idx` ON `tournaments` (`approval_status`);
 
 -- Dump completed on 2026-08-23 19:34:26

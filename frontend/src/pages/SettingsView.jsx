@@ -39,6 +39,8 @@ const Toggle = ({ id, label, description, checked, onChange }) => (
 const SettingsView = () => {
   const { user } = useAuth();
   const isAdmin=['platform_admin','admin'].includes(user?.role);
+  const accountLabel=user?.full_name||user?.email||'FullCourt member';
+  const accountInitials=accountLabel.trim().split(/\s+/).slice(0,2).map((part)=>part[0]).join('').toUpperCase();
   const storageKey = `fullcourt_settings_${user?.id || "guest"}`;
   const [settings, setSettings] = useState(defaults),
     [saved, setSaved] = useState(false);
@@ -65,7 +67,7 @@ const SettingsView = () => {
     }
   }, [storageKey]);
   useEffect(()=>{if(isAdmin)platformSettingsService.get().then(data=>data&&setPlatformSettings(data)).catch(()=>{});},[isAdmin]);
-  useEffect(()=>{const dark=settings.appearance==='dark'||(settings.appearance==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);const resolvedTheme=dark?'dark':'light';document.documentElement.dataset.fullcourtTheme=resolvedTheme;document.documentElement.dataset.bsTheme=resolvedTheme;},[settings.appearance]);
+  useEffect(()=>{const dark=settings.appearance==='dark'||(settings.appearance==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);const resolvedTheme=dark?'dark':'light';document.documentElement.dataset.fullcourtTheme=resolvedTheme;document.documentElement.dataset.bsTheme=resolvedTheme;localStorage.setItem('fullcourt_public_theme',resolvedTheme);window.dispatchEvent(new CustomEvent('fullcourt-theme-change',{detail:{appearance:settings.appearance}}));},[settings.appearance]);
   useEffect(()=>{document.documentElement.dataset.reduceMotion=String(Boolean(settings.reduceMotion));},[settings.reduceMotion]);
   const toggle = (key) =>
     setSettings((value) => ({ ...value, [key]: !value[key] }));
@@ -100,7 +102,7 @@ const SettingsView = () => {
   };
   return (
     <div className="container-fluid p-0 page-enter settings-center">
-      <header className="settings-hero"><div className="settings-hero-copy"><span>ACCOUNT CONTROL CENTER</span><h1>Make FullCourt<br/><em>work your way.</em></h1><p>Manage your alerts, display preferences, and account security in one place.</p></div><div className="settings-account-chip"><span className="settings-account-avatar">{(user?.full_name||user?.email||'FC').slice(0,1).toUpperCase()}</span><div><small>Signed in as</small><b>{user?.full_name||user?.email||'FullCourt member'}</b><span>{String(user?.role||'Member').replaceAll('_',' ')}</span></div><i className="bi bi-shield-check"/></div></header>
+      <header className="settings-hero"><div className="settings-hero-copy"><span><i className="bi bi-sliders2-vertical"/> ACCOUNT CONTROL CENTER</span><h1>Make FullCourt<br/><em>work your way.</em></h1><p>Manage your alerts, display preferences, and account security in one place.</p><div className="settings-hero-points"><span><i className="bi bi-bell"/> Alerts</span><span><i className="bi bi-palette"/> Appearance</span><span><i className="bi bi-shield-lock"/> Security</span></div></div><div className="settings-account-chip"><span className="settings-account-avatar" aria-label={`Signed-in account ${accountLabel}`}>{accountInitials||'FC'}</span><div><small>Signed in as</small><b>{accountLabel}</b><span>{String(user?.role||'Member').replaceAll('_',' ')}</span></div><i className="bi bi-shield-check" aria-hidden="true"/></div></header>
       {saved && (
         <div className="alert alert-success settings-alert d-flex align-items-center gap-2" role="status">
           <i className="bi bi-check-circle-fill" />

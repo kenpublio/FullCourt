@@ -552,6 +552,8 @@ body {
 }
 
 .app-page { padding: 1.5rem; }
+.route-loading-state{display:flex;min-height:38vh;align-items:center;justify-content:center;gap:.7rem;color:var(--text-secondary);font-size:.85rem;font-weight:650}
+.route-loading-state .spinner-border{width:1.1rem;height:1.1rem;color:var(--evsu-primary)}
 
 .mobile-menu-btn {
   display: none;
@@ -2479,6 +2481,33 @@ thead .team-actions-column {
 }
 .team-tournament-picker{border-radius:18px!important;border-left:4px solid var(--evsu-primary)!important}.team-picker-summary{display:flex;flex-wrap:wrap;gap:10px}.team-picker-summary span{padding:7px 11px;border-radius:999px;background:rgba(205,45,23,.08);color:var(--bs-secondary-color);font-size:.76rem}.team-picker-summary b{color:var(--evsu-primary);font-size:.9rem}.team-selection-empty{display:grid;justify-items:center;text-align:center;padding:65px 25px;border:1px dashed var(--bs-border-color);border-radius:20px;background:var(--bs-body-bg)}.team-selection-empty>i{width:68px;height:68px;display:grid;place-items:center;margin-bottom:16px;border-radius:21px;background:rgba(205,45,23,.09);color:var(--evsu-primary);font-size:1.7rem}.team-selection-empty h4{font-weight:800}.team-selection-empty p{max-width:520px;color:var(--bs-secondary-color);font-size:.88rem}
 
+.team-directory-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;overflow:hidden;padding:1.65rem 1.8rem;border:1px solid var(--surface-border);border-radius:1.25rem;background:linear-gradient(112deg,var(--surface-card) 54%,color-mix(in srgb,var(--evsu-primary) 13%,var(--surface-card)));box-shadow:var(--shadow-sm)}
+.team-directory-hero::after{position:absolute;right:8.5rem;bottom:-4.8rem;width:14rem;height:14rem;border:1px solid color-mix(in srgb,var(--evsu-primary) 19%,transparent);border-radius:50%;content:"";pointer-events:none}
+.team-directory-copy{position:relative;z-index:1;min-width:0}
+.team-directory-kicker{display:inline-flex;align-items:center;gap:.45rem;margin-bottom:.5rem;color:var(--evsu-primary);font-size:.65rem;font-weight:900;letter-spacing:.14em}
+.team-directory-copy h1{margin:0;color:var(--text-primary);font-size:clamp(1.55rem,2.5vw,2.15rem);font-weight:900;letter-spacing:-.045em;line-height:1.12}
+.team-directory-copy p{margin:.45rem 0 0;color:var(--text-secondary);font-size:.88rem}
+.team-directory-actions{position:relative;z-index:1;display:flex;align-items:center;gap:.8rem;flex:0 0 auto}
+.team-directory-actions .btn{min-height:2.75rem;padding:.68rem 1rem;border-radius:.75rem;font-size:.8rem;font-weight:800;box-shadow:0 8px 18px color-mix(in srgb,var(--evsu-primary) 18%,transparent)}
+.team-directory-emblem{display:grid;place-items:center;width:3.4rem;height:3.4rem;border:1px solid color-mix(in srgb,var(--evsu-primary) 22%,var(--surface-border));border-radius:1rem;background:color-mix(in srgb,var(--evsu-primary) 10%,var(--surface-card));color:var(--evsu-primary);font-size:1.35rem}
+.team-picker-heading{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+.team-picker-heading>span{display:grid;place-items:center;width:2.6rem;height:2.6rem;flex:0 0 2.6rem;border:1px solid color-mix(in srgb,var(--evsu-primary) 20%,var(--surface-border));border-radius:.8rem;background:color-mix(in srgb,var(--evsu-primary) 9%,var(--surface-card));color:var(--evsu-primary)}
+.team-picker-heading h2{margin:0;color:var(--text-primary);font-size:.96rem;font-weight:850;letter-spacing:-.02em}
+.team-picker-heading p{margin:.2rem 0 0;color:var(--text-secondary);font-size:.73rem}
+.team-roster-table-shell{overflow:hidden;border-radius:1rem}
+.team-roster-table-shell .table{--bs-table-bg:transparent;--bs-table-color:var(--text-primary);--bs-table-border-color:var(--surface-border);margin:0}
+.team-roster-table-shell .table thead th{padding:.85rem .75rem;border-bottom:1px solid var(--surface-border);background:color-mix(in srgb,var(--surface-bg) 72%,var(--surface-card));color:var(--text-secondary);font-size:.65rem;font-weight:850;letter-spacing:.055em;text-transform:uppercase;white-space:nowrap}
+.team-roster-table-shell .table tbody td{padding:.8rem .75rem;border-color:var(--surface-border);color:var(--text-primary);vertical-align:middle}
+.team-roster-table-shell .table tbody tr{transition:background-color .16s ease}
+.team-roster-table-shell .table tbody tr:hover{--bs-table-bg:color-mix(in srgb,var(--evsu-primary) 4%,var(--surface-card))}
+.team-mobile-card{border:1px solid var(--surface-border);border-left:3px solid var(--evsu-primary);border-radius:1rem;background:var(--surface-card);box-shadow:var(--shadow-sm);transition:transform .16s ease,box-shadow .16s ease}
+.team-mobile-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.team-mobile-card .team-mobile-footer .btn{font-weight:750}
+.team-selection-empty{min-height:15rem;align-content:center;padding:2.6rem 1.25rem;border-color:var(--surface-border);background:var(--surface-card);box-shadow:var(--shadow-sm)}
+.team-selection-empty h4{margin-bottom:.4rem;color:var(--text-primary);font-size:1rem;letter-spacing:-.02em}
+.team-selection-empty p{margin-bottom:0;color:var(--text-secondary);line-height:1.6}
+@media(max-width:767.98px){.team-directory-hero{align-items:flex-start;padding:1.25rem;flex-direction:column}.team-directory-actions{width:100%;justify-content:space-between}.team-directory-emblem{display:none}.team-directory-actions .btn{width:100%}.team-picker-heading{align-items:flex-start}.team-picker-heading p{line-height:1.5}.team-tournament-picker{padding:1rem!important}.team-picker-summary{gap:.45rem}.team-picker-summary span{flex:1;text-align:center}.team-mobile-footer{align-items:flex-start}.team-roster-page .table-responsive{margin:0 -1rem}.team-roster-table-shell{padding:1rem!important}}
+
 .coach-roster-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1.25rem;padding:1.65rem 1.8rem;border:1px solid var(--surface-border);border-radius:1.25rem;background:linear-gradient(115deg,var(--surface-card) 58%,color-mix(in srgb,var(--evsu-primary) 10%,var(--surface-card)));box-shadow:0 12px 30px rgba(20,20,25,.045)}
 .coach-roster-kicker{display:inline-flex;align-items:center;gap:.45rem;margin-bottom:.55rem;color:var(--evsu-primary);font-size:.68rem;font-weight:850;letter-spacing:.13em}
 .coach-roster-heading h1{margin:0;color:var(--bs-emphasis-color);font-size:clamp(1.55rem,2.4vw,2.15rem);font-weight:850;letter-spacing:-.045em}
@@ -2621,8 +2650,32 @@ thead .team-actions-column {
 @media(max-width:800px){.tournament-ops-hero{align-items:flex-start;padding:1.35rem;min-height:0}.tournament-ops-emblem{display:none}.tournament-ops-summary>div{padding:.85rem .75rem;gap:.6rem}.tournament-ops-stat-icon{flex-basis:36px;height:36px;font-size:1rem}.tournament-ops-summary b{font-size:1.2rem}}
 @media(max-width:560px){.tournament-ops-hero{flex-direction:column;gap:1rem}.tournament-ops-hero-side{width:100%}.tournament-ops-create{width:100%}.tournament-ops-summary{grid-template-columns:1fr 1fr}.tournament-ops-summary>div:nth-child(2){border-right:0}.tournament-ops-summary>div:nth-child(-n+2){border-bottom:1px solid var(--surface-border)}.tournament-ops-list-heading{align-items:start;flex-direction:column;gap:.45rem}.tournament-ops-facts{gap:.4rem}.tournament-ops-card{padding:1rem!important}}
 @media(prefers-reduced-motion:reduce){.tournament-ops-card{transition:none}.tournament-ops-card:hover{transform:none}}
-.eligibility-page{--eligibility-accent:#d92f1b}.eligibility-page-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;overflow:hidden;padding:1.55rem 1.8rem;border:1px solid color-mix(in srgb,var(--eligibility-accent) 22%,var(--surface-border));border-radius:19px;background:linear-gradient(112deg,var(--surface-card) 56%,color-mix(in srgb,var(--eligibility-accent) 12%,var(--surface-card)));box-shadow:0 12px 30px rgba(20,20,25,.05)}.eligibility-page-hero-copy,.eligibility-refresh{position:relative;z-index:1}.eligibility-page-kicker{display:inline-flex;align-items:center;gap:.45rem;margin-bottom:.55rem;color:var(--eligibility-accent);font-size:.63rem;font-weight:900;letter-spacing:.15em}.eligibility-page-hero h1{margin:0;color:var(--text-primary);font-size:clamp(1.45rem,2.4vw,2.05rem);font-weight:900;letter-spacing:-.045em}.eligibility-page-hero p{max-width:680px;margin:.42rem 0 .7rem;color:var(--text-secondary);font-size:.83rem}.eligibility-page-meta{display:flex;flex-wrap:wrap;gap:.55rem 1.1rem}.eligibility-page-meta span{display:inline-flex;align-items:center;gap:.4rem;color:var(--text-secondary);font-size:.67rem}.eligibility-page-meta i{color:var(--eligibility-accent)}.eligibility-refresh{flex:0 0 auto;border-radius:10px;font-size:.73rem;font-weight:750}.eligibility-hero-watermark{position:absolute;right:12%;top:-32px;color:color-mix(in srgb,var(--eligibility-accent) 6%,transparent);font-size:155px;transform:rotate(-12deg);pointer-events:none}.eligibility-page-stats>div>i:nth-child(1){color:var(--eligibility-accent);background:color-mix(in srgb,var(--eligibility-accent) 10%,var(--surface-card))}.eligibility-page-section-heading{align-items:center;padding-bottom:.95rem;border-bottom:1px solid var(--surface-border)}.eligibility-section-kicker{display:block;margin-bottom:.3rem;color:var(--eligibility-accent);font-size:.57rem;font-weight:900;letter-spacing:.15em}.eligibility-page-section-heading h2{font-size:1.12rem}.eligibility-records-table{--bs-table-color:var(--text-primary);--bs-table-bg:transparent;--bs-table-hover-color:var(--text-primary);--bs-table-hover-bg:color-mix(in srgb,var(--surface-bg) 75%,transparent);--bs-table-border-color:var(--surface-border);font-size:.75rem}.eligibility-records-table thead th{padding:.72rem .75rem;background:var(--surface-bg);color:var(--text-muted);font-size:.61rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}.eligibility-records-table tbody td{padding:.75rem;color:var(--text-secondary)}.eligibility-player-name{display:flex;align-items:center;gap:.55rem;min-width:150px;color:var(--text-primary)}.eligibility-player-name>i{display:grid;place-items:center;width:31px;height:31px;flex:0 0 31px;border-radius:9px;background:color-mix(in srgb,var(--eligibility-accent) 10%,var(--surface-card));color:var(--eligibility-accent)}.eligibility-player-name b{font-size:.75rem;font-weight:800}.eligibility-records-table .btn{white-space:nowrap;font-weight:750}.eligibility-page .eligibility-workspace-card{overflow:hidden}.eligibility-page .eligibility-status-filters button{font-weight:750}
-@media(max-width:767.98px){.eligibility-page-hero{align-items:flex-start;padding:1.2rem;flex-direction:column}.eligibility-refresh{width:100%}.eligibility-hero-watermark{right:-10px;top:5px;font-size:105px}.eligibility-page-section-heading{align-items:flex-start}.eligibility-records-table{min-width:760px}}
+
+.tournament-venue-picker{margin-top:1.1rem;padding:1rem;border:1px solid var(--surface-border);border-radius:14px;background:var(--surface-bg)}
+.tournament-venue-count{flex:0 0 auto;padding:.35rem .55rem;border:1px solid var(--surface-border);border-radius:999px;background:var(--surface-card);color:var(--text-secondary);font-size:.64rem;font-weight:800;white-space:nowrap}
+.tournament-venue-list{display:grid;gap:.65rem;max-height:260px;overflow:auto;padding:2px}
+.tournament-venue-option{padding:.8rem;border:1px solid var(--surface-border);border-radius:12px;background:var(--surface-card);transition:border-color .16s ease,box-shadow .16s ease}
+.tournament-venue-option.is-selected{border-color:color-mix(in srgb,var(--tourney-accent) 56%,var(--surface-border));box-shadow:inset 3px 0 var(--tourney-accent)}
+.tournament-venue-option-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.7rem;margin-bottom:.6rem}
+.tournament-venue-option-head>div{display:grid;gap:.15rem;min-width:0}
+.tournament-venue-option-head strong{overflow:hidden;color:var(--text-primary);font-size:.76rem;text-overflow:ellipsis;white-space:nowrap}
+.tournament-venue-option-head strong i{color:var(--tourney-accent)}
+.tournament-venue-option-head small,.tournament-venue-option-head>span{color:var(--text-muted);font-size:.63rem}
+.tournament-venue-option-head>span{flex:0 0 auto;font-weight:750}
+.tournament-venue-courts{display:flex;flex-wrap:wrap;gap:.45rem}
+.tournament-court-choice{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .55rem;border:1px solid var(--surface-border);border-radius:8px;background:var(--surface-bg);color:var(--text-secondary);cursor:pointer;font-size:.67rem;font-weight:700;transition:background .15s ease,border-color .15s ease,color .15s ease}
+.tournament-court-choice input{position:absolute;width:1px;height:1px;opacity:0}
+.tournament-court-choice>i{color:var(--text-muted)}
+.tournament-court-choice.is-checked{border-color:color-mix(in srgb,var(--tourney-accent) 45%,var(--surface-border));background:color-mix(in srgb,var(--tourney-accent) 9%,var(--surface-card));color:var(--text-primary)}
+.tournament-court-choice.is-checked>i{color:var(--tourney-accent)}
+.tournament-court-choice:focus-within{outline:3px solid color-mix(in srgb,var(--tourney-accent) 55%,transparent);outline-offset:2px}
+.tournament-venue-empty{display:flex;align-items:flex-start;gap:.55rem;padding:.75rem;border:1px dashed var(--surface-border);border-radius:10px;color:var(--text-secondary);font-size:.7rem;line-height:1.5}
+.tournament-venue-empty>i{color:var(--tourney-accent)}
+.tournament-venue-empty a{color:var(--tourney-accent);font-weight:800}
+@media(max-width:560px){.tournament-venue-picker{padding:.75rem}.tournament-venue-picker>.d-flex{flex-direction:column}.tournament-venue-option-head{flex-direction:column;gap:.25rem}}
+.eligibility-page{--eligibility-accent:#d92f1b}.eligibility-page-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;overflow:hidden;padding:1.65rem 1.8rem;border:1px solid color-mix(in srgb,var(--eligibility-accent) 22%,var(--surface-border));border-radius:20px;background:linear-gradient(112deg,var(--surface-card) 58%,color-mix(in srgb,var(--eligibility-accent) 12%,var(--surface-card)));box-shadow:var(--shadow-sm)}.eligibility-page-hero::after{position:absolute;right:10rem;bottom:-6.8rem;width:17rem;height:17rem;border:1px solid color-mix(in srgb,var(--eligibility-accent) 12%,transparent);border-radius:50%;content:"";pointer-events:none}.eligibility-page-hero-copy,.eligibility-page-tools{position:relative;z-index:1}.eligibility-page-kicker{display:inline-flex;align-items:center;gap:.45rem;margin-bottom:.55rem;color:var(--eligibility-accent);font-size:.63rem;font-weight:900;letter-spacing:.15em}.eligibility-page-hero h1{margin:0;color:var(--text-primary);font-size:clamp(1.45rem,2.4vw,2.05rem);font-weight:900;letter-spacing:-.045em}.eligibility-page-hero p{max-width:680px;margin:.42rem 0 .7rem;color:var(--text-secondary);font-size:.83rem;line-height:1.6}.eligibility-page-meta{display:flex;flex-wrap:wrap;gap:.55rem 1.1rem}.eligibility-page-meta span{display:inline-flex;align-items:center;gap:.4rem;color:var(--text-secondary);font-size:.67rem}.eligibility-page-meta i{color:var(--eligibility-accent)}.eligibility-page-tools{display:grid;justify-items:stretch;gap:.6rem;flex:0 0 190px}.eligibility-trust-card{display:flex;align-items:center;gap:.65rem;padding:.68rem .75rem;border:1px solid var(--surface-border);border-radius:.9rem;background:color-mix(in srgb,var(--surface-card) 88%,transparent)}.eligibility-trust-card>span{display:grid;place-items:center;width:2.15rem;height:2.15rem;flex:0 0 2.15rem;border-radius:.68rem;background:color-mix(in srgb,var(--eligibility-accent) 10%,var(--surface-card));color:var(--eligibility-accent)}.eligibility-trust-card small,.eligibility-trust-card b{display:block}.eligibility-trust-card small{color:var(--text-muted);font-size:.52rem;font-weight:900;letter-spacing:.12em}.eligibility-trust-card b{margin-top:.12rem;color:var(--text-primary);font-size:.67rem}.eligibility-refresh{width:100%;border-radius:.72rem;font-size:.73rem;font-weight:800}.eligibility-hero-watermark{position:absolute;right:12%;top:-32px;color:color-mix(in srgb,var(--eligibility-accent) 6%,transparent);font-size:155px;transform:rotate(-12deg);pointer-events:none}.eligibility-page-stats{box-shadow:var(--shadow-sm)}.eligibility-page-stats>div:nth-child(2)>i{background:rgba(228,169,50,.13);color:#ad7600}.eligibility-page-stats>div:nth-child(3)>i{background:rgba(25,135,84,.12);color:#198754}.eligibility-page-stats>div:nth-child(4)>i{background:rgba(220,53,69,.1);color:#dc3545}.eligibility-page-section-heading{align-items:center;padding-bottom:.95rem;border-bottom:1px solid var(--surface-border)}.eligibility-section-kicker{display:block;margin-bottom:.3rem;color:var(--eligibility-accent);font-size:.57rem;font-weight:900;letter-spacing:.15em}.eligibility-page-section-heading h2{font-size:1.12rem}.eligibility-records-table{--bs-table-color:var(--text-primary);--bs-table-bg:transparent;--bs-table-hover-color:var(--text-primary);--bs-table-hover-bg:color-mix(in srgb,var(--eligibility-accent) 4%,var(--surface-card));--bs-table-border-color:var(--surface-border);font-size:.75rem}.eligibility-records-table thead th{position:sticky;top:0;z-index:2;padding:.78rem .75rem;border-bottom:1px solid var(--surface-border);background:var(--surface-bg);color:var(--text-muted);font-size:.61rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}.eligibility-records-table tbody td{padding:.8rem .75rem;color:var(--text-secondary);vertical-align:middle}.eligibility-records-table tbody tr{transition:background-color .15s ease}.eligibility-player-name{display:flex;align-items:center;gap:.55rem;min-width:150px;color:var(--text-primary)}.eligibility-player-name>i{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border:1px solid color-mix(in srgb,var(--eligibility-accent) 14%,var(--surface-border));border-radius:11px;background:color-mix(in srgb,var(--eligibility-accent) 8%,var(--surface-card));color:var(--eligibility-accent)}.eligibility-player-name b{font-size:.75rem;font-weight:800}.eligibility-records-table .btn{border-radius:.65rem;white-space:nowrap;font-weight:750}.eligibility-page .eligibility-workspace-card{overflow:hidden;border:1px solid var(--surface-border);border-radius:1.1rem;background:var(--surface-card);box-shadow:var(--shadow-sm)}.eligibility-page .eligibility-status-filters{gap:.5rem;padding:.05rem 0 .85rem}.eligibility-page .eligibility-status-filters button{min-height:2.35rem;padding:.45rem .65rem;border-radius:.72rem;font-weight:750;transition:background .15s ease,border-color .15s ease,color .15s ease}.eligibility-page .eligibility-status-filters button:hover{border-color:color-mix(in srgb,var(--eligibility-accent) 40%,var(--surface-border));color:var(--eligibility-accent)}.eligibility-page .eligibility-status-filters button:focus-visible,.eligibility-refresh:focus-visible{outline:3px solid color-mix(in srgb,var(--eligibility-accent) 42%,transparent);outline-offset:2px}
+@media(max-width:767.98px){.eligibility-page-hero{align-items:flex-start;padding:1.2rem;flex-direction:column}.eligibility-page-tools{width:100%;grid-template-columns:1fr 1fr;align-items:center;flex-basis:auto}.eligibility-trust-card{min-width:0;padding:.58rem}.eligibility-trust-card b{font-size:.62rem}.eligibility-hero-watermark{right:-10px;top:5px;font-size:105px}.eligibility-page-section-heading{align-items:flex-start}.eligibility-records-table{min-width:760px}}
+@media(max-width:430px){.eligibility-page-tools{grid-template-columns:1fr}.eligibility-refresh{width:100%}.eligibility-trust-card{padding:.65rem}.eligibility-page-meta{gap:.45rem .7rem}.eligibility-page-meta span{font-size:.62rem}}
 .live-scoring-page{--live-red:#d8321e}.live-scoring-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;overflow:hidden;padding:1.55rem 1.8rem;border:1px solid color-mix(in srgb,var(--live-red) 24%,var(--surface-border));border-radius:20px;background:linear-gradient(112deg,var(--surface-card) 56%,color-mix(in srgb,var(--live-red) 12%,var(--surface-card)));box-shadow:0 12px 30px rgba(20,20,25,.05)}.live-scoring-heading,.live-scoring-tournament{position:relative;z-index:1}.live-scoring-kicker{display:inline-flex;align-items:center;gap:.45rem;margin-bottom:.5rem;color:var(--live-red);font-size:.62rem;font-weight:900;letter-spacing:.16em}.live-scoring-heading h1{margin:0;color:var(--text-primary);font-size:clamp(1.5rem,2.4vw,2.1rem);font-weight:900;letter-spacing:-.045em}.live-scoring-heading p{margin:.4rem 0 .65rem;color:var(--text-secondary);font-size:.8rem}.live-scoring-meta{display:flex;flex-wrap:wrap;gap:.5rem 1rem}.live-scoring-meta span{display:inline-flex;align-items:center;gap:.38rem;color:var(--text-secondary);font-size:.65rem}.live-scoring-meta i{color:var(--live-red)}.live-scoring-tournament{width:min(340px,38vw);min-height:44px;border-radius:11px;font-size:.75rem;font-weight:750}.live-scoring-watermark{position:absolute;right:17%;top:-44px;color:color-mix(in srgb,var(--live-red) 6%,transparent);font-size:165px;transform:rotate(-18deg);pointer-events:none}.live-scoring-match-panel{border:1px solid var(--surface-border);border-radius:17px;background:var(--surface-card);box-shadow:var(--shadow-sm)}.live-scoring-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:.85rem;padding-bottom:.75rem;border-bottom:1px solid var(--surface-border)}.live-scoring-panel-heading span{color:var(--live-red);font-size:.56rem;font-weight:900;letter-spacing:.15em}.live-scoring-panel-heading h2{margin:.18rem 0 0;color:var(--text-primary);font-size:1rem;font-weight:850}.live-scoring-panel-heading>b{display:grid;min-width:28px;height:28px;padding:0 7px;place-items:center;border-radius:9px;background:color-mix(in srgb,var(--live-red) 10%,var(--surface-card));color:var(--live-red);font-size:.7rem}.live-scoring-empty{display:grid;justify-items:center;gap:.35rem;padding:1.5rem .8rem;border:1px dashed var(--surface-border);border-radius:13px;background:var(--surface-bg);text-align:center}.live-scoring-empty>i{margin-bottom:.2rem;color:var(--live-red);font-size:1.45rem}.live-scoring-empty>b{color:var(--text-primary);font-size:.8rem}.live-scoring-empty>span{max-width:250px;color:var(--text-secondary);font-size:.67rem;line-height:1.5}.live-scoring-page .match-item{width:100%;text-align:left;color:var(--text-primary);font:inherit}.live-scoring-page .match-item:hover{background:var(--surface-card-hover)}.live-scoring-page .match-item.active{background:color-mix(in srgb,var(--live-red) 8%,var(--surface-card));box-shadow:0 0 0 3px color-mix(in srgb,var(--live-red) 12%,transparent)}.live-scoring-page .match-item:focus-visible{outline:3px solid color-mix(in srgb,var(--live-red) 45%,transparent);outline-offset:2px}.live-scoreboard-enhanced{position:relative;overflow:hidden}.live-scoreboard-enhanced:before{position:absolute;top:-130px;right:-85px;width:270px;height:270px;border:1px solid rgba(240,190,80,.15);border-radius:50%;box-shadow:0 0 0 38px rgba(240,190,80,.035),0 0 0 76px rgba(240,190,80,.025);content:'';pointer-events:none}.live-scoreboard-enhanced>*{position:relative;z-index:1}.live-score-placeholder{min-height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--surface-border);border-radius:17px;background:var(--surface-card);color:var(--text-secondary)}.live-score-placeholder>i{display:grid;width:64px;height:64px;margin-bottom:.9rem;place-items:center;border-radius:19px;background:color-mix(in srgb,var(--live-red) 10%,var(--surface-card));color:var(--live-red);font-size:1.7rem}.live-score-placeholder h5{color:var(--text-primary);font-weight:850}
 @media(max-width:767px){.live-scoring-hero{align-items:flex-start;flex-direction:column;padding:1.2rem}.live-scoring-tournament{width:100%}.live-scoring-watermark{right:-16px;top:6px;font-size:115px}.live-scoreboard-enhanced{padding:1.2rem!important}.live-scoreboard-enhanced .score-team-name{font-size:.85rem}.live-scoreboard-enhanced .score-number{font-size:clamp(2.6rem,13vw,4rem)}.live-scoring-match-panel{padding:1rem!important}}
 .standings-page .standings-hero h1{margin:.25rem 0 .4rem;color:var(--text-primary,var(--bs-emphasis-color));font-size:clamp(1.55rem,2.4vw,2.1rem);font-weight:900;letter-spacing:-.045em}.standings-page .standings-hero p{max-width:610px;line-height:1.5}.standings-page .standings-tournament-control>label{display:block;margin-bottom:.35rem;color:var(--text-secondary,var(--bs-secondary-color));font-size:.61rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase}.standings-page .standings-tournament-control>.form-select{width:min(340px,42vw);min-height:44px;padding-inline:12px;border:1px solid var(--surface-border);border-radius:11px;background-color:var(--surface-card);color:var(--text-primary);font-size:.76rem;font-weight:750}.standings-updated-note{display:inline-flex;align-items:center;gap:.4rem;color:var(--text-secondary,var(--bs-secondary-color));font-size:.68rem;font-weight:700}.standings-updated-note i{color:var(--evsu-primary)}.standings-page .standings-desktop-table{padding:0;border-radius:17px}.standings-page .standings-desktop-table .table-responsive{border-radius:inherit}.standings-page .standings-desktop-table thead th{position:sticky;top:0;padding:14px 13px;background:var(--surface-bg);color:var(--text-muted);font-size:.59rem;letter-spacing:.08em;white-space:nowrap}.standings-page .standings-desktop-table tbody td{padding:13px;color:var(--text-primary);font-size:.74rem}.standings-page .standings-desktop-table tbody tr{transition:background .16s ease}.standings-page .standings-desktop-table tbody tr:hover{background:var(--surface-card-hover)}.standings-page .standings-desktop-table tbody td:nth-child(4){color:#168455;font-weight:800}.standings-page .standings-desktop-table tbody td:nth-child(10){text-align:center}.standings-page .standings-desktop-table .standings-row-gold td:first-child{box-shadow:inset 3px 0 #d4a72c}.standings-page .standings-desktop-table .standings-row-silver td:first-child{box-shadow:inset 3px 0 #9ca3af}.standings-page .standings-desktop-table .standings-row-bronze td:first-child{box-shadow:inset 3px 0 #b87333}.standings-page .standings-mobile-card{box-shadow:0 5px 16px rgba(20,20,25,.035)}.standings-page .standings-empty{border-radius:17px}
@@ -2642,3 +2695,282 @@ thead .team-actions-column {
 .final-score-review-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:10px;padding:14px}
 .final-score-review-list article{display:grid;gap:10px;padding:14px;border:1px solid var(--surface-border);border-radius:12px;background:var(--surface-bg);color:var(--text-primary)}.final-review-round{display:flex;align-items:center;gap:6px;color:#b65b15;font-size:.59rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em}.final-review-game{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}.final-review-game strong{overflow:hidden;font-size:.77rem;font-weight:850;text-overflow:ellipsis;white-space:nowrap}.final-review-game strong:last-child{text-align:right}.final-review-game>b{font-size:1.08rem;font-weight:950;font-variant-numeric:tabular-nums;white-space:nowrap}.final-review-game>b i{padding:0 5px;color:#dc321d;font-size:.7rem;font-style:normal}.final-review-meta{display:flex;flex-wrap:wrap;gap:5px 12px;color:var(--text-secondary);font-size:.61rem}.final-score-review-list article>button{justify-self:start;padding:7px 10px;border:1px solid rgba(220,50,29,.28);border-radius:8px;background:rgba(220,50,29,.08);color:#c83420;font-size:.66rem;font-weight:850}.final-score-review-list article>button:hover{background:#dc321d;color:#fff}.final-review-empty{display:flex;align-items:center;gap:12px;padding:18px 21px;color:var(--text-secondary);font-size:.69rem}.final-review-empty>i{color:#198754;font-size:1.3rem}.final-review-empty span{display:grid;gap:3px}.final-review-empty strong{color:var(--text-primary);font-size:.76rem}.final-review-score-note{align-self:center;color:var(--text-secondary);font-size:.72rem}
 @media(max-width:575px){.final-score-review>header{align-items:flex-start;padding:15px}.final-score-review>header>b{font-size:.58rem}.final-score-review>header p{max-width:260px}.final-score-review-list{padding:10px}.final-review-game strong{font-size:.7rem}}
+
+/* Consistent light appearance across every signed-in workspace. Keep branded
+   dark hero panels as intentional accents; make the surrounding workspace
+   surfaces, navigation, cards, tables and supporting copy genuinely light. */
+:root[data-fullcourt-theme="light"] {
+  color-scheme: light;
+  --surface-bg: #f4f6f8;
+  --surface-card: #ffffff;
+  --surface-card-hover: #fbfcfd;
+  --surface-border: #dfe4ea;
+  --surface-border-soft: rgba(39, 54, 72, .1);
+  --text-primary: #18212b;
+  --text-secondary: #596675;
+  --text-muted: #687585;
+  --sidebar-bg-top: #ffffff;
+  --sidebar-bg-bottom: #f7f8fa;
+  --sidebar-link: #526071;
+  --sidebar-link-hover: #18212b;
+  --sidebar-active-bg: #fff1ed;
+  --sidebar-active-border: #cd2d17;
+  --shadow-xs: 0 1px 3px rgba(21, 32, 44, .05);
+  --shadow-sm: 0 5px 16px rgba(21, 32, 44, .06);
+  --shadow-md: 0 12px 28px rgba(21, 32, 44, .09);
+}
+:root[data-fullcourt-theme="light"] body,
+:root[data-fullcourt-theme="light"] .app-container,
+:root[data-fullcourt-theme="light"] .main-content,
+:root[data-fullcourt-theme="light"] .app-page { background: var(--surface-bg); color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .top-navbar { color: var(--text-primary); background: rgba(255,255,255,.94); border-color: var(--surface-border); box-shadow: 0 2px 12px rgba(21,32,44,.04); }
+:root[data-fullcourt-theme="light"] .navbar-brand-name,
+:root[data-fullcourt-theme="light"] .navbar-user-name { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .mobile-menu-btn { background: #fff; color: var(--evsu-primary); }
+:root[data-fullcourt-theme="light"] .card-custom,
+:root[data-fullcourt-theme="light"] .app-page .card,
+:root[data-fullcourt-theme="light"] .app-page .modal-content,
+:root[data-fullcourt-theme="light"] .app-page .list-group-item { color: var(--text-primary); background: var(--surface-card); border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .app-page .text-dark { color: var(--text-primary) !important; }
+:root[data-fullcourt-theme="light"] .app-page .text-muted,
+:root[data-fullcourt-theme="light"] .app-page .text-secondary,
+:root[data-fullcourt-theme="light"] .app-page .form-text { color: var(--text-secondary) !important; }
+:root[data-fullcourt-theme="light"] .app-page .border,
+:root[data-fullcourt-theme="light"] .app-page .border-top,
+:root[data-fullcourt-theme="light"] .app-page .border-bottom { border-color: var(--surface-border) !important; }
+:root[data-fullcourt-theme="light"] .app-page .form-control,
+:root[data-fullcourt-theme="light"] .app-page .form-select,
+:root[data-fullcourt-theme="light"] .app-page .input-group-text { color: var(--text-primary); background-color: #fff; border-color: #cfd7e0; }
+:root[data-fullcourt-theme="light"] .app-page .form-control::placeholder { color: #748091; opacity: 1; }
+:root[data-fullcourt-theme="light"] .app-page .form-control:focus,
+:root[data-fullcourt-theme="light"] .app-page .form-select:focus { border-color: #d14a37; box-shadow: 0 0 0 .2rem rgba(205,45,23,.12); }
+:root[data-fullcourt-theme="light"] .app-page .form-control:disabled { color: #667384; background: #f0f2f5; }
+:root[data-fullcourt-theme="light"] .app-page .table { --bs-table-bg: transparent; --bs-table-color: var(--text-primary); --bs-table-border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .app-page .table-light,
+:root[data-fullcourt-theme="light"] .app-page .table thead th { --bs-table-bg: #f0f3f6; --bs-table-color: #3f4c5b; background: #f0f3f6; color: #3f4c5b; }
+:root[data-fullcourt-theme="light"] .app-page .dropdown-menu { color: var(--text-primary); background: #fff; border-color: var(--surface-border); box-shadow: var(--shadow-md); }
+:root[data-fullcourt-theme="light"] .app-page .dropdown-item { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .app-page .dropdown-item:hover,
+:root[data-fullcourt-theme="light"] .app-page .dropdown-item:focus { background: #f3f5f7; }
+:root[data-fullcourt-theme="light"] .app-page .btn-light { color: #293544; background: #fff; border-color: #d6dde5; }
+:root[data-fullcourt-theme="light"] .app-page .btn-outline-dark { color: #293544; border-color: #758292; }
+:root[data-fullcourt-theme="light"] .app-footer { color: var(--text-secondary); background: #fff !important; border-color: var(--surface-border) !important; }
+
+/* Non-admin side navigation follows the selected appearance too. The admin
+   console keeps its separate, explicit theme switch. */
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-wrapper { color: var(--text-primary); background: linear-gradient(180deg,#fff 0%,#f7f8fa 100%); border-right: 1px solid var(--surface-border); }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-wrapper::before { opacity: 0; }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-brand { border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-brand-text h5,
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-user-name { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-subtitle,
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-user-role,
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-section-label,
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-footer { color: #687585; }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-user { background: #f5f6f8; border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-link { color: #526071; }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-link:hover { color: #202b38; background: #edf0f4; }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-link.active { color: #9c2719; background: #fff0ec; }
+:root[data-fullcourt-theme="light"] .app-container:not(.admin-console) .sidebar-footer { border-color: var(--surface-border); }
+
+/* Role dashboards used to keep their KPI cards and quick links charcoal even
+   after switching the rest of the workspace to light mode. */
+:root[data-fullcourt-theme="light"] .role-dashboard { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions a,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom { color: var(--text-primary); background: #fff; border-color: var(--surface-border); box-shadow: var(--shadow-sm); }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions a>b,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-value,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom h1,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom h2,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom h3,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom h4,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom h5,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom h6 { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-label,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-trend,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom .text-muted { color: var(--text-secondary) !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom .border { border-color: var(--surface-border) !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .table { --bs-table-color: var(--text-primary); --bs-table-border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .role-dashboard .table thead th { color: #455263; background: #f0f3f6; }
+:root[data-fullcourt-theme="light"] .role-dashboard .btn-light { color: #293544; background: #fff; border-color: #d6dde5 !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .player-dashboard-notice { color: var(--text-primary); background: #fff; border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .dashboard-section-head { border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .dashboard-section-total { border-color: #e5e8ed; background: linear-gradient(135deg,#fff6f2,#fffaf0); }
+:root[data-fullcourt-theme="light"] .dashboard-section-total strong,
+:root[data-fullcourt-theme="light"] .competition-sport-mark h6,
+:root[data-fullcourt-theme="light"] .competition-mini-stats strong,
+:root[data-fullcourt-theme="light"] .dashboard-empty-state h6 { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .dashboard-section-total span,
+:root[data-fullcourt-theme="light"] .competition-sport-mark p,
+:root[data-fullcourt-theme="light"] .competition-meter > div:first-child,
+:root[data-fullcourt-theme="light"] .competition-meter > small,
+:root[data-fullcourt-theme="light"] .competition-mini-stats span,
+:root[data-fullcourt-theme="light"] .dashboard-empty-state p { color: var(--text-secondary); }
+:root[data-fullcourt-theme="light"] .competition-meter { border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .competition-meter-track { background: #e9edf1; }
+:root[data-fullcourt-theme="light"] .competition-mini-stats > div { background: #f7f8fa; border-color: var(--surface-border); }
+:root[data-fullcourt-theme="light"] .dashboard-empty-state { background: linear-gradient(135deg,#fff,#f7f8fa); border-color: #cfd7e0; }
+:root[data-fullcourt-theme="light"] .dashboard-empty-state > a,
+:root[data-fullcourt-theme="light"] .dashboard-match-status > a { color: var(--text-primary); }
+:root[data-fullcourt-theme="light"] .dashboard-matches-card .table-responsive { border-color: var(--surface-border); }
+
+/* Keep the administrator's independent theme toggle in sync across its full
+   workspace, including the dashboard's data panels. */
+.admin-console-light .role-dashboard { color: var(--admin-text); }
+.admin-console-light .role-dashboard .welcome-banner { color: #fff; }
+.admin-console-light .role-dashboard .card-custom,
+.admin-console-light .role-dashboard .kpi-card,
+.admin-console-light .role-dashboard .role-quick-actions a { color: var(--admin-text); background: var(--admin-panel); border-color: var(--admin-border); }
+.admin-console-light .role-dashboard .kpi-card-value,
+.admin-console-light .role-dashboard .card-custom h1,
+.admin-console-light .role-dashboard .card-custom h2,
+.admin-console-light .role-dashboard .card-custom h3,
+.admin-console-light .role-dashboard .card-custom h4,
+.admin-console-light .role-dashboard .card-custom h5,
+.admin-console-light .role-dashboard .card-custom h6,
+.admin-console-light .competition-sport-mark h6,
+.admin-console-light .competition-mini-stats strong,
+.admin-console-light .dashboard-section-total strong,
+.admin-console-light .dashboard-empty-state h6 { color: var(--admin-text); }
+.admin-console-light .dashboard-section-head,
+.admin-console-light .competition-meter { border-color: var(--admin-border); }
+.admin-console-light .dashboard-empty-state,
+.admin-console-light .competition-mini-stats > div,
+.admin-console-light .competition-meter-track { color: var(--admin-text); background: var(--admin-panel-soft); border-color: var(--admin-border); }
+
+/* Light mode finish: keep every role dashboard bright and cohesive rather than
+   leaving a dark hero stranded above otherwise light cards. */
+:root[data-fullcourt-theme="light"] {
+  --surface-bg: #f2f4f7;
+  --surface-card: #ffffff;
+  --surface-card-hover: #f8fafc;
+  --surface-border: #dce2e9;
+  --text-primary: #17212f;
+  --text-secondary: #526173;
+  --text-muted: #657386;
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner,
+.admin-console-light .role-dashboard .welcome-banner {
+  color: #17212f !important;
+  background:
+    radial-gradient(circle at 88% 4%, rgba(220, 50, 29, .09), transparent 27%),
+    linear-gradient(115deg, #fff 0%, #fff 62%, #fff6f1 100%) !important;
+  border: 1px solid #dce2e9 !important;
+  border-left: 4px solid var(--role-accent, #c8321d) !important;
+  box-shadow: 0 12px 28px rgba(27, 39, 54, .07) !important;
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner h1,
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner h2,
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner h3,
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner h4,
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner h5,
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner h6,
+.admin-console-light .role-dashboard .welcome-banner h1,
+.admin-console-light .role-dashboard .welcome-banner h2,
+.admin-console-light .role-dashboard .welcome-banner h3,
+.admin-console-light .role-dashboard .welcome-banner h4,
+.admin-console-light .role-dashboard .welcome-banner h5,
+.admin-console-light .role-dashboard .welcome-banner h6 {
+  color: #17212f !important;
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .role-hero-eyebrow,
+.admin-console-light .role-dashboard .role-hero-eyebrow { color: #9f2d1e !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-hero-live,
+:root[data-fullcourt-theme="light"] .role-dashboard .role-hero-date,
+:root[data-fullcourt-theme="light"] .role-dashboard .role-dashboard-intro,
+.admin-console-light .role-dashboard .role-hero-live,
+.admin-console-light .role-dashboard .role-hero-date,
+.admin-console-light .role-dashboard .role-dashboard-intro {
+  color: #526173 !important;
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner-trophy,
+.admin-console-light .role-dashboard .welcome-banner-trophy { color: #bd3b27; opacity: .12; }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions a,
+.admin-console-light .role-dashboard .role-quick-actions a {
+  box-shadow: 0 4px 14px rgba(27, 39, 54, .045);
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions a:hover,
+.admin-console-light .role-dashboard .role-quick-actions a:hover {
+  color: #17212f;
+  background: #fffaf8;
+  border-color: rgba(190, 50, 30, .35);
+  box-shadow: 0 10px 22px rgba(27, 39, 54, .09);
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card,
+.admin-console-light .role-dashboard .kpi-card {
+  box-shadow: 0 4px 16px rgba(27, 39, 54, .05);
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card:hover,
+.admin-console-light .role-dashboard .kpi-card:hover {
+  border-color: rgba(190, 50, 30, .32);
+  box-shadow: 0 10px 22px rgba(27, 39, 54, .09);
+}
+:root[data-fullcourt-theme="light"] .app-page :is(.card-custom, .card, .modal-content, .list-group-item),
+.admin-console-light :is(.card-custom, .card, .modal-content, .list-group-item) {
+  box-shadow: 0 3px 14px rgba(27, 39, 54, .04);
+}
+:root[data-fullcourt-theme="light"] .app-page .table tbody tr:hover > *,
+.admin-console-light .app-page .table tbody tr:hover > * {
+  --bs-table-bg: #f7f9fb;
+}
+:root[data-fullcourt-theme="light"] :is(.app-page, .admin-console) :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(190, 50, 30, .28);
+  outline-offset: 2px;
+}
+
+/* Dashboard hierarchy and spacing polish, shared across the four roles. */
+.role-dashboard .welcome-banner { position: relative; isolation: isolate; }
+.role-dashboard .dashboard-welcome-title { font-family: var(--font-display); font-size: clamp(1.55rem, 2vw, 2rem); letter-spacing: -.035em; line-height: 1.12; }
+.role-dashboard .dashboard-welcome-meta { color: rgba(255,255,255,.72); font-size: .88rem; }
+.role-dashboard .dashboard-role-badge { padding: .38rem .58rem; border: 1px solid rgba(244,196,48,.35); border-radius: 999px; background: rgba(244,196,48,.17); color: #f8d875; font-size: .63rem; font-weight: 800; letter-spacing: .055em; }
+.role-dashboard-admin .welcome-banner { min-height: 218px; padding: 2rem 2.25rem; }
+.role-dashboard-admin .admin-control-board { padding: 1.35rem; border-radius: 16px; box-shadow: 0 12px 28px rgba(0,0,0,.1); }
+.role-dashboard-admin .admin-control-board-head { align-items: center; margin-bottom: 1.15rem; }
+.role-dashboard-admin .admin-control-board-head h4 { font-family: var(--font-display); font-size: 1.2rem; letter-spacing: -.025em; }
+.role-dashboard-admin .admin-control-board-head p { max-width: 640px; font-size: .8rem; line-height: 1.55; }
+.role-dashboard-admin .admin-control-link { min-height: 94px; padding: .9rem; border-radius: 12px; }
+.role-dashboard-admin .admin-control-icon { width: 2.55rem; height: 2.55rem; border-radius: 10px; }
+.role-dashboard-admin .admin-control-copy b { font-size: .79rem; }
+.role-dashboard-admin .admin-control-copy small { font-size: .67rem; line-height: 1.45; }
+.role-dashboard-admin .admin-operations-grid { align-items: stretch; gap: 1rem; }
+.role-dashboard-admin .admin-overview-card { min-height: 240px; padding: 1.25rem; border-radius: 15px !important; }
+.role-dashboard-admin .admin-overview-card > header { min-height: 48px; align-items: center; margin-bottom: 1.1rem; }
+.role-dashboard-admin .admin-overview-card > header h5 { font-size: 1.02rem; letter-spacing: -.02em; }
+.role-dashboard-admin .admin-snapshot-list > a { min-height: 62px; padding: .65rem .7rem; border-radius: 10px; }
+.role-dashboard-admin .dashboard-live-ops { border-radius: 15px !important; }
+.role-dashboard-admin .dashboard-live-ops > .d-flex > div > h5 { font-family: var(--font-display); letter-spacing: -.02em; }
+.role-dashboard-admin .dashboard-live-ops .border.rounded-3 { min-height: 126px; padding: 1rem !important; }
+.role-dashboard-admin .dashboard-activity-card,
+.role-dashboard-admin .dashboard-matches-card { border-radius: 15px !important; }
+.role-dashboard-admin .dashboard-section-head h5 { letter-spacing: -.02em; }
+
+:root[data-fullcourt-theme="light"] .role-dashboard .dashboard-welcome-meta,
+.admin-console-light .role-dashboard .dashboard-welcome-meta { color: #526173 !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .dashboard-role-badge,
+.admin-console-light .role-dashboard .dashboard-role-badge { border-color: #edc6a1; background: #fff3e6; color: #8c421b; }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-board,
+.admin-console-light .role-dashboard-admin .admin-control-board { border-color: #dce2e9; box-shadow: 0 8px 24px rgba(27,39,54,.055); }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-link,
+.admin-console-light .role-dashboard-admin .admin-control-link { background: #f8fafc; border-color: #e1e6ec; }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-link:hover,
+.admin-console-light .role-dashboard-admin .admin-control-link:hover { background: #fff7f3; border-color: rgba(190,50,30,.32); }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-copy b,
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-value,
+.admin-console-light .role-dashboard-admin .admin-control-copy b,
+.admin-console-light .role-dashboard-admin .admin-control-value { color: #17212f; }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-copy small,
+.admin-console-light .role-dashboard-admin .admin-control-copy small { color: #526173; }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-control-status,
+.admin-console-light .role-dashboard-admin .admin-control-status { color: #526173; border-color: #dce2e9; background: #fff; }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-overview-card,
+.admin-console-light .role-dashboard-admin .admin-overview-card { box-shadow: 0 5px 18px rgba(27,39,54,.045); }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-snapshot-list > a,
+.admin-console-light .role-dashboard-admin .admin-snapshot-list > a { background: #f8fafc; }
+:root[data-fullcourt-theme="light"] .role-dashboard-admin .admin-snapshot-list > a:hover,
+.admin-console-light .role-dashboard-admin .admin-snapshot-list > a:hover { background: #fff7f3; }
+@media (max-width: 767.98px) {
+  .role-dashboard-admin .welcome-banner { min-height: 0; padding: 1.4rem 1.25rem; }
+  .role-dashboard-admin .admin-control-board { padding: 1rem; }
+  .role-dashboard-admin .admin-operations-grid > article { min-height: 0; }
+}

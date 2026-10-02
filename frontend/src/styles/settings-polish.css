@@ -3,3 +3,26 @@ html[data-bs-theme=dark] .settings-hero,html[data-bs-theme=dark] .settings-accou
 @media(max-width:700px){.settings-hero{align-items:flex-start;flex-direction:column;gap:16px;padding:23px}.settings-account-chip{width:100%;max-width:none}.settings-savebar{align-items:stretch;flex-direction:column}.settings-savebar>div{width:100%}.settings-savebar .btn{flex:1}.settings-platform-panel>footer>span{margin:0}.settings-center .settings-section{padding:17px!important}}
 @media(prefers-reduced-motion:reduce){.settings-center .report-kpi,.settings-center .card-custom{transition:none}}
 :root[data-reduce-motion="true"] *, :root[data-reduce-motion="true"] *::before, :root[data-reduce-motion="true"] *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+
+.settings-hero{isolation:isolate;min-height:218px;border-color:color-mix(in srgb,#dc321d 19%,var(--surface-border));background:radial-gradient(ellipse at 88% 8%,rgba(220,50,29,.18),transparent 29%),linear-gradient(112deg,var(--surface-card) 53%,color-mix(in srgb,#dc321d 7%,var(--surface-card)));}
+.settings-hero:before{position:absolute;z-index:-1;right:18%;bottom:-180px;width:330px;height:330px;border:1px solid rgba(220,50,29,.1);border-radius:50%;content:"";pointer-events:none}
+.settings-hero-copy>span{display:inline-flex;align-items:center;gap:7px;margin:0 0 12px;padding:7px 10px;border:1px solid rgba(220,50,29,.2);border-radius:999px;background:rgba(220,50,29,.06);color:#dc321d;font-size:.61rem;font-weight:900;letter-spacing:.14em}
+.settings-hero-copy>span i{font-size:.76rem}
+.settings-hero h1{font-size:clamp(1.9rem,3.1vw,2.65rem);letter-spacing:-.055em}
+.settings-hero p{margin-bottom:13px;font-size:.8rem}
+.settings-hero-points{display:flex;flex-wrap:wrap;gap:7px}
+.settings-hero-points span{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid var(--surface-border);border-radius:8px;background:color-mix(in srgb,var(--surface-card) 82%,transparent);color:var(--text-secondary);font-size:.63rem;font-weight:750;letter-spacing:0}
+.settings-hero-points i{color:#dc321d}
+.settings-account-chip{min-height:74px;border-color:color-mix(in srgb,#dc321d 12%,var(--surface-border));background:color-mix(in srgb,var(--surface-card) 91%,transparent);backdrop-filter:blur(8px)}
+.settings-account-avatar{border-radius:50%;box-shadow:0 0 0 4px rgba(220,50,29,.1);font-size:.85rem}
+.settings-account-chip>div>span{width:max-content;max-width:100%;margin-top:2px;padding:2px 7px;border-radius:999px;background:var(--surface-bg);font-size:.54rem;font-weight:800}
+.settings-center .settings-section{box-shadow:0 9px 26px rgba(20,20,24,.045);transition:border-color .16s ease,box-shadow .16s ease}
+.settings-center .settings-section:hover{border-color:color-mix(in srgb,#dc321d 22%,var(--surface-border));box-shadow:0 12px 28px rgba(20,20,24,.07)}
+.settings-mode-btn:focus-visible,.settings-savebar .btn:focus-visible,.settings-platform-panel button:focus-visible,.settings-center .btn:focus-visible{outline:3px solid rgba(220,50,29,.55);outline-offset:2px}
+.settings-center .btn-outline-dark{border-color:var(--surface-border);background:var(--surface-bg);color:var(--text-primary);font-size:.72rem;font-weight:800}
+.settings-center .btn-outline-dark:hover{border-color:#dc321d;background:rgba(220,50,29,.06);color:var(--text-primary)}
+html[data-bs-theme="dark"] .settings-hero-points span,html[data-bs-theme="dark"] .settings-account-chip>div>span{border-color:#3b3b42;background:#222226;color:#c9c9d0}
+html[data-bs-theme="dark"] .settings-center .btn-outline-dark{border-color:#3b3b42;background:#222226;color:#f4f4f5}
+html[data-bs-theme="dark"] .settings-center .settings-section:hover{border-color:#5a3431}
+@media(max-width:700px){.settings-hero{min-height:0}.settings-hero h1{font-size:clamp(1.85rem,7vw,2.4rem)}.settings-hero-points{gap:6px}.settings-account-chip{min-width:0}.settings-account-chip b{max-width:calc(100vw - 150px)}}
+@media(prefers-reduced-motion:reduce){.settings-center .settings-section{transition:none}.settings-center .settings-section:hover{transform:none}}

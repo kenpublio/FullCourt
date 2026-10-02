@@ -21,7 +21,7 @@ class BasketballOperationsController {
     }
 
     public function createOrganization(): void {
-        $user = AuthMiddleware::authenticate();
+        $user = AuthMiddleware::authorizeRoles(['organization_admin','tournament_organizer']);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         if (empty($input['name']) || empty($input['organization_type']) || empty($input['slug'])) {
             Response::error('Organization name, type, and public slug are required.', 422);

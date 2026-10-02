@@ -41,7 +41,7 @@ class TeamController {
         $isCoach=in_array($user['role'],['coach','coach_manager'],true);
         if ($isCoach) {
             $tournament=(new Tournament())->getById($tournamentId);
-            if (!$tournament || !in_array($tournament['status'],['upcoming','ongoing'],true)) {
+            if (!$tournament || ($tournament['approval_status'] ?? 'approved') !== 'approved' || !in_array($tournament['status'],['upcoming','ongoing'],true)) {
                 Response::error('This tournament is not open for team applications.',409);
             }
             if ($this->teamModel->findCoachApplication($tournamentId,(int)$user['user_id'])) {

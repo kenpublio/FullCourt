@@ -1,0 +1,7 @@
+{
+  "name": "fullcourt-local-dev",
+  "private": true,
+  "scripts": {
+    "dev:all": "node scripts/dev-all.mjs"
+  }
+}

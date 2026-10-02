@@ -1,11 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import '../styles/auth-experience.css';
 
 const AuthLayout = () => {
   const isRegister = useLocation().pathname === '/register';
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('fullcourt_public_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.fullcourtTheme = theme;
+    document.documentElement.dataset.bsTheme = theme;
+    localStorage.setItem('fullcourt_public_theme', theme);
+  }, [theme]);
+
   return (
     <div className={`fc-auth auth-shell min-vh-100 d-flex align-items-center justify-content-center position-relative ${isRegister ? 'fc-auth-register' : ''}`}>
+      <button
+        type="button"
+        className="auth-theme-toggle"
+        onClick={() => setTheme(value => value === 'dark' ? 'light' : 'dark')}
+        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      >
+        <i className={`bi bi-${theme === 'dark' ? 'sun' : 'moon-stars'}`} aria-hidden="true" />
+        <span>{theme === 'dark' ? 'Light' : 'Dark'} mode</span>
+      </button>
       <div className="auth-decoration auth-decoration-one" />
       <div className="auth-decoration auth-decoration-two" />
       <div className="container-fluid auth-container position-relative z-1">

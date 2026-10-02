@@ -14,7 +14,7 @@ const roleBadgeClass = (role) => {
   }
 };
 
-const Navbar = ({ onMenuClick, adminTheme, onThemeToggle }) => {
+const Navbar = ({ onMenuClick, adminTheme, appearance = 'light', onAppearanceToggle, onThemeToggle }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const userId = user?.id;
@@ -68,7 +68,7 @@ const Navbar = ({ onMenuClick, adminTheme, onThemeToggle }) => {
 
       {/* Right — User section */}
       <div className="navbar-user-section">
-        {adminTheme && <button type="button" className="admin-theme-toggle" onClick={onThemeToggle} title={`Switch to ${adminTheme === 'dark' ? 'light' : 'dark'} mode`} aria-label="Toggle admin color theme"><i className={`bi bi-${adminTheme === 'dark' ? 'sun-fill' : 'moon-stars-fill'}`} /></button>}
+        {adminTheme ? <button type="button" className="admin-theme-toggle" onClick={onThemeToggle} title={`Switch to ${adminTheme === 'dark' ? 'light' : 'dark'} mode`} aria-label={`Switch to ${adminTheme === 'dark' ? 'light' : 'dark'} mode`}><i className={`bi bi-${adminTheme === 'dark' ? 'sun-fill' : 'moon-stars-fill'}`} /></button> : <button type="button" className="admin-theme-toggle user-theme-toggle" onClick={onAppearanceToggle} title={`Switch to ${appearance === 'dark' ? 'light' : 'dark'} mode`} aria-label={`Switch to ${appearance === 'dark' ? 'light' : 'dark'} mode`}><i className={`bi bi-${appearance === 'dark' ? 'sun-fill' : 'moon-stars-fill'}`} /></button>}
         {/* Notification bell */}
         <Link
           to="/notifications"

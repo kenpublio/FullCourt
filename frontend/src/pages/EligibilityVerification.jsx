@@ -97,9 +97,12 @@ const EligibilityVerification = () => {
           <span className="eligibility-page-kicker"><i className="bi bi-shield-check"/> ROSTER &amp; PLAYER SAFEGUARDING</span>
           <h1>{isCoach ? 'My Team Player Eligibility' : 'Player Eligibility Verification'}</h1>
           <p>{isCoach ? 'Review documents, jersey details, and eligibility for players on your assigned team.' : 'Securely review roster documents, guardian consent, jersey details, and player eligibility decisions.'}</p>
-          <div className="eligibility-page-meta"><span><i className="bi bi-lock-fill"/> Private player records</span><span><i className="bi bi-person-check-fill"/> Human-reviewed decisions</span></div>
+          <div className="eligibility-page-meta"><span><i className="bi bi-shield-lock-fill"/> Restricted reviewer access</span><span><i className="bi bi-person-check-fill"/> Human-reviewed decisions</span></div>
         </div>
-        <button type="button" className="btn btn-outline-secondary eligibility-refresh" onClick={loadData} disabled={loading}><i className={`bi bi-arrow-clockwise me-2${loading?' spin':''}`}/>{isCoach ? 'Refresh roster' : 'Refresh records'}</button>
+        <div className="eligibility-page-tools">
+          <div className="eligibility-trust-card"><span><i className="bi bi-lock-fill"/></span><div><small>PRIVATE RECORDS</small><b>{isCoach ? 'Assigned team only' : 'Authorized reviewers only'}</b></div></div>
+          <button type="button" className="btn btn-outline-secondary eligibility-refresh" onClick={loadData} disabled={loading}><i className={`bi bi-arrow-clockwise me-2${loading?' spin':''}`}/>{isCoach ? 'Refresh roster' : 'Refresh records'}</button>
+        </div>
         <i className="bi bi-patch-check-fill eligibility-hero-watermark" aria-hidden="true" />
       </section>
 

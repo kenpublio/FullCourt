@@ -57,6 +57,8 @@ class Schedule {
             JOIN tournaments t ON t.id = :tid
             JOIN sports s ON t.sport_id = s.id
             WHERE c.is_available = 1 AND v.approval_status='approved'
+              AND (NOT EXISTS (SELECT 1 FROM tournament_courts tc WHERE tc.tournament_id=t.id)
+                   OR EXISTS (SELECT 1 FROM tournament_courts tc WHERE tc.tournament_id=t.id AND tc.court_id=c.id))
             ORDER BY c.id ASC
         ");
         $stmt->execute([':tid' => $tournamentId]);
@@ -309,6 +311,13 @@ class Schedule {
 
         // Court clash (excluding self)
         if ($courtId) {
+            $hasTournamentCourts=$this->db->prepare('SELECT 1 FROM tournament_courts WHERE tournament_id=:tid LIMIT 1');
+            $hasTournamentCourts->execute([':tid'=>(int)$m['tournament_id']]);
+            if ($hasTournamentCourts->fetchColumn()) {
+                $allowedCourt=$this->db->prepare("SELECT 1 FROM tournament_courts tc JOIN courts c ON c.id=tc.court_id JOIN venues v ON v.id=c.venue_id WHERE tc.tournament_id=:tid AND tc.court_id=:cid AND c.is_available=1 AND v.approval_status='approved' LIMIT 1");
+                $allowedCourt->execute([':tid'=>(int)$m['tournament_id'],':cid'=>$courtId]);
+                if (!$allowedCourt->fetchColumn()) $conflicts[]=['type'=>'court_not_selected','court_id'=>$courtId];
+            }
             $r = $this->db->prepare("SELECT id, scheduled_start_time, scheduled_end_time FROM matches WHERE court_id = :cid AND id != :mid AND status IN ('scheduled','in_progress') AND scheduled_start_time IS NOT NULL");
             $r->execute([':cid' => $courtId, ':mid' => $matchId]);
             foreach ($r as $row) {

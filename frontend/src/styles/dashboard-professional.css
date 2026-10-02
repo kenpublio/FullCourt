@@ -470,3 +470,55 @@
 .admin-console-light .role-dashboard .card-custom .text-muted {
   color: #667085 !important;
 }
+
+/* Beat the intentional charcoal defaults above when a dashboard is in light mode. */
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner,
+.admin-console-light .role-dashboard .welcome-banner {
+  color: #17212f !important;
+  background: linear-gradient(112deg,#fff 0%,#fff 68%,#fff5f0 100%) !important;
+  border-color: #dce2e9 !important;
+  box-shadow: 0 10px 26px rgba(27,39,54,.07) !important;
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner :is(h1,h2,h3,h4,h5,h6),
+:root[data-fullcourt-theme="light"] .role-dashboard .welcome-banner .dashboard-welcome-title,
+.admin-console-light .role-dashboard .welcome-banner :is(h1,h2,h3,h4,h5,h6) { color: #17212f !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .dashboard-welcome-meta,
+:root[data-fullcourt-theme="light"] .role-dashboard .role-dashboard-intro,
+:root[data-fullcourt-theme="light"] .role-dashboard .role-hero-live,
+:root[data-fullcourt-theme="light"] .role-dashboard .role-hero-date,
+.admin-console-light .role-dashboard :is(.dashboard-welcome-meta,.role-dashboard-intro,.role-hero-live,.role-hero-date) { color: #526173 !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-hero-eyebrow,
+.admin-console-light .role-dashboard .role-hero-eyebrow { color: #9f2d1e !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions > a,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom,
+:root[data-fullcourt-theme="light"] .role-dashboard .organizer-journey,
+:root[data-fullcourt-theme="light"] .role-dashboard .player-dashboard-notice,
+.admin-console-light .role-dashboard .role-quick-actions > a,
+.admin-console-light .role-dashboard .kpi-card,
+.admin-console-light .role-dashboard .card-custom,
+.admin-console-light .role-dashboard .organizer-journey,
+.admin-console-light .role-dashboard .player-dashboard-notice {
+  color: #17212f !important;
+  background: #fff !important;
+  border-color: #dce2e9 !important;
+  box-shadow: 0 5px 18px rgba(27,39,54,.055) !important;
+}
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions > a > b,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-value,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom :is(h1,h2,h3,h4,h5,h6),
+:root[data-fullcourt-theme="light"] .role-dashboard .dashboard-empty-state h6,
+.admin-console-light .role-dashboard .role-quick-actions > a > b,
+.admin-console-light .role-dashboard .kpi-card-value,
+.admin-console-light .role-dashboard .card-custom :is(h1,h2,h3,h4,h5,h6),
+.admin-console-light .role-dashboard .dashboard-empty-state h6 { color: #17212f !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-label,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-trend,
+:root[data-fullcourt-theme="light"] .role-dashboard .card-custom :is(p,small,.text-muted),
+.admin-console-light .role-dashboard .kpi-card-label,
+.admin-console-light .role-dashboard .kpi-card-trend,
+.admin-console-light .role-dashboard .card-custom :is(p,small,.text-muted) { color: #526173 !important; }
+:root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions > a:hover,
+:root[data-fullcourt-theme="light"] .role-dashboard .kpi-card:hover,
+.admin-console-light .role-dashboard .role-quick-actions > a:hover,
+.admin-console-light .role-dashboard .kpi-card:hover { background: #fff8f5 !important; border-color: rgba(190,50,30,.36) !important; }
