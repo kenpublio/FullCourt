@@ -29,8 +29,10 @@ class ResendMailer {
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_SLASHES),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 20,
+            // Notifications must never hold a game-day API request open. A slow
+            // provider is treated as a skipped email and can be retried later.
+            CURLOPT_CONNECTTIMEOUT => 1,
+            CURLOPT_TIMEOUT => 2,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $this->apiKey,
                 'Content-Type: application/json',

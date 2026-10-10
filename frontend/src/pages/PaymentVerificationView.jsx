@@ -57,7 +57,7 @@ const PaymentVerificationView = () => {
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
     try {
-      const amount=selectedTournament?.registration_fee;
+      const amount=formData.amount;
       if(!(Number(amount)>0)){
         alert('This tournament has no registration fee to submit.');
         return;
@@ -120,12 +120,27 @@ const PaymentVerificationView = () => {
     ? tournaments.filter(tournament => String(tournament.id) === String(selectedTeam.tournament_id))
     : [];
   const selectedTournament = allowedTournaments.find(tournament => String(tournament.id) === String(formData.tournament_id));
+  const selectedPaid = payments.filter(payment => String(payment.team_id)===String(formData.team_id) && String(payment.tournament_id)===String(formData.tournament_id) && payment.status==='approved').reduce((sum,payment)=>sum+Number(payment.amount||0),0);
+  const selectedFee = Number(selectedTournament?.registration_fee||0);
+  const selectedBalance = Math.max(0,selectedFee-selectedPaid);
+
+  useEffect(() => {
+    if (!showSubmitModal || selectedBalance <= 0) return;
+    setFormData(previous => {
+      const current = Number(previous.amount || 0);
+      if (current > 0 && current <= selectedBalance) return previous;
+      return { ...previous, amount: String(selectedBalance) };
+    });
+  }, [showSubmitModal, selectedBalance]);
 
   const downloadReport = () => {
     const escapeCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
     const rows = [
-      ['Date', 'Team', 'Tournament', 'Method', 'Reference Number', 'Amount', 'Status', 'Verified By'],
-      ...payments.map(p => [p.created_at, p.team_name, p.tournament_name, p.payment_method, p.reference_number, p.amount, p.status, p.verifier_name || '']),
+      ['Date', 'Team', 'Tournament', 'Method', 'Reference Number', 'Installment', 'Registration Fee', 'Approved Total', 'Remaining Balance', 'Payment State', 'Status', 'Verified By'],
+      ...payments.map(p => {
+        const fee=Number(p.registration_fee||0), paid=Number(p.approved_total||0), balance=Math.max(0,fee-paid);
+        return [p.created_at, p.team_name, p.tournament_name, p.payment_method, p.reference_number, p.amount, fee, paid, balance, balance<=0?'Fully paid':paid>0?'Partial':'Unpaid', p.status, p.verifier_name || ''];
+      }),
     ];
     const csv = rows.map(row => row.map(escapeCell).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -182,7 +197,8 @@ const PaymentVerificationView = () => {
                   <th>Team</th>
                   <th>Tournament</th>
                   <th>Method &amp; Ref No.</th>
-                  <th>Amount</th>
+                  <th>Installment</th>
+                  <th>Balance</th>
                   <th>Receipt</th>
                   <th>Status</th>
                   {canVerifyPayment && <th className="text-end">Finance Action</th>}
@@ -190,7 +206,7 @@ const PaymentVerificationView = () => {
               </thead>
               <tbody>
                 {payments.length === 0 ? (
-                <tr><td colSpan={canVerifyPayment ? 8 : 7} className="text-center py-5 text-muted"><i className="bi bi-receipt-cutoff d-block mb-2 fs-3 opacity-50"/>{isCoach?'No payments for your team yet. Submit a payment when ready.':'No payment transactions recorded.'}</td></tr>
+                <tr><td colSpan={canVerifyPayment ? 9 : 8} className="text-center py-5 text-muted"><i className="bi bi-receipt-cutoff d-block mb-2 fs-3 opacity-50"/>{isCoach?'No payments for your team yet. Submit a payment when ready.':'No payment transactions recorded.'}</td></tr>
                 ) : (
                   payments.map(p => (
                     <tr key={p.id}>
@@ -202,6 +218,7 @@ const PaymentVerificationView = () => {
                         <span className="font-monospace small">{p.reference_number}</span>
                       </td>
                       <td className="fw-bold text-success">₱{parseFloat(p.amount).toFixed(2)}</td>
+                      <td><strong>₱{Math.max(0,Number(p.registration_fee||0)-Number(p.approved_total||0)).toFixed(2)}</strong><small className="d-block text-muted">{Number(p.approved_total||0)>=Number(p.registration_fee||0)?'Fully paid':Number(p.approved_total||0)>0?'Partial':'Unpaid'}</small></td>
                       <td>
                         {p.receipt_photo_url
                           ? <a href={receiptUrl(p.receipt_photo_url)} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-secondary"><i className="bi bi-image me-1" />View</a>
@@ -271,10 +288,10 @@ const PaymentVerificationView = () => {
                     </div>
                     <div className="col-6">
                       <label className="form-label small fw-semibold">Amount (₱)</label>
-                      <input type="number" step="0.01" min="0.01" className="form-control" required readOnly value={selectedTournament?.registration_fee ?? ''} aria-describedby="payment-fee-note" />
+                      <input type="number" step="0.01" min="0.01" max={selectedBalance||undefined} className="form-control" required value={formData.amount} onChange={e=>setFormData({...formData,amount:e.target.value})} aria-describedby="payment-fee-note" />
                     </div>
                   </div>
-                  <small id="payment-fee-note" className="text-muted d-block mb-3">Amount is set by the tournament organizer and cannot be changed here.</small>
+                  <small id="payment-fee-note" className="text-muted d-block mb-3">Registration fee: ₱{selectedFee.toFixed(2)} · Verified paid: ₱{selectedPaid.toFixed(2)} · Remaining: ₱{selectedBalance.toFixed(2)}. You may pay the full balance or submit a partial installment.</small>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Reference Number</label>
                     <input type="text" className="form-control" required value={formData.reference_number} onChange={e => setFormData({...formData, reference_number: e.target.value})} placeholder="e.g. GCASH-1002394812" />
@@ -293,7 +310,7 @@ const PaymentVerificationView = () => {
                 </div>
                 <div className="modal-footer border-top">
                   <button type="button" className="btn btn-light btn-sm" onClick={() => setShowSubmitModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-evsu btn-sm" disabled={!selectedTeam || !selectedTournament || Number(selectedTournament.registration_fee)<=0}>Submit for Verification</button>
+                  <button type="submit" className="btn btn-evsu btn-sm" disabled={!selectedTeam || !selectedTournament || !(Number(formData.amount)>0) || Number(formData.amount)>selectedBalance}>Submit for Verification</button>
                 </div>
               </form>
             </div>

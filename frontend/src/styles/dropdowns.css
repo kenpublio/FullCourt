@@ -1,0 +1,116 @@
+/* FullCourt shared dropdown language
+   Keeps native select semantics while giving every role a consistent,
+   accessible trigger in light mode, dark mode, and narrow layouts. */
+
+:root {
+  --fc-select-bg: #ffffff;
+  --fc-select-border: #cfd7e0;
+  --fc-select-text: #17212f;
+  --fc-select-muted: #657386;
+  --fc-select-hover: #f8fafc;
+  --fc-select-menu: #ffffff;
+  --fc-select-selected: #fff0eb;
+  --fc-select-arrow: #526173;
+}
+
+:root[data-fullcourt-theme="dark"] {
+  --fc-select-bg: #20242b;
+  --fc-select-border: #3b4450;
+  --fc-select-text: #f3f5f8;
+  --fc-select-muted: #a4afbd;
+  --fc-select-hover: #272d36;
+  --fc-select-menu: #20242b;
+  --fc-select-selected: #3a2928;
+  --fc-select-arrow: #c0c8d3;
+}
+
+/* Bootstrap selects and the remaining native selects share one control. */
+:is(.app-page, .modal, .fc-auth, .court-site) select:not([multiple]) {
+  min-height: 44px;
+  padding: .64rem 2.65rem .64rem .85rem;
+  border: 1px solid var(--fc-select-border);
+  border-radius: 11px;
+  color: var(--fc-select-text);
+  background-color: var(--fc-select-bg);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--fc-select-arrow) 50%),
+    linear-gradient(135deg, var(--fc-select-arrow) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 13px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  box-shadow: 0 1px 2px rgba(23, 33, 47, .035);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+:is(.app-page, .modal, .fc-auth, .court-site) select:not([multiple]):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--evsu-primary) 42%, var(--fc-select-border));
+  background-color: var(--fc-select-hover);
+}
+
+:is(.app-page, .modal, .fc-auth, .court-site) select:not([multiple]):focus-visible {
+  border-color: var(--evsu-primary);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(205, 45, 23, .14), 0 4px 12px rgba(23, 33, 47, .08);
+}
+
+:is(.app-page, .modal, .fc-auth, .court-site) select:not([multiple]):disabled {
+  color: var(--fc-select-muted);
+  background-color: color-mix(in srgb, var(--fc-select-bg) 88%, var(--fc-select-border));
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+:is(.app-page, .modal, .fc-auth, .court-site) select option,
+:is(.app-page, .modal, .fc-auth, .court-site) select optgroup {
+  color: var(--fc-select-text);
+  background: var(--fc-select-menu);
+  font-weight: 650;
+}
+
+:is(.app-page, .modal, .fc-auth, .court-site) select option {
+  padding: .65rem .8rem;
+}
+
+:is(.app-page, .modal, .fc-auth, .court-site) select option:checked {
+  color: var(--fc-select-text);
+  background: var(--fc-select-selected);
+  font-weight: 800;
+}
+
+/* Keep Bootstrap's compact variant compact without losing tap accuracy. */
+:is(.app-page, .modal) .form-select-sm {
+  min-height: 38px;
+  padding-top: .46rem;
+  padding-bottom: .46rem;
+  font-size: .72rem;
+}
+
+/* Labels make the purpose of filters obvious, like the supplied reference. */
+:is(.app-page, .modal) label:has(> select) > :is(span, small):first-child {
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+@media (max-width: 575.98px) {
+  :is(.app-page, .modal, .fc-auth, .court-site) select:not([multiple]) {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    font-size: .8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.app-page, .modal, .fc-auth, .court-site) select {
+    transition: none;
+  }
+}

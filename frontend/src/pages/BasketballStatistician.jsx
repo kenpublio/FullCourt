@@ -5,18 +5,15 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
 import "../styles/operations-polish.css";
 
-const statGroups = [
-  [
-    "Shooting",
-    [
-      ["2pt_made", "2PT Made"],
-      ["2pt_missed", "2PT Miss"],
-      ["3pt_made", "3PT Made"],
-      ["3pt_missed", "3PT Miss"],
-      ["ft_made", "FT Made"],
-      ["ft_missed", "FT Miss"],
-    ],
-  ],
+const scoringActions = [
+  ["2pt_made", "2PT Made"],
+  ["2pt_missed", "2PT Miss"],
+  ["3pt_made", "3PT Made"],
+  ["3pt_missed", "3PT Miss"],
+  ["ft_made", "FT Made"],
+  ["ft_missed", "FT Miss"],
+];
+const optionalStatGroups = [
   [
     "Playmaking",
     [
@@ -187,16 +184,15 @@ const BasketballStatistician = () => {
     );
   }
   return (
-    <div className="container-fluid p-0">
-      <div className="d-flex justify-content-between mb-4">
+    <div className="container-fluid p-0 staff-courtside-page">
+      <div className="staff-courtside-hero d-flex justify-content-between mb-4">
         <div>
           <h3 className="fw-bold mb-1">
             <i className="bi bi-clipboard-data-fill text-evsu-primary me-2" />
             Courtside Statistician
           </h3>
           <p className="text-muted small mb-0">
-            Player-level shooting, rebounds, assists, defense, fouls, and
-            offline-safe event IDs
+            Record the official score and individual points, with optional rebounds and assists.
           </p>
         </div>
         {board && (
@@ -228,14 +224,16 @@ const BasketballStatistician = () => {
               </button>
             ))}
             {!assignments.length && (
-              <div className="ops-empty py-4"><i className="bi bi-calendar2-x"/><strong>No games assigned yet</strong><p>{isStatistician ? "Your assigned games will appear here after an organizer assigns you or sends a valid scoring link." : "Games will appear after the tournament schedule is generated and published."}</p></div>
+              <div className="ops-empty py-4"><i className="bi bi-calendar2-x"/><strong>No games assigned yet</strong><p>{isStatistician ? "Your assigned games will appear here after Admin assigns you." : "Games will appear after the tournament schedule is generated and published."}</p></div>
             )}
           </div>
         </div>
         <div className="col-lg-9">
           {!board ? (
-            <div className="card-custom p-5 text-center text-muted">
-              Select an assigned game to open the courtside console.
+            <div className="card-custom staff-courtside-empty p-5 text-center text-muted">
+              <span><i className="bi bi-clipboard2-pulse" /></span>
+              <h4>No game selected</h4>
+              <p>Select an assigned game to open the courtside scoring console.</p>
             </div>
           ) : (
             <>
@@ -307,7 +305,16 @@ const BasketballStatistician = () => {
                       <div className="col-md-2"><button className="btn btn-warning btn-sm w-100" onClick={substitute}>Sub</button></div>
                     </div>
                   </div>
-                  {statGroups.map((group) => (
+                  <div className="mb-3">
+                    <small className="text-uppercase fw-bold text-muted">Scoring</small>
+                    <div className="d-flex flex-wrap gap-2 mt-2">
+                      {scoringActions.map((action) => <button className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : "btn-outline-danger"}`} onClick={() => record(action[0])} key={action[0]}>{action[1]}</button>)}
+                    </div>
+                  </div>
+                  <details className="border rounded-3 p-3 bg-light">
+                    <summary className="fw-bold small" role="button"><i className="bi bi-plus-circle me-2"/>More stats (optional)</summary>
+                    <p className="text-muted small mt-2 mb-3">Record rebounds, assists, defense, turnovers, and fouls only when your event needs them.</p>
+                  {optionalStatGroups.map((group) => (
                     <div className="mb-3" key={group[0]}>
                       <small className="text-uppercase fw-bold text-muted">
                         {group[0]}
@@ -325,6 +332,7 @@ const BasketballStatistician = () => {
                       </div>
                     </div>
                   ))}
+                  </details>
                 </div>
               )}
             </>

@@ -26,10 +26,6 @@ export const venueService = {
     return res.data;
   },
 
-  async reviewVenue(id, status, notes = '') {
-    const res = await api.put(`/venues/${id}/review`, { status, notes });
-    return res.data;
-  },
 
   async createCourt(data) {
     const res = await api.post('/courts', data);

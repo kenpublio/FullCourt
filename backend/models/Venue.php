@@ -70,7 +70,7 @@ class Venue {
     }
 
     public function createVenue(string $name, string $location, ?int $organizationId, int $submittedBy): int {
-        $stmt = $this->db->prepare("INSERT INTO venues (name, location, organization_id, submitted_by, approval_status) VALUES (:name, :location, :organization_id, :submitted_by, 'pending')");
+        $stmt = $this->db->prepare("INSERT INTO venues (name, location, organization_id, submitted_by, approval_status) VALUES (:name, :location, :organization_id, :submitted_by, 'approved')");
         $stmt->execute([':name' => $name, ':location' => $location, ':organization_id'=>$organizationId, ':submitted_by'=>$submittedBy]);
         return (int) $this->db->lastInsertId();
     }

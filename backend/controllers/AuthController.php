@@ -87,7 +87,7 @@ class AuthController {
             $age = filter_var($ageInput, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 120]]);
             if ($age === false) Response::error('Enter a whole-number age between 1 and 120.', 400);
         }
-        $role = trim($input['role'] ?? 'player');
+        $role = trim($input['role'] ?? 'coach');
         $dept = trim($input['department_course'] ?? '');
         $yearLevel = trim($input['year_level'] ?? '');
         $phone = $this->normalizeContact(trim($input['phone_number'] ?? ''));
@@ -124,9 +124,9 @@ class AuthController {
         }
 
         // Allowed self-registration roles
-        $allowedRegistrationRoles = ['player', 'coach', 'organization_admin'];
+        $allowedRegistrationRoles = ['coach'];
         if (!in_array($role, $allowedRegistrationRoles, true)) {
-            $role = 'player';
+            $role = 'coach';
         }
 
         try {
@@ -230,11 +230,9 @@ class AuthController {
         $sender = getenv('MAIL_FROM') ?: getenv('MAIL_USERNAME') ?: 'no-reply@sportsync.local';
         if (!$sent) $sent=Mailer::fromEnv()->send($email,$subject,$body,$sender);
         $data=[];
-        if ($mailDriver !== 'gmail' && getenv('APP_ENV') !== 'production') {
-            $data['development_code']=$code;
-        } elseif (!$sent && getenv('APP_ENV')!=='production') {
-            $data['development_code']=$code;
-        }
+        // Local development must remain testable even when a configured email
+        // provider accepts, delays, or silently drops a message.
+        if (getenv('APP_ENV') !== 'production') $data['development_code']=$code;
         if(!$sent && getenv('APP_ENV')==='production') Response::error('We could not send the verification email. Please try again later.',503);
         $message = ($resend->isConfigured() || $mailDriver === 'gmail') && $sent
             ? 'Verification code sent to your email.'

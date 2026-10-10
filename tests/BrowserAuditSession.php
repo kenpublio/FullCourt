@@ -5,7 +5,7 @@ require_once __DIR__ . '/../backend/models/User.php';
 require_once __DIR__ . '/../backend/utils/jwt.php';
 $db = (new Database())->getConnection();
 $sessions = [];
-foreach (['platform_admin', 'organization_admin', 'coach', 'player'] as $role) {
+foreach (['platform_admin', 'coach', 'statistician'] as $role) {
     $query = $db->prepare('SELECT * FROM users WHERE role = :role AND is_active = 1 ORDER BY id LIMIT 1');
     $query->execute([':role' => $role]);
     $user = $query->fetch();

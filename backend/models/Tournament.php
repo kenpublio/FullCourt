@@ -61,16 +61,17 @@ class Tournament {
     }
 
     public function canUseCourts(array $courtIds, int $organizationId, int $basketballSportId): bool {
-        if (!$courtIds || !$organizationId) return false;
+        if (!$courtIds) return false;
         $placeholders=implode(',',array_fill(0,count($courtIds),'?'));
-        $stmt=$this->db->prepare("SELECT COUNT(DISTINCT c.id) FROM courts c JOIN venues v ON v.id=c.venue_id WHERE c.id IN ({$placeholders}) AND c.is_available=1 AND (c.sport_id IS NULL OR c.sport_id=?) AND v.organization_id=? AND v.approval_status='approved'");
-        $stmt->execute([...$courtIds,$basketballSportId,$organizationId]);
+        $organizationFilter=$organizationId>0?' AND v.organization_id=?':'';
+        $stmt=$this->db->prepare("SELECT COUNT(DISTINCT c.id) FROM courts c JOIN venues v ON v.id=c.venue_id WHERE c.id IN ({$placeholders}) AND c.is_available=1 AND v.approval_status IN ('approved','pending'){$organizationFilter}");
+        $params=[...$courtIds];if($organizationId>0)$params[]=$organizationId;$stmt->execute($params);
         return (int)$stmt->fetchColumn()===count(array_unique($courtIds));
     }
 
     public function create(array $data): int {
-        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_fee, status, approval_status, created_by)
-                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_fee, 'upcoming', 'pending', :created_by)";
+        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_fee, status, approval_status, is_published, created_by)
+                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_fee, 'upcoming', :approval_status, :is_published, :created_by)";
         $this->db->beginTransaction();
         try {
           $stmt = $this->db->prepare($sql);
@@ -84,6 +85,8 @@ class Tournament {
             ':start_date' => $data['start_date'],
             ':end_date' => $data['end_date'],
             ':registration_fee' => $data['registration_fee'] ?? 0.00,
+            ':approval_status' => $data['approval_status'] ?? 'approved',
+            ':is_published' => !empty($data['is_published']) ? 1 : 0,
             ':created_by' => $data['created_by']
           ]);
           $id=(int)$this->db->lastInsertId();
@@ -93,12 +96,29 @@ class Tournament {
               $link->execute([':tournament_id'=>$id,':court_id'=>$courtId]);
             }
           }
+          $constraints=$this->db->prepare('INSERT INTO schedule_constraints (tournament_id,max_games_per_team_per_day,min_rest_minutes_between_games,default_match_duration_minutes,default_break_minutes,daily_start_time,daily_end_time,available_weekdays) VALUES (:tournament_id,:max_games,:rest_minutes,:match_minutes,:break_minutes,:daily_start,:daily_end,:available_weekdays)');
+          $constraints->execute([
+            ':tournament_id'=>$id,
+            ':max_games'=>(int)($data['max_games_per_team_per_day']??2),
+            ':rest_minutes'=>(int)($data['min_rest_minutes_between_games']??120),
+            ':match_minutes'=>(int)($data['default_match_duration_minutes']??90),
+            ':break_minutes'=>(int)($data['default_break_minutes']??15),
+            ':daily_start'=>$data['schedule_start_time']??'08:00',
+            ':daily_end'=>$data['schedule_end_time']??'20:00',
+            ':available_weekdays'=>$data['available_days']??'mon,tue,wed,thu,fri,sat,sun',
+          ]);
           $this->db->commit();
           return $id;
         } catch (Throwable $error) {
           if ($this->db->inTransaction()) $this->db->rollBack();
           throw $error;
         }
+    }
+
+    public function approveLinkedPendingVenues(int $tournamentId, int $reviewedBy): int {
+        $stmt=$this->db->prepare("UPDATE venues SET approval_status='approved',reviewed_by=:reviewed_by,reviewed_at=NOW(),review_notes=COALESCE(review_notes,'Approved with tournament application') WHERE approval_status='pending' AND id IN (SELECT DISTINCT c.venue_id FROM tournament_courts tc JOIN courts c ON c.id=tc.court_id WHERE tc.tournament_id=:tournament_id)");
+        $stmt->execute([':reviewed_by'=>$reviewedBy,':tournament_id'=>$tournamentId]);
+        return $stmt->rowCount();
     }
 
     public function update(int $id, array $data): bool {

@@ -35,7 +35,7 @@ const TeamManagement = () => {
   const [editingTeam, setEditingTeam] = useState(null);
   const [formData, setFormData] = useState({ team_name: '', short_name:'', tournament_id: '', division_id:'', primary_color:'#F97316' });
   const [inviteTeam, setInviteTeam] = useState(null);
-  const [playerIdentifier, setPlayerIdentifier] = useState('');
+  const [newPlayer, setNewPlayer] = useState({ player_name:'', birth_date:'', guardian_name:'', guardian_contact:'', jersey_number:'', position:'' });
   const [inviteMessage, setInviteMessage] = useState('');
   const [pageMessage, setPageMessage] = useState('');
   const [loadError, setLoadError] = useState('');
@@ -194,16 +194,17 @@ const TeamManagement = () => {
   const statusLabel=(status)=>status==='draft'?'Pending approval':status==='disqualified'?'Rejected':status.replace('_',' ');
   const statusClass=(status)=>status==='registered'?'bg-success':status==='disqualified'?'bg-danger':'bg-warning text-dark';
 
-  const sendInvitation = async (e) => {
+  const addRosterPlayer = async (e) => {
     e.preventDefault();
     setInviteMessage('');
     try {
       const response = await eligibilityService.addPlayer({
         team_id: inviteTeam.id,
-        player_identifier: playerIdentifier,
+        ...newPlayer,
       });
-      setInviteMessage(response.message || 'Invitation sent.');
-      setPlayerIdentifier('');
+      setInviteMessage(response.message || 'Player added to the roster.');
+      setNewPlayer({ player_name:'', birth_date:'', guardian_name:'', guardian_contact:'', jersey_number:'', position:'' });
+      await loadData();
     } catch (err) {
       setInviteMessage(err.response?.data?.message || 'Unable to send invitation.');
     }
@@ -278,10 +279,10 @@ const TeamManagement = () => {
             <div className="coach-team-meta"><span><i className="bi bi-diagram-3"/> {team.division_name || 'Open division'}</span><span><i className="bi bi-people"/> {Number(team.total_players || 0)} verified {Number(team.total_players || 0) === 1 ? 'player' : 'players'}</span></div>
             <div className="coach-team-actions">
               <button type="button" className="btn coach-team-primary" onClick={() => viewRoster(team)}><i className="bi bi-people-fill me-2"/>View roster</button>
-              {team.status === 'registered' && <button type="button" className="btn coach-team-secondary" onClick={() => { setInviteTeam(team); setInviteMessage(''); }}><i className="bi bi-person-plus-fill me-2"/>Invite player</button>}
+              {team.status === 'registered' && <button type="button" className="btn coach-team-secondary" onClick={() => { setInviteTeam(team); setInviteMessage(''); }}><i className="bi bi-person-plus-fill me-2"/>Add player</button>}
               <button type="button" className="btn coach-team-icon-action" onClick={() => openEdit(team)} aria-label={`Edit ${team.team_name}`} title="Edit team details"><i className="bi bi-pencil-square"/></button>
             </div>
-            {team.status !== 'registered' && <p className="coach-team-pending-note"><i className="bi bi-info-circle me-1"/>Player invitations unlock after the organizer approves this application.</p>}
+            {team.status !== 'registered' && <p className="coach-team-pending-note"><i className="bi bi-info-circle me-1"/>Roster tools unlock after Admin approves this team.</p>}
           </article>)}
         </section>
       ) : (
@@ -314,7 +315,7 @@ const TeamManagement = () => {
                 </button>
                 <div className="d-flex gap-2">
                   {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg"/></button></>}
-                  {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Invite player to ${tm.team_name}`} title="Invite player"><i className="bi bi-person-plus-fill" /></button>}
+                  {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player"><i className="bi bi-person-plus-fill" /></button>}
                   <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team"><i className="bi bi-pencil-square" /></button>
                   {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team"><i className="bi bi-trash3" /></button>}
                 </div>
@@ -363,10 +364,10 @@ const TeamManagement = () => {
                       </span>
                     </td>
                     <td className="text-nowrap team-actions-column">
-                      {['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager'].includes(user?.role) ? (
+                      {['platform_admin','admin','coach'].includes(user?.role) ? (
                         <div className="d-inline-flex align-items-center gap-2 team-action-group">
                           {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg me-1"/>Reject</button></>}
-                          {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Invite player to ${tm.team_name}`} title="Invite player">
+                          {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player">
                             <i className="bi bi-person-plus-fill" />
                           </button>}
                           <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team">
@@ -408,7 +409,7 @@ const TeamManagement = () => {
                   <div className="mb-3"><label className="form-label small fw-semibold">Short Name</label><input maxLength="20" className="form-control" value={formData.short_name} onChange={e=>setFormData({...formData,short_name:e.target.value})} placeholder="e.g. LIN"/></div>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Select Tournament</label>
-                    <select className="form-select" value={formData.tournament_id} disabled={isCoach} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
+                    <select className="form-select" value={formData.tournament_id} onChange={e => setFormData({...formData, tournament_id: e.target.value})}>
                       {tournaments.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </div>
@@ -431,19 +432,25 @@ const TeamManagement = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content card-custom border-0">
               <div className="modal-header border-bottom">
-                <div><h5 className="fw-bold mb-0">Invite a Player</h5><small className="text-muted">{inviteTeam.team_name}</small></div>
+                <div><h5 className="fw-bold mb-0">Add Player to Roster</h5><small className="text-muted">{inviteTeam.team_name} · no player account required</small></div>
                 <button type="button" className="btn-close" onClick={() => setInviteTeam(null)} />
               </div>
-              <form onSubmit={sendInvitation}>
+              <form onSubmit={addRosterPlayer}>
                 <div className="modal-body">
                   {inviteMessage && <div className="alert alert-info py-2">{inviteMessage}</div>}
-                  <label className="form-label small fw-semibold">Player email or FullCourt ID</label>
-                  <input className="form-control" value={playerIdentifier} onChange={e => setPlayerIdentifier(e.target.value)} placeholder="player@example.com or Player ID" autoComplete="off" required />
-                  <small className="text-muted d-block mt-2">The player will receive an invitation in FullCourt Notifications.</small>
+                  <div className="row g-3">
+                    <div className="col-12"><label className="form-label small fw-semibold">Player full name</label><input className="form-control" value={newPlayer.player_name} onChange={e=>setNewPlayer({...newPlayer,player_name:e.target.value})} placeholder="Full name shown on the official roster" required /></div>
+                    <div className="col-sm-6"><label className="form-label small fw-semibold">Birth date</label><input type="date" className="form-control" max={new Date().toISOString().slice(0,10)} value={newPlayer.birth_date} onChange={e=>setNewPlayer({...newPlayer,birth_date:e.target.value})} required /></div>
+                    <div className="col-sm-6"><label className="form-label small fw-semibold">Jersey number</label><input type="number" min="0" max="999" className="form-control" value={newPlayer.jersey_number} onChange={e=>setNewPlayer({...newPlayer,jersey_number:e.target.value})} placeholder="Optional" /></div>
+                    <div className="col-sm-6"><label className="form-label small fw-semibold">Playing position</label><select className="form-select" value={newPlayer.position} onChange={e=>setNewPlayer({...newPlayer,position:e.target.value})}><option value="">Not assigned</option><option>Point Guard</option><option>Shooting Guard</option><option>Small Forward</option><option>Power Forward</option><option>Center</option></select></div>
+                    <div className="col-sm-6"><label className="form-label small fw-semibold">Parent / guardian</label><input className="form-control" value={newPlayer.guardian_name} onChange={e=>setNewPlayer({...newPlayer,guardian_name:e.target.value})} placeholder="Required for minors" /></div>
+                    <div className="col-12"><label className="form-label small fw-semibold">Guardian contact</label><input className="form-control" value={newPlayer.guardian_contact} onChange={e=>setNewPlayer({...newPlayer,guardian_contact:e.target.value})} placeholder="Mobile number or email" /></div>
+                  </div>
+                  <small className="text-muted d-block mt-3">After adding the player, upload the Birth Certificate/PSA and Parent Permit in Eligibility.</small>
                 </div>
                 <div className="modal-footer border-top">
                   <button type="button" className="btn btn-light" onClick={() => setInviteTeam(null)}>Close</button>
-                  <button className="btn btn-evsu"><i className="bi bi-send me-1" />Send Invitation</button>
+                  <button className="btn btn-evsu"><i className="bi bi-person-check me-1" />Add Player</button>
                 </div>
               </form>
             </div>
@@ -478,7 +485,7 @@ const TeamManagement = () => {
                           </div>
                           <div className="flex-grow-1 min-width-0">
                             <h6 className="fw-bold text-dark mb-1 text-truncate">{player.full_name || 'Invited Player'}</h6>
-                            <div className="small text-muted text-truncate">{player.email || player.phone_number || 'No contact provided'}</div>
+                            <div className="small text-muted text-truncate">Born {player.birth_date || 'date pending'}</div>
                           </div>
                           <button className="btn team-action-btn team-edit-btn flex-shrink-0" onClick={() => startRosterEdit(player)} aria-label={`Edit ${player.full_name || 'player'}`}><i className="bi bi-pencil-square" /></button>
                         </div>
@@ -493,7 +500,7 @@ const TeamManagement = () => {
                   </div>
                   <div className="table-responsive d-none d-md-block">
                     <table className="table table-hover align-middle mb-0">
-                      <thead><tr><th>Player</th><th>Contact</th><th>Jersey</th><th>Position</th><th>Age Eligibility</th><th>Review</th><th className="text-end">Action</th></tr></thead>
+                      <thead><tr><th>Player</th><th>Birth date / Guardian</th><th>Jersey</th><th>Position</th><th>Age Eligibility</th><th>Review</th><th className="text-end">Action</th></tr></thead>
                       <tbody>{rosterPlayers.map(player => (
                         <tr key={player.id}>
                           <td>
@@ -506,7 +513,7 @@ const TeamManagement = () => {
                               <span className="fw-semibold">{player.full_name || 'Invited Player'}</span>
                             </div>
                           </td>
-                          <td className="small">{player.email || player.phone_number || 'Not provided'}</td>
+                          <td className="small">{player.birth_date || 'Not provided'}<span className="d-block text-muted">{player.guardian_name || 'Guardian not recorded'}</span></td>
                           <td>{player.jersey_number ? `#${player.jersey_number}` : '—'}</td>
                           <td>{player.position || 'Not assigned'}</td>
                           <td><span className={`badge ${ageEligibilityBadge(player)}`} title={player.age_eligibility_message}>{ageEligibilityLabel(player)}</span><small className="d-block text-muted mt-1">Cutoff: {player.age_cutoff_date || 'Tournament start'}</small></td>

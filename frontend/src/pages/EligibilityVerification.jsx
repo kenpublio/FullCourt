@@ -14,7 +14,8 @@ const EligibilityVerification = () => {
   const [position, setPosition] = useState('');
   const [documents,setDocuments]=useState([]);
   const [documentFile,setDocumentFile]=useState(null);
-  const [identityPreview,setIdentityPreview]=useState(null);
+  const [documentType,setDocumentType]=useState('Birth Certificate / PSA');
+  const [documentBirthDate,setDocumentBirthDate]=useState('');
   const [searchQuery,setSearchQuery]=useState('');
   const [statusFilter,setStatusFilter]=useState('all');
   const [loadError,setLoadError]=useState('');
@@ -72,12 +73,10 @@ const EligibilityVerification = () => {
     setJerseyNumber(player.jersey_number ?? '');
     setPosition(player.position ?? '');
     setRemarks(player.remarks ?? '');
-    setIdentityPreview(null);
     setDocuments(await eligibilityService.documents(player.id));
   };
-  const upload=async()=>{if(!documentFile)return;await eligibilityService.uploadDocument(selectedPlayer.id,'Eligibility Supporting Document',documentFile);setDocuments(await eligibilityService.documents(selectedPlayer.id));setDocumentFile(null);};
+  const upload=async()=>{if(!documentFile)return;try{await eligibilityService.uploadDocument(selectedPlayer.id,documentType,documentFile,documentType==='Birth Certificate / PSA'?documentBirthDate:'');setDocuments(await eligibilityService.documents(selectedPlayer.id));setDocumentFile(null);setDocumentBirthDate('');}catch(err){alert(err.response?.data?.message||'Document upload failed.');}};
   const reviewDocument=async(id,status)=>{await eligibilityService.reviewDocument(id,status,remarks);setDocuments(await eligibilityService.documents(selectedPlayer.id));};
-  const previewIdentity=async doc=>{try{if(identityPreview){URL.revokeObjectURL(identityPreview.id);URL.revokeObjectURL(identityPreview.selfie);}const[id,selfie]=await Promise.all([eligibilityService.privateImage(doc.id),eligibilityService.privateImage(doc.id,true)]);setIdentityPreview({id,selfie,doc});}catch(err){alert(err.response?.data?.message||'Private identity images could not be opened.');}};
 
   const saveRosterDetails = async () => {
     try {
@@ -154,7 +153,7 @@ const EligibilityVerification = () => {
                   filteredPlayers.map(p => (
                     <tr key={p.id}>
                       <td><span className="eligibility-player-name"><i className="bi bi-person-fill"/><b>{p.user_full_name || 'Roster Player'}</b></span></td>
-                      <td className="small">{p.user_email || (isCoach?'No email on file':'Contact not provided')}</td>
+                      <td className="small">DOB: {p.birth_date || 'Not recorded'}<span className="d-block text-muted">{p.guardian_name || 'Guardian not recorded'}</span></td>
                       <td className="small">{p.team_name}<span className="d-block text-muted">{p.tournament_name}</span></td>
                       <td className="small">#{p.jersey_number || 'N/A'} ({p.position || 'Player'})</td>
                       <td>
@@ -188,7 +187,8 @@ const EligibilityVerification = () => {
                 <div className="alert alert-light border mb-3 small">
                   <div><strong>Team:</strong> {selectedPlayer.team_name}</div>
                   <div><strong>Tournament:</strong> {selectedPlayer.tournament_name}</div>
-                  <div><strong>Contact:</strong> {selectedPlayer.user_email || selectedPlayer.user_phone || 'Not provided'}</div>
+                  <div><strong>Birth date:</strong> {selectedPlayer.birth_date || 'Not provided'}</div>
+                  <div><strong>Guardian:</strong> {selectedPlayer.guardian_name || 'Not provided'} {selectedPlayer.guardian_contact ? `· ${selectedPlayer.guardian_contact}` : ''}</div>
                 </div>
 
                 <div className="mb-3">
@@ -199,21 +199,20 @@ const EligibilityVerification = () => {
                   <label className="form-label small fw-semibold">Review Remarks</label>
                   <textarea className="form-control" rows="2" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Add remarks or rejection reason..."></textarea>
                 </div>
-                <div className="border rounded-3 p-3"><h6 className="fw-bold">Protected Documents</h6>{isCoach&&<p className="small text-muted">You can inspect documents for your assigned team. Final document approval is handled by the organizer.</p>}{documents.map(doc=><div className="eligibility-document-row" key={doc.id}><div><b className="small">{doc.document_type}</b><span className={`badge ms-2 ${doc.status==='verified'?'bg-success':doc.status==='rejected'?'bg-danger':'bg-warning text-dark'}`}>{doc.status}</span>{doc.id_type&&<small className="d-block text-muted">{doc.id_type} • ID ending in ••••{doc.id_number_last4} • ID birthdate: {doc.id_birth_date}</small>}{doc.birthdate_match!==null&&<small className={`d-block fw-semibold ${doc.birthdate_match?'text-success':'text-danger'}`}>{doc.birthdate_match?'Registered and ID birthdates match':'Birthdate mismatch—organizer review needed'}</small>}</div><div className="d-flex gap-1 flex-wrap">{doc.selfie_mime_type&&<button className="btn btn-outline-primary btn-sm" onClick={()=>previewIdentity(doc)}><i className="bi bi-eye me-1"/>Compare</button>}{!isCoach&&<><button className="btn btn-success btn-sm" onClick={()=>reviewDocument(doc.id,'verified')}>Verify</button><button className="btn btn-outline-danger btn-sm" onClick={()=>reviewDocument(doc.id,'rejected')}>Reject</button></>}</div></div>)}{!documents.length&&<p className="small text-muted">No supporting documents uploaded.</p>}<div className="input-group mt-3"><input type="file" accept=".pdf,.jpg,.jpeg,.png" className="form-control" onChange={e=>setDocumentFile(e.target.files?.[0]||null)}/><button className="btn btn-outline-dark" onClick={upload} disabled={!documentFile}>Upload</button></div></div>
-                {identityPreview&&<div className="border rounded-4 p-3 mt-3"><div className="d-flex justify-content-between align-items-center mb-3"><div><h6 className="fw-bold mb-0">Manual Face Comparison</h6><small className="text-muted">Compare the ID portrait with the live selfie. No automatic face-recognition decision is being claimed.</small></div><button className="btn-close" onClick={()=>setIdentityPreview(null)}/></div><div className="row g-3"><div className="col-md-6"><div className="small fw-bold mb-2">ID PHOTO</div><img src={identityPreview.id} alt="Player identification" className="w-100 rounded-3 border" style={{height:300,objectFit:'contain',background:'#111'}}/></div><div className="col-md-6"><div className="small fw-bold mb-2">LIVE SELFIE</div><img src={identityPreview.selfie} alt="Player live selfie" className="w-100 rounded-3 border" style={{height:300,objectFit:'contain',background:'#111'}}/></div></div></div>}
+                <div className="border rounded-3 p-3"><h6 className="fw-bold">Protected Documents</h6>{isCoach&&<p className="small text-muted">Upload the Birth Certificate/PSA and Parent Permit. Admin performs the final review.</p>}{documents.map(doc=><div className="eligibility-document-row" key={doc.id}><div><b className="small">{doc.document_type}</b><span className={`badge ms-2 ${doc.status==='verified'?'bg-success':doc.status==='rejected'?'bg-danger':'bg-warning text-dark'}`}>{doc.status}</span>{doc.declared_birth_date&&<small className="d-block text-muted">Document birth date: {doc.declared_birth_date}</small>}{doc.birthdate_match!==null&&<small className={`d-block fw-semibold ${doc.birthdate_match?'text-success':'text-danger'}`}>{doc.birthdate_match?'Roster and document birth dates match':'Birth date mismatch — admin review required'}</small>}</div><div className="d-flex gap-1 flex-wrap">{!isCoach&&<><button className="btn btn-success btn-sm" onClick={()=>reviewDocument(doc.id,'verified')}>Verify</button><button className="btn btn-outline-danger btn-sm" onClick={()=>reviewDocument(doc.id,'rejected')}>Reject</button></>}</div></div>)}{!documents.length&&<p className="small text-muted">No documents uploaded yet.</p>}<div className="row g-2 mt-2"><div className="col-md-4"><select className="form-select" value={documentType} onChange={e=>setDocumentType(e.target.value)}><option>Birth Certificate / PSA</option><option>Parent Permit</option></select></div>{documentType==='Birth Certificate / PSA'&&<div className="col-md-3"><input type="date" className="form-control" value={documentBirthDate} onChange={e=>setDocumentBirthDate(e.target.value)} aria-label="Birth date shown on document" /></div>}<div className="col"><div className="input-group"><input type="file" accept=".pdf,.jpg,.jpeg,.png" className="form-control" onChange={e=>setDocumentFile(e.target.files?.[0]||null)}/><button type="button" className="btn btn-outline-dark" onClick={upload} disabled={!documentFile||(documentType==='Birth Certificate / PSA'&&!documentBirthDate)}>Upload</button></div></div></div></div>
               </div>
               <div className="modal-footer border-top d-flex flex-wrap justify-content-between gap-2">
-                <button type="button" className="btn btn-danger btn-sm" onClick={() => handleDecision('rejected')}>
+                {!isCoach&&<button type="button" className="btn btn-danger btn-sm" onClick={() => handleDecision('rejected')}>
                   <i className="bi bi-x-circle me-1"></i> Reject Eligibility
-                </button>
+                </button>}
                 <div className="d-flex flex-column gap-2">
                   <button type="button" className="btn btn-primary btn-sm" onClick={saveRosterDetails}>
                     <i className="bi bi-floppy-fill me-1" /> Save Jersey &amp; Position
                   </button>
                 </div>
-                <button type="button" className="btn btn-success btn-sm" onClick={() => handleDecision('verified')}>
+                {!isCoach&&<button type="button" className="btn btn-success btn-sm" onClick={() => handleDecision('verified')}>
                   <i className="bi bi-check-circle me-1"></i> Approve Eligibility
-                </button>
+                </button>}
               </div>
             </div>
           </div>

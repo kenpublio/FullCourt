@@ -60,7 +60,7 @@ const UserManagement = () => {
 
   const openEditor = (targetUser) => {
     setSelectedUser(targetUser);
-    setEditForm({ full_name: targetUser.full_name || '', email: targetUser.email || '', phone_number: targetUser.phone_number || '', address: targetUser.address || '', role: targetUser.role || 'player' });
+    setEditForm({ full_name: targetUser.full_name || '', email: targetUser.email || '', phone_number: targetUser.phone_number || '', address: targetUser.address || '', role: ['platform_admin','admin','coach','statistician'].includes(targetUser.role) ? targetUser.role : 'coach' });
   };
 
   const handleUserUpdate = async (e) => {
@@ -190,16 +190,11 @@ const UserManagement = () => {
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
                 >
-                  <option value="all">Every role</option>
-                  <option value="platform_admin">Platform Administrator</option>
+                  <option value="all">All three roles</option>
+                  <option value="platform_admin">Administrator</option>
                   <option value="admin">Administrator</option>
-                  <option value="organization_admin">Organization Administrator</option>
-                  <option value="tournament_organizer">Tournament Organizer</option>
                   <option value="coach">Coach</option>
-                  <option value="coach_manager">Coach Manager</option>
-                  <option value="statistician">Statistician</option>
-                  <option value="finance_officer">Finance Officer</option>
-                  <option value="player">Player</option>
+                  <option value="statistician">Staff Admin</option>
                 </select>
               </div>
             </div>
@@ -382,12 +377,10 @@ const UserManagement = () => {
                       onChange={(e) => setEditForm({...editForm,role:e.target.value})}
                       required
                     >
-                      <option value="platform_admin">Platform Administrator</option>
-                      <option value="organization_admin">Organization Administrator</option>
-                      <option value="tournament_organizer">Tournament Organizer</option>
+                      <option value="platform_admin">Administrator</option>
+                      <option value="admin">Administrator</option>
                       <option value="coach">Coach</option>
-                      <option value="statistician">Statistician</option>
-                      <option value="player">Player</option>
+                      <option value="statistician">Staff Admin</option>
                     </select>
                   </div>
                   </div>

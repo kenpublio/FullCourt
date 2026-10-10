@@ -19,12 +19,12 @@ class PublicController {
         $tournaments = $this->db->query("SELECT t.id,t.name,t.format,t.description,t.start_date,t.end_date,t.status,s.name sport_name FROM tournaments t JOIN sports s ON s.id=t.sport_id WHERE LOWER(s.name)='basketball' AND t.is_published=1 AND t.status IN ('upcoming','ongoing','completed') ORDER BY CASE t.status WHEN 'ongoing' THEN 1 WHEN 'upcoming' THEN 2 ELSE 3 END,t.start_date DESC LIMIT 12")->fetchAll();
         $matches = $this->db->query("SELECT m.id,m.tournament_id,m.stage_name,m.round_number,m.scheduled_start_time,m.status,t.name tournament_name,a.team_name team1_name,b.team_name team2_name,c.court_name,ms.team1_score,ms.team2_score FROM matches m JOIN tournaments t ON t.id=m.tournament_id JOIN sports s ON s.id=t.sport_id LEFT JOIN teams a ON a.id=m.team1_id LEFT JOIN teams b ON b.id=m.team2_id LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN match_scores ms ON ms.match_id=m.id WHERE LOWER(s.name)='basketball' AND t.is_published=1 AND m.schedule_status='published' ORDER BY COALESCE(m.scheduled_start_time,'9999-12-31') LIMIT 30")->fetchAll();
         $standings = $this->db->query("SELECT st.rank_position,st.played,st.won,st.lost,st.drawn,st.tournament_points,tm.team_name,t.name tournament_name FROM standings st JOIN teams tm ON tm.id=st.team_id JOIN tournaments t ON t.id=st.tournament_id JOIN sports s ON s.id=t.sport_id WHERE LOWER(s.name)='basketball' AND t.is_published=1 ORDER BY st.tournament_id,st.rank_position LIMIT 40")->fetchAll();
-        $leaders = $this->db->query("SELECT u.full_name,tm.team_name,
+        $leaders = $this->db->query("SELECT COALESCE(tp.player_name,u.full_name) AS full_name,tm.team_name,
             SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,
             SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists
-            FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id JOIN users u ON u.id=tp.user_id
+            FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id LEFT JOIN users u ON u.id=tp.user_id
             JOIN teams tm ON tm.id=e.team_id JOIN matches m ON m.id=e.match_id JOIN tournaments t ON t.id=m.tournament_id
-            WHERE e.is_void=0 AND t.is_published=1 GROUP BY u.id,tm.id ORDER BY points DESC LIMIT 12")->fetchAll();
+            WHERE e.is_void=0 AND t.is_published=1 GROUP BY tp.id,tp.player_name,u.full_name,tm.id ORDER BY points DESC LIMIT 12")->fetchAll();
         Response::success('Public basketball portal retrieved', compact('tournaments', 'matches', 'standings', 'leaders'));
     }
 
@@ -41,15 +41,15 @@ class PublicController {
         $standingsStmt = $this->db->prepare("SELECT st.*, tm.team_name FROM standings st JOIN teams tm ON st.team_id=tm.id WHERE st.tournament_id=:id ORDER BY st.rank_position, st.tournament_points DESC");
         $standingsStmt->execute([':id' => $tournamentId]);
         $standings = $standingsStmt->fetchAll();
-        $leadersStmt=$this->db->prepare("SELECT u.id user_id,u.full_name,tm.team_name,tp.jersey_number,tp.position,
+        $leadersStmt=$this->db->prepare("SELECT tp.id team_player_id,COALESCE(tp.player_name,u.full_name) AS full_name,tm.team_name,tp.jersey_number,tp.position,
             SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,
             SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,
             SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists,
             SUM(CASE WHEN e.event_type='steal' THEN 1 ELSE 0 END) steals,
             SUM(CASE WHEN e.event_type='block' THEN 1 ELSE 0 END) blocks
             FROM basketball_stat_events e JOIN matches m ON m.id=e.match_id JOIN team_players tp ON tp.id=e.team_player_id
-            JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id
-            WHERE m.tournament_id=:id AND e.is_void=0 GROUP BY u.id,u.full_name,tm.id,tm.team_name,tp.id,tp.jersey_number,tp.position
+            LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id
+            WHERE m.tournament_id=:id AND e.is_void=0 GROUP BY tp.id,tp.player_name,u.full_name,tm.id,tm.team_name,tp.jersey_number,tp.position
             ORDER BY points DESC,rebounds DESC,assists DESC LIMIT 25");
         $leadersStmt->execute([':id'=>$tournamentId]);$leaders=$leadersStmt->fetchAll();
         $awardsStmt=$this->db->prepare("SELECT ac.name,ac.metric_key,u.full_name,tp.jersey_number,tp.position,tm.team_name

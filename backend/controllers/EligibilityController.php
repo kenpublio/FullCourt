@@ -3,7 +3,6 @@
 
 require_once __DIR__ . '/../models/TeamPlayer.php';
 require_once __DIR__ . '/../models/AuditLog.php';
-require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Team.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../utils/response.php';
@@ -20,13 +19,11 @@ class EligibilityController {
     }
 
     public function index(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']);
-        if (in_array($user['role'], ['coach','coach_manager'], true)) {
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach']);
+        if ($user['role'] === 'coach') {
             $players=$this->playerModel->getForCoach((int)$user['user_id']);
-        } elseif (OrganizationAccess::isPlatform($user)) {
-            $players=$this->playerModel->getAllPending();
         } else {
-            $players=$this->playerModel->getForOrganizationUser((int)$user['user_id']);
+            $players=$this->playerModel->getAllPending();
         }
         Response::success('Roster eligibility records retrieved', ['players' => $players]);
     }
@@ -62,7 +59,7 @@ class EligibilityController {
     }
 
     public function verify(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         $status = $input['status'] ?? 'verified'; // 'verified' or 'rejected'
@@ -72,9 +69,6 @@ class EligibilityController {
             Response::error('Invalid status specified.', 400);
         }
 
-        if (in_array($user['role'], ['coach','coach_manager'], true) && !$this->playerModel->belongsToCoach($id, (int) $user['user_id'])) {
-            Response::forbidden('You can only review players assigned to your own team.');
-        }
         $this->requirePlayerRecordAccess($id,$user);
 
         try {
@@ -88,8 +82,8 @@ class EligibilityController {
     }
 
     public function updateRoster(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']);
-        if (in_array($user['role'], ['coach','coach_manager'], true) && !$this->playerModel->belongsToCoach($id, (int) $user['user_id'])) {
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach']);
+        if ($user['role'] === 'coach' && !$this->playerModel->belongsToCoach($id, (int) $user['user_id'])) {
             Response::forbidden('You can only edit players assigned to your own team.');
         }
         $this->requirePlayerRecordAccess($id,$user);
@@ -105,41 +99,36 @@ class EligibilityController {
     }
 
     public function addPlayer(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'organization_admin', 'tournament_organizer', 'coach', 'coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'coach']);
         $input = json_decode(file_get_contents('php://input'), true);
 
-        if (empty($input['team_id']) || empty($input['player_identifier'])) {
-            Response::error('Team and player email or mobile number are required.', 400);
+        if (empty($input['team_id']) || empty(trim((string)($input['player_name'] ?? ''))) || empty($input['birth_date'])) {
+            Response::error('Team, player name, and birth date are required.', 400);
         }
 
         $team = (new Team())->getById((int) $input['team_id']);
         if (!$team) Response::error('Team not found.', 404);
-        OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
-        if (in_array($user['role'], ['coach','coach_manager'], true) && (int) $team['coach_user_id'] !== (int) $user['user_id'] && (int)($team['manager_user_id'] ?? 0) !== (int)$user['user_id']) {
-            Response::forbidden('You can only invite players to your own team.');
+        if ($user['role'] === 'coach' && (int) $team['coach_user_id'] !== (int) $user['user_id']) {
+            Response::forbidden('You can only add players to your own team.');
         }
-        $player = (new User())->findByLogin(trim($input['player_identifier']));
-        if (!$player || $player['role'] !== 'player') {
-            Response::error('No player account was found with that email or mobile number.', 404);
+        $birthDate = DateTimeImmutable::createFromFormat('Y-m-d', (string)$input['birth_date']);
+        if (!$birthDate || $birthDate->format('Y-m-d') !== $input['birth_date'] || $birthDate > new DateTimeImmutable('today')) {
+            Response::error('Enter a valid player birth date.', 400);
         }
-        if ($this->playerModel->hasActiveInvitation((int) $input['team_id'], (int) $player['id'])) {
-            Response::error('This player already has an invitation or belongs to this team.', 409);
+        $input['player_name'] = trim($input['player_name']);
+        if ($this->playerModel->hasRosterDuplicate((int)$input['team_id'], $input['player_name'], $input['birth_date'])) {
+            Response::error('A player with the same name and birth date is already on this roster.', 409);
         }
-        $input['user_id'] = $player['id'];
-        $input['student_id_number'] = $player['student_faculty_id'] ?? null;
+        $input['student_id_number'] = 'ROSTER-' . strtoupper(substr(hash('sha256', $input['team_id'].'|'.$input['player_name'].'|'.$input['birth_date']), 0, 12));
         $id = $this->playerModel->addPlayer($input);
 
         $this->auditLog->log($user['user_id'], 'ADD_PLAYER', 'PLAYER_ELIGIBILITY', "Added player ID {$id} to team ID {$input['team_id']}.");
 
-        (new NotificationMailer())->sendToUser((int)$player['id'],'You have a FullCourt team invitation',($team['team_name']??'A basketball team').' invited you to join its official tournament roster. Open FullCourt to review and respond to the invitation.','/notifications','Review invitation');
-
-        Response::success('Team invitation sent to the player.', ['id' => $id], 201);
+        Response::success('Player added to the roster. Upload the birth record and parent permit for admin verification.', ['id' => $id], 201);
     }
 
     private function requirePlayerRecordAccess(int $id,array $user):void {
-        if(OrganizationAccess::isPlatform($user)||in_array($user['role'],['coach','coach_manager'],true))return;
-        $tournamentId=$this->playerModel->getTournamentId($id);
-        if(!$tournamentId)Response::error('Player roster record was not found.',404);
-        OrganizationAccess::requireTournament($tournamentId,$user);
+        if(in_array($user['role'],['platform_admin','admin','coach'],true))return;
+        Response::forbidden('You cannot access this roster record.');
     }
 }

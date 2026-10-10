@@ -13,5 +13,6 @@ const scoringAccessService={
   async stat(session,payload){return(await guest.post('/scoring-session/stats',payload,sessionConfig(session))).data;},
   async updateClock(session,payload){return(await guest.put('/scoring-session/clock',payload,sessionConfig(session))).data?.data;},
   async substitute(session,payload){return(await guest.post('/scoring-session/substitutions',payload,sessionConfig(session))).data;},
+  async submitFinal(session){return(await guest.post('/scoring-session/submit-final',{},sessionConfig(session))).data?.data;},
 };
 export default scoringAccessService;

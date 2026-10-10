@@ -43,7 +43,7 @@ class TournamentController {
     }
 
     public function store(): void {
-        $user = AuthMiddleware::authorizeRoles(['organization_admin','tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['name']) || empty($input['start_date']) || empty($input['end_date'])) {
@@ -56,13 +56,35 @@ class TournamentController {
         }
 
         $input['sport_id'] = $basketballSportId;
-        if(!OrganizationAccess::isPlatform($user)){$input['organization_id']=OrganizationAccess::defaultOrganizationId((int)$user['user_id']);if(!$input['organization_id'])Response::error('Join an approved organization before creating a tournament.',403);}
+        $input['organization_id'] = null;
         $courtIds=array_values(array_unique(array_filter(array_map('intval',$input['court_ids']??[]),fn($id)=>$id>0)));
-        if(!$courtIds)Response::error('Select at least one court for this tournament.',422);
-        if(!$this->tournamentModel->canUseCourts($courtIds,(int)$input['organization_id'],$basketballSportId))Response::error('One or more selected courts are unavailable, unapproved, or outside your organization.',422);
+        if(count($courtIds)!==1)Response::error('Select exactly one Main Court for this tournament.',422);
+        if(!$this->tournamentModel->canUseCourts($courtIds,0,$basketballSportId))Response::error('The selected Main Court is unavailable.',422);
         $input['court_ids']=$courtIds;
 
+        $scheduleStart = trim((string)($input['schedule_start_time'] ?? '08:00'));
+        $scheduleEnd = trim((string)($input['schedule_end_time'] ?? '20:00'));
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $scheduleStart)
+            || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $scheduleEnd)) {
+            Response::error('Court availability must use a valid start and end time.', 422);
+        }
+        if (strtotime("1970-01-01 {$scheduleEnd}:00") <= strtotime("1970-01-01 {$scheduleStart}:00")) {
+            Response::error('Court closing time must be later than the opening time.', 422);
+        }
+        $input['schedule_start_time'] = $scheduleStart;
+        $input['schedule_end_time'] = $scheduleEnd;
+        $input['default_match_duration_minutes'] = max(20, min(240, (int)($input['default_match_duration_minutes'] ?? 90)));
+        $input['default_break_minutes'] = max(0, min(120, (int)($input['default_break_minutes'] ?? 15)));
+        $input['min_rest_minutes_between_games'] = max(0, min(1440, (int)($input['min_rest_minutes_between_games'] ?? 120)));
+        $input['max_games_per_team_per_day'] = max(1, min(10, (int)($input['max_games_per_team_per_day'] ?? 2)));
+        $validDays = ['mon','tue','wed','thu','fri','sat','sun'];
+        $availableDays = array_values(array_intersect($validDays, array_map('strtolower', (array)($input['available_days'] ?? $validDays))));
+        if (!$availableDays) Response::error('Select at least one available court day.', 422);
+        $input['available_days'] = implode(',', $availableDays);
+
         $input['created_by'] = $user['user_id'];
+        $input['approval_status'] = 'approved';
+        $input['is_published'] = 1;
         $id = $this->tournamentModel->create($input);
 
         $this->auditLog->log($user['user_id'], 'CREATE_TOURNAMENT', 'TOURNAMENT_MGMT', "Created tournament '{$input['name']}' (ID: {$id}).");
@@ -71,7 +93,7 @@ class TournamentController {
     }
 
     public function update(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['organization_admin','tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         OrganizationAccess::requireTournament($id,$user);
         $input = json_decode(file_get_contents('php://input'), true);
 
@@ -87,7 +109,7 @@ class TournamentController {
     }
 
     public function destroy(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['organization_admin','tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         OrganizationAccess::requireTournament($id,$user);
         $existing = $this->tournamentModel->getById($id);
         if (!$existing) {
@@ -114,6 +136,9 @@ class TournamentController {
         }
         if (!$this->tournamentModel->review($id, $status, (int)$user['user_id'], $input['notes'] ?? null)) {
             Response::error('Tournament review could not be saved. Refresh and try again.', 409);
+        }
+        if ($status === 'approved') {
+            $this->tournamentModel->approveLinkedPendingVenues($id, (int)$user['user_id']);
         }
         $decision = $status === 'approved' ? 'approved' : 'rejected';
         $this->auditLog->log((int)$user['user_id'], strtoupper($decision).'_TOURNAMENT', 'TOURNAMENT_MGMT', "{$decision} tournament '{$tournament['name']}' (ID: {$id}).");

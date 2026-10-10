@@ -149,6 +149,7 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/scoring-session/stats' && $method === 'POST') { (new ScoringAccessController())->stat(); return; }
     if ($path === '/scoring-session/clock' && $method === 'PUT') { (new ScoringAccessController())->updateClock(); return; }
     if ($path === '/scoring-session/substitutions' && $method === 'POST') { (new ScoringAccessController())->substitute(); return; }
+    if ($path === '/scoring-session/submit-final' && $method === 'POST') { (new ScoringAccessController())->submitFinal(); return; }
     if (preg_match('#^/matches/(\d+)/assignments$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->assign((int)$m[1]); return; }
     if (preg_match('#^/game-assignments/(\d+)/respond$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->respond((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/lineup$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->lineup((int)$m[1]); return; }
@@ -217,7 +218,6 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/venues/(\d+)$#', $path, $m) && $method === 'GET') { (new VenueController())->show((int)$m[1]); return; }
     if (preg_match('#^/venues/(\d+)$#', $path, $m) && $method === 'PUT') { (new VenueController())->updateVenue((int)$m[1]); return; }
     if (preg_match('#^/venues/(\d+)$#', $path, $m) && $method === 'DELETE') { (new VenueController())->destroyVenue((int)$m[1]); return; }
-    if (preg_match('#^/venues/(\d+)/review$#', $path, $m) && $method === 'PUT') { (new VenueController())->reviewVenue((int)$m[1]); return; }
     if ($path === '/courts' && $method === 'POST') { (new VenueController())->storeCourt(); return; }
     if (preg_match('#^/courts/(\d+)$#', $path, $m) && $method === 'PUT') { (new VenueController())->updateCourt((int)$m[1]); return; }
     if (preg_match('#^/courts/(\d+)$#', $path, $m) && $method === 'DELETE') { (new VenueController())->destroyCourt((int)$m[1]); return; }

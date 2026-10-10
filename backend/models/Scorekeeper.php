@@ -39,20 +39,23 @@ class Scorekeeper {
 
     public function getMatchRoster(int $matchId): array {
         $stmt = $this->db->prepare("
-            SELECT mr.user_id, mr.team_id, mr.jersey_number, mr.position, mr.is_active,
-                   u.full_name, u.student_faculty_id
+            SELECT mr.player_id, mr.player_id AS user_id, mr.team_id, mr.jersey_number, mr.position, mr.is_active,
+                   COALESCE(tp.player_name,u.full_name) AS full_name, tp.student_id_number
             FROM match_rosters mr
-            JOIN users u ON mr.user_id = u.id
+            JOIN team_players tp ON mr.player_id = tp.id
+            LEFT JOIN users u ON tp.user_id = u.id
             WHERE mr.match_id = :mid
-            ORDER BY mr.team_id, mr.is_active DESC, u.full_name ASC
+            ORDER BY mr.team_id, mr.is_active DESC, COALESCE(tp.player_name,u.full_name) ASC
         ");
         $stmt->execute([':mid' => $matchId]);
         return $stmt->fetchAll();
     }
 
     public function getMatchScoreState(int $matchId): ?array {
+        $driver=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $elapsed=$driver==='mysql'?'TIMESTAMPDIFF(SECOND,ms.updated_at,NOW())':'FLOOR(EXTRACT(EPOCH FROM (NOW()-ms.updated_at)))';
         $stmt = $this->db->prepare("
-            SELECT ms.*, CASE WHEN ms.is_timer_running=1 THEN GREATEST(0,ms.timer_seconds-FLOOR(EXTRACT(EPOCH FROM (NOW()-ms.updated_at)))) ELSE ms.timer_seconds END AS clock_remaining_seconds,
+            SELECT ms.*, CASE WHEN ms.is_timer_running=1 THEN GREATEST(0,ms.timer_seconds-{$elapsed}) ELSE ms.timer_seconds END AS clock_remaining_seconds,
                    m.tournament_id, m.team1_id, m.team2_id, m.winner_team_id, m.status AS match_status,
                    t1.team_name AS team1_name, t2.team_name AS team2_name
             FROM match_scores ms
@@ -69,15 +72,16 @@ class Scorekeeper {
     // Aggregate foul counts per team/player for the live scoreboard.
     public function getFoulCounts(int $matchId): array {
         $stmt = $this->db->prepare("
-            SELECT f.team_id, f.player_id, u.full_name, u.student_faculty_id,
+            SELECT f.team_id, f.player_id, COALESCE(tp.player_name,u.full_name) AS full_name, tp.student_id_number,
                    COUNT(*) AS fouls,
                    SUM(CASE WHEN f.foul_type = 'technical' THEN 1 ELSE 0 END) AS technical,
                    SUM(CASE WHEN f.foul_type = 'unsportsmanlike' THEN 1 ELSE 0 END) AS unsportsmanlike,
                    SUM(CASE WHEN f.foul_type = 'disqualification' THEN 1 ELSE 0 END) AS disqualifications
             FROM fouls f
-            JOIN users u ON f.player_id = u.id
+            JOIN team_players tp ON f.player_id = tp.id
+            LEFT JOIN users u ON tp.user_id = u.id
             WHERE f.match_id = :mid
-            GROUP BY f.team_id, f.player_id, u.full_name, u.student_faculty_id
+            GROUP BY f.team_id, f.player_id, tp.player_name, u.full_name, tp.student_id_number
             ORDER BY f.team_id, MIN(f.created_at) ASC
         ");
         $stmt->execute([':mid' => $matchId]);
@@ -101,10 +105,11 @@ class Scorekeeper {
         $stmt = $this->db->prepare("
             SELECT ge.id, ge.event_type, ge.team_id, ge.player_id, ge.clock_seconds,
                    ge.period, ge.detail_json, ge.created_at,
-                   t.team_name, u.full_name AS player_name, u.student_faculty_id AS player_number
+                   t.team_name, COALESCE(tp.player_name,u.full_name) AS player_name, tp.student_id_number AS player_number
             FROM game_events ge
             LEFT JOIN teams t ON ge.team_id = t.id
-            LEFT JOIN users u ON ge.player_id = u.id
+            LEFT JOIN team_players tp ON ge.player_id = tp.id
+            LEFT JOIN users u ON tp.user_id = u.id
             WHERE ge.match_id = :mid
             ORDER BY ge.created_at DESC
             LIMIT :limit
@@ -180,9 +185,9 @@ class Scorekeeper {
         ]);
 
         // Update active roster flags for this match/team.
-        $this->db->prepare("UPDATE match_rosters SET is_active = 0 WHERE match_id = :mid AND team_id = :tid AND user_id IN (:pin, :pout)")
+        $this->db->prepare("UPDATE match_rosters SET is_active = 0 WHERE match_id = :mid AND team_id = :tid AND player_id IN (:pin, :pout)")
             ->execute([':mid' => $matchId, ':tid' => $teamId, ':pin' => $playerIn, ':pout' => $playerOut]);
-        $this->db->prepare("UPDATE match_rosters SET is_active = 1 WHERE match_id = :mid AND team_id = :tid AND user_id = :pin")
+        $this->db->prepare("UPDATE match_rosters SET is_active = 1 WHERE match_id = :mid AND team_id = :tid AND player_id = :pin")
             ->execute([':mid' => $matchId, ':tid' => $teamId, ':pin' => $playerIn]);
 
         return (int) $this->db->lastInsertId();
@@ -215,7 +220,10 @@ class Scorekeeper {
     }
 
     public function assignOfficial(int $matchId, int $userId, string $role, int $assignedBy): bool {
-        $stmt = $this->db->prepare("INSERT INTO match_officials (match_id, user_id, role, assigned_by) VALUES (:mid, :uid, :role, :ab) ON CONFLICT (match_id,user_id,role) DO NOTHING");
+        $sql=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'
+            ? "INSERT INTO match_officials (match_id,user_id,role,assigned_by) VALUES (:mid,:uid,:role,:ab) ON DUPLICATE KEY UPDATE assigned_by=VALUES(assigned_by)"
+            : "INSERT INTO match_officials (match_id,user_id,role,assigned_by) VALUES (:mid,:uid,:role,:ab) ON CONFLICT (match_id,user_id,role) DO NOTHING";
+        $stmt = $this->db->prepare($sql);
         return $stmt->execute([':mid' => $matchId, ':uid' => $userId, ':role' => $role, ':ab' => $assignedBy]);
     }
 

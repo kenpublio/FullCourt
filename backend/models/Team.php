@@ -27,7 +27,10 @@ class Team {
 
     public function getAll(): array {
         $sql = "SELECT tm.*, u.full_name as coach_name, t.name as tournament_name, s.name as sport_name, d.name AS division_name,
-                (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players
+                (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players,
+                (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
+                (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
+                (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed' AND (m.winner_team_id IS NULL OR m.winner_team_id<>tm.id)) AS losses
                 FROM teams tm
                 JOIN users u ON tm.coach_user_id = u.id
                 JOIN tournaments t ON tm.tournament_id = t.id
@@ -40,7 +43,10 @@ class Team {
 
     public function getForCoach(int $userId): array {
         $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name,
-                       (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players
+                       (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players,
+                       (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
+                       (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
+                       (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed' AND (m.winner_team_id IS NULL OR m.winner_team_id<>tm.id)) AS losses
                 FROM teams tm
                 JOIN users u ON tm.coach_user_id = u.id
                 JOIN tournaments t ON tm.tournament_id = t.id

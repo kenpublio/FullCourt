@@ -46,8 +46,8 @@ const AdminLogin = () => {
           <Link to="/" className="admin-login-brand"><span><i className="bi bi-dribbble" /></span> FullCourt</Link>
           <div className="admin-security-label"><i className="bi bi-shield-lock-fill" /> FullCourt Command Center</div>
           <h1>Run the platform.<br /><em>Guard every game.</em></h1>
-          <p>A dedicated operations gateway for organization approvals, account security, tournament oversight, and system-wide basketball administration.</p>
-          <div className="admin-capability-grid"><article><i className="bi bi-buildings-fill"/><div><b>Organization control</b><span>Review and manage competition operators</span></div></article><article><i className="bi bi-person-lock"/><div><b>Access governance</b><span>Roles, permissions, and account status</span></div></article><article><i className="bi bi-activity"/><div><b>Operations oversight</b><span>Monitor tournaments and active games</span></div></article></div>
+          <p>A dedicated operations gateway for tournaments, account security, eligibility review, schedules, and live basketball administration.</p>
+          <div className="admin-capability-grid"><article><i className="bi bi-trophy-fill"/><div><b>Tournament control</b><span>Create and manage official competitions</span></div></article><article><i className="bi bi-person-lock"/><div><b>Access governance</b><span>Admin, Coach, and Staff Admin accounts</span></div></article><article><i className="bi bi-activity"/><div><b>Operations oversight</b><span>Monitor schedules and active games</span></div></article></div>
           <div className="admin-trust-row"><span><i className="bi bi-check-circle-fill" /> Role protected</span><span><i className="bi bi-check-circle-fill" /> Audited access</span><span><i className="bi bi-check-circle-fill" /> Encrypted session</span></div>
         </div>
 

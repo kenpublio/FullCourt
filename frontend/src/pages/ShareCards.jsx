@@ -231,8 +231,8 @@ function drawPlayer(ctx, player, red, gold) {
   });
 }
 function pickPlayerOfGame(players) {
-  return [...players].sort((a, b) => impactScore(b) - impactScore(a)
-    || Number(b.points || 0) - Number(a.points || 0)
+  return [...players].sort((a, b) => Number(b.points || 0) - Number(a.points || 0)
+    || impactScore(b) - impactScore(a)
     || Number(b.rebounds || 0) - Number(a.rebounds || 0)
     || String(a.full_name || '').localeCompare(String(b.full_name || '')))[0] || null;
 }
@@ -256,7 +256,7 @@ function drawPlayerOfGame(ctx, player, match, red, gold) {
   });
   ctx.textAlign = 'left'; ctx.fillStyle = '#aaa4a9'; ctx.font = '700 17px Arial';
   ctx.fillText(`${match?.team1_name || 'Home'}  ${match?.team1_score ?? 0}  —  ${match?.team2_score ?? 0}  ${match?.team2_name || 'Away'}`, 82, 862);
-  ctx.fillStyle = '#817b82'; ctx.font = '600 14px Arial'; ctx.fillText('Performance leader calculated from the finalized box score.', 82, 896);
+  ctx.fillStyle = '#817b82'; ctx.font = '600 14px Arial'; ctx.fillText('Points leader from the finalized box score; other stats break ties.', 82, 896);
 }
 function drawEmptyCard(ctx, type, red, gold) {
   ctx.textAlign = 'center'; ctx.fillStyle = gold; ctx.font = '900 78px Arial'; ctx.fillText('◎', 540, 525);

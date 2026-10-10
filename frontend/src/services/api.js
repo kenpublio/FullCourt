@@ -6,7 +6,7 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   // Bound stalled API calls so a page can surface its retry/error state instead
   // of leaving the user on an endless loading screen.
-  timeout: 20000,
+  timeout: 45000,
   headers: {
     'Content-Type': 'application/json',
   },

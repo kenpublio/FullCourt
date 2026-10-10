@@ -31,13 +31,18 @@ class GameDayOperations {
         $fields=['venue_ready','equipment_ready','home_team_present','away_team_present','lineups_confirmed','officials_ready','medical_ready'];
         $params=[':match_id'=>$matchId,':notes'=>trim((string)($data['notes']??''))?:null,':user_id'=>$userId];
         foreach($fields as $field)$params[':'.$field]=!empty($data[$field]);
+        $upsert=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'
+          ? 'ON DUPLICATE KEY UPDATE venue_ready=VALUES(venue_ready),equipment_ready=VALUES(equipment_ready),home_team_present=VALUES(home_team_present),away_team_present=VALUES(away_team_present),lineups_confirmed=VALUES(lineups_confirmed),officials_ready=VALUES(officials_ready),medical_ready=VALUES(medical_ready),notes=VALUES(notes),updated_by=VALUES(updated_by),updated_at=NOW()'
+          : 'ON CONFLICT(match_id) DO UPDATE SET venue_ready=EXCLUDED.venue_ready,equipment_ready=EXCLUDED.equipment_ready,home_team_present=EXCLUDED.home_team_present,away_team_present=EXCLUDED.away_team_present,lineups_confirmed=EXCLUDED.lineups_confirmed,officials_ready=EXCLUDED.officials_ready,medical_ready=EXCLUDED.medical_ready,notes=EXCLUDED.notes,updated_by=EXCLUDED.updated_by,updated_at=NOW()';
         $this->db->prepare("INSERT INTO game_readiness(match_id,venue_ready,equipment_ready,home_team_present,away_team_present,lineups_confirmed,officials_ready,medical_ready,notes,updated_by)
           VALUES(:match_id,:venue_ready,:equipment_ready,:home_team_present,:away_team_present,:lineups_confirmed,:officials_ready,:medical_ready,:notes,:user_id)
-          ON CONFLICT(match_id) DO UPDATE SET venue_ready=EXCLUDED.venue_ready,equipment_ready=EXCLUDED.equipment_ready,home_team_present=EXCLUDED.home_team_present,away_team_present=EXCLUDED.away_team_present,lineups_confirmed=EXCLUDED.lineups_confirmed,officials_ready=EXCLUDED.officials_ready,medical_ready=EXCLUDED.medical_ready,notes=EXCLUDED.notes,updated_by=EXCLUDED.updated_by,updated_at=NOW()")->execute($params);
+          {$upsert}")->execute($params);
     }
     public function createIncident(int $matchId,array $data,int $userId):int{
-        $stmt=$this->db->prepare("INSERT INTO game_incidents(match_id,incident_type,severity,description,action_taken,reported_by) VALUES(:match_id,:type,:severity,:description,:action,:user_id) RETURNING id");
-        $stmt->execute([':match_id'=>$matchId,':type'=>$data['incident_type'],':severity'=>$data['severity'],':description'=>trim($data['description']),':action'=>trim((string)($data['action_taken']??''))?:null,':user_id'=>$userId]);return(int)$stmt->fetchColumn();
+        $sql="INSERT INTO game_incidents(match_id,incident_type,severity,description,action_taken,reported_by) VALUES(:match_id,:type,:severity,:description,:action,:user_id)";
+        if($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='mysql')$sql.=' RETURNING id';
+        $stmt=$this->db->prepare($sql);
+        $stmt->execute([':match_id'=>$matchId,':type'=>$data['incident_type'],':severity'=>$data['severity'],':description'=>trim($data['description']),':action'=>trim((string)($data['action_taken']??''))?:null,':user_id'=>$userId]);return(int)($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?$this->db->lastInsertId():$stmt->fetchColumn());
     }
     public function incidentTournamentId(int $id):?int{$stmt=$this->db->prepare("SELECT m.tournament_id FROM game_incidents gi JOIN matches m ON m.id=gi.match_id WHERE gi.id=:id");$stmt->execute([':id'=>$id]);$value=$stmt->fetchColumn();return$value===false?null:(int)$value;}
     public function resolveIncident(int $id,int $userId):bool{$stmt=$this->db->prepare("UPDATE game_incidents SET status='resolved',resolved_by=:user_id,resolved_at=NOW() WHERE id=:id AND status='open'");$stmt->execute([':user_id'=>$userId,':id'=>$id]);return$stmt->rowCount()>0;}

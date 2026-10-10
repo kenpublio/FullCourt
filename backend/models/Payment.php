@@ -12,7 +12,8 @@ class Payment {
     }
 
     public function getAll(): array {
-        $sql = "SELECT p.*, tm.team_name, t.name as tournament_name, u.full_name as verifier_name
+        $sql = "SELECT p.*, tm.team_name, t.name as tournament_name, t.registration_fee, u.full_name as verifier_name,
+                COALESCE((SELECT SUM(pa.amount) FROM payments pa WHERE pa.team_id=p.team_id AND pa.tournament_id=p.tournament_id AND pa.status='approved'),0) AS approved_total
                 FROM payments p
                 JOIN teams tm ON p.team_id = tm.id
                 JOIN tournaments t ON p.tournament_id = t.id
@@ -24,7 +25,8 @@ class Payment {
 
     public function getForUser(int $userId, string $role): array {
         if (!in_array($role, ['coach','coach_manager'], true)) return [];
-        $sql = "SELECT p.*, tm.team_name, t.name AS tournament_name, u.full_name AS verifier_name
+        $sql = "SELECT p.*, tm.team_name, t.name AS tournament_name, t.registration_fee, u.full_name AS verifier_name,
+                COALESCE((SELECT SUM(pa.amount) FROM payments pa WHERE pa.team_id=p.team_id AND pa.tournament_id=p.tournament_id AND pa.status='approved'),0) AS approved_total
                 FROM payments p
                 JOIN teams tm ON p.team_id = tm.id
                 JOIN tournaments t ON p.tournament_id = t.id
@@ -37,7 +39,8 @@ class Payment {
     }
 
     public function getForOrganizationUser(int $userId): array {
-        $sql="SELECT DISTINCT p.*,tm.team_name,t.name AS tournament_name,v.full_name AS verifier_name
+        $sql="SELECT DISTINCT p.*,tm.team_name,t.name AS tournament_name,t.registration_fee,v.full_name AS verifier_name,
+              COALESCE((SELECT SUM(pa.amount) FROM payments pa WHERE pa.team_id=p.team_id AND pa.tournament_id=p.tournament_id AND pa.status='approved'),0) AS approved_total
               FROM organization_members om JOIN organizations o ON o.id=om.organization_id AND o.status='active'
               JOIN tournaments t ON t.organization_id=o.id JOIN teams tm ON tm.tournament_id=t.id
               JOIN payments p ON p.team_id=tm.id AND p.tournament_id=t.id LEFT JOIN users v ON v.id=p.verified_by
@@ -53,17 +56,22 @@ class Payment {
         $stmt->execute([':team'=>$teamId,':tournament'=>$tournamentId]);$row=$stmt->fetch();
         if(!$row)return ['valid'=>false,'message'=>'The selected team does not belong to this tournament.'];
         if(in_array($role,['coach','coach_manager'],true)&&(int)$row['coach_user_id']!==$userId&&(int)($row['manager_user_id']??0)!==$userId)return ['valid'=>false,'message'=>'You can only submit a payment for your own team.'];
-        $pending=$this->db->prepare("SELECT id FROM payments WHERE team_id=:team_id AND tournament_id=:tournament_id AND status IN ('pending','approved') LIMIT 1");
+        $pending=$this->db->prepare("SELECT id FROM payments WHERE team_id=:team_id AND tournament_id=:tournament_id AND status='pending' LIMIT 1");
         $pending->execute([':team_id'=>$teamId,':tournament_id'=>$tournamentId]);
-        if($pending->fetch())return ['valid'=>false,'message'=>'This team already has a pending or approved payment for this tournament.'];
+        if($pending->fetch())return ['valid'=>false,'message'=>'This team already has a payment awaiting review. Wait for Admin to review it before adding another installment.'];
         $fee=(float)$row['registration_fee'];
         if($fee<=0)return ['valid'=>false,'message'=>'This tournament has no registration fee to pay.'];
-        if(abs($amount-$fee)>.009)return ['valid'=>false,'message'=>'Payment amount must match the tournament registration fee of ₱'.number_format($fee,2).'.'];
-        return ['valid'=>true];
+        $paidStmt=$this->db->prepare("SELECT COALESCE(SUM(amount),0) FROM payments WHERE team_id=:team AND tournament_id=:tournament AND status='approved'");
+        $paidStmt->execute([':team'=>$teamId,':tournament'=>$tournamentId]);
+        $paid=(float)$paidStmt->fetchColumn();$remaining=max(0,$fee-$paid);
+        if($remaining<=.009)return ['valid'=>false,'message'=>'This team’s registration fee is already fully paid.'];
+        if($amount-$remaining>.009)return ['valid'=>false,'message'=>'Payment cannot exceed the remaining balance of ₱'.number_format($remaining,2).'.'];
+        return ['valid'=>true,'fee'=>$fee,'paid'=>$paid,'remaining'=>$remaining];
     }
 
     public function getById(int $id): ?array {
-        $sql = "SELECT p.*, tm.team_name, t.name AS tournament_name, u.full_name AS verifier_name
+        $sql = "SELECT p.*, tm.team_name, t.name AS tournament_name, t.registration_fee, u.full_name AS verifier_name,
+                COALESCE((SELECT SUM(pa.amount) FROM payments pa WHERE pa.team_id=p.team_id AND pa.tournament_id=p.tournament_id AND pa.status='approved'),0) AS approved_total
                 FROM payments p
                 JOIN teams tm ON p.team_id = tm.id
                 JOIN tournaments t ON p.tournament_id = t.id
@@ -126,13 +134,12 @@ class Payment {
     public function verifyPayment(int $id, string $status, int $verifierId, ?string $remarks): bool {
         $this->db->beginTransaction();
         try {
-            $sql = "UPDATE payments
-                    SET status=:status, verified_by=:verifier_id, remarks=:remarks, verified_at=NOW()
-                    WHERE id=:id AND status='pending'
-                    RETURNING team_id";
+            $driver=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $sql = "UPDATE payments SET status=:status, verified_by=:verifier_id, remarks=:remarks, verified_at=NOW()
+                    WHERE id=:id AND status='pending'".($driver==='mysql'?'':' RETURNING team_id');
             $stmt=$this->db->prepare($sql);
             $stmt->execute([':status'=>$status,':verifier_id'=>$verifierId,':remarks'=>$remarks,':id'=>$id]);
-            $teamId=$stmt->fetchColumn();
+            $teamId=$driver==='mysql' ? ($stmt->rowCount() ? $this->db->query("SELECT team_id FROM payments WHERE id=".(int)$id)->fetchColumn() : false) : $stmt->fetchColumn();
             if($teamId===false){$this->db->rollBack();return false;}
 
             if($status==='approved'){

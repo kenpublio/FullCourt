@@ -188,7 +188,7 @@ class GameOperations {
     }
 
     public function boxScore(int $matchId): array {
-        $stmt = $this->db->prepare("SELECT tp.id team_player_id, u.full_name, tp.jersey_number, tm.id team_id, tm.team_name,
+        $stmt = $this->db->prepare("SELECT tp.id team_player_id, COALESCE(tp.player_name,u.full_name) AS full_name, tp.jersey_number, tm.id team_id, tm.team_name,
             SUM(CASE WHEN e.event_type='2pt_made' THEN 1 ELSE 0 END) fg2m, SUM(CASE WHEN e.event_type IN ('2pt_made','2pt_missed') THEN 1 ELSE 0 END) fg2a,
             SUM(CASE WHEN e.event_type='3pt_made' THEN 1 ELSE 0 END) fg3m, SUM(CASE WHEN e.event_type IN ('3pt_made','3pt_missed') THEN 1 ELSE 0 END) fg3a,
             SUM(CASE WHEN e.event_type='ft_made' THEN 1 ELSE 0 END) ftm, SUM(CASE WHEN e.event_type IN ('ft_made','ft_missed') THEN 1 ELSE 0 END) fta,
@@ -198,8 +198,8 @@ class GameOperations {
             tp.position,COALESCE(pgm.seconds_played,0) seconds_played,ROUND(COALESCE(pgm.seconds_played,0)/60,1) minutes_played,
             SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points
             FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id
-            JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id LEFT JOIN player_game_minutes pgm ON pgm.match_id=e.match_id AND pgm.team_player_id=tp.id
-            WHERE e.match_id=:match_id AND e.is_void=0 GROUP BY tp.id,u.full_name,tp.jersey_number,tm.id,tm.team_name,tp.position,pgm.seconds_played
+            LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id LEFT JOIN player_game_minutes pgm ON pgm.match_id=e.match_id AND pgm.team_player_id=tp.id
+            WHERE e.match_id=:match_id AND e.is_void=0 GROUP BY tp.id,tp.player_name,u.full_name,tp.jersey_number,tm.id,tm.team_name,tp.position,pgm.seconds_played
             ORDER BY tm.id,points DESC");
         $stmt->execute([':match_id'=>$matchId]);
         return $stmt->fetchAll();

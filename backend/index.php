@@ -1,13 +1,15 @@
 <?php
 // backend/index.php
 
-// Load .env file if exists
-$envPath = __DIR__ . '/../.env';
-if (is_file($envPath)) {
-    foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
-        putenv($line);
+// Load the project environment, then allow the ignored local file to override
+// it for XAMPP development without changing production configuration.
+foreach ([__DIR__ . '/../.env', __DIR__ . '/../.env.local'] as $envPath) {
+    if (is_file($envPath)) {
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+            putenv($line);
+        }
     }
 }
 
@@ -34,4 +36,19 @@ handleCors();
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/api';
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-routeRequest($requestUri, $requestMethod);
+try {
+    routeRequest($requestUri, $requestMethod);
+} catch (Throwable $error) {
+    error_log('Unhandled API error: ' . $error->getMessage());
+    if (!headers_sent()) {
+        require_once __DIR__ . '/utils/response.php';
+        $databaseUnavailable = str_contains(strtolower($error->getMessage()), 'database')
+            || str_contains(strtolower($error->getMessage()), 'connection');
+        Response::error(
+            $databaseUnavailable
+                ? 'The database is temporarily unavailable. Please try again in a moment.'
+                : 'The request could not be completed. Please try again.',
+            $databaseUnavailable ? 503 : 500
+        );
+    }
+}

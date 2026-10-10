@@ -15,7 +15,21 @@ class NotificationMailer {
     public function sendToTournamentParticipants(int $tournamentId,string $subject,string $message,string $path):array{
         $stmt=$this->db->prepare("SELECT DISTINCT user_id FROM (SELECT tp.user_id FROM teams tm JOIN team_players tp ON tp.team_id=tm.id AND tp.eligibility_status='verified' WHERE tm.tournament_id=:p1 UNION SELECT tm.coach_user_id FROM teams tm WHERE tm.tournament_id=:p2 AND tm.coach_user_id IS NOT NULL UNION SELECT tm.manager_user_id FROM teams tm WHERE tm.tournament_id=:p3 AND tm.manager_user_id IS NOT NULL UNION SELECT ga.user_id FROM game_assignments ga JOIN matches m ON m.id=ga.match_id WHERE m.tournament_id=:p4 AND ga.status='accepted') recipients WHERE user_id IS NOT NULL");
         $stmt->execute([':p1'=>$tournamentId,':p2'=>$tournamentId,':p3'=>$tournamentId,':p4'=>$tournamentId]);$sent=0;$failed=0;
-        foreach($stmt->fetchAll(PDO::FETCH_COLUMN) as $userId){$this->sendToUser((int)$userId,$subject,$message,$path)?$sent++:$failed++;}
+        $recipients=$stmt->fetchAll(PDO::FETCH_COLUMN);
+        // Local development already receives the durable in-app notifications.
+        // Avoid contacting an external provider while running tests or offline.
+        if ((getenv('APP_ENV') ?: 'development') !== 'production') {
+            return ['emails_sent'=>0,'emails_skipped_or_failed'=>count($recipients)];
+        }
+        $deadline=microtime(true)+8.0;
+        foreach($recipients as $index=>$userId){
+            if(microtime(true)>=$deadline){$failed+=count($recipients)-$index;break;}
+            try {
+                $this->sendToUser((int)$userId,$subject,$message,$path)?$sent++:$failed++;
+            } catch (Throwable) {
+                $failed++;
+            }
+        }
         return ['emails_sent'=>$sent,'emails_skipped_or_failed'=>$failed];
     }
 }

@@ -44,10 +44,31 @@ const GuestScoringConsole = () => {
   const clockLoadedFor = useRef(null);
   const clockSyncAt = useRef(Date.now());
   const [clockNow, setClockNow] = useState(Date.now());
+  const queueKey = `fc_score_queue_${token}`;
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [pendingEvents, setPendingEvents] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(queueKey) || '[]'); } catch { return []; }
+  });
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [showFinalReview, setShowFinalReview] = useState(false);
+  const [submittedFinal, setSubmittedFinal] = useState(null);
+
+  const saveQueue = useCallback((items) => {
+    localStorage.setItem(queueKey, JSON.stringify(items));
+    setPendingEvents(items);
+  }, [queueKey]);
 
   useEffect(() => {
     const ticker = setInterval(() => setClockNow(Date.now()), 250);
     return () => clearInterval(ticker);
+  }, []);
+
+  useEffect(() => {
+    const connected = () => setOnline(true);
+    const disconnected = () => setOnline(false);
+    window.addEventListener('online', connected);
+    window.addEventListener('offline', disconnected);
+    return () => { window.removeEventListener('online', connected); window.removeEventListener('offline', disconnected); };
   }, []);
 
   const load = useCallback(async (active = session) => {
@@ -103,23 +124,57 @@ const GuestScoringConsole = () => {
 
   const record = async (eventType) => {
     if (!selected || selected.eligibility_status !== 'verified' || Number(selected.is_present) !== 1) return setMessage('Only an eligible, present player can be selected for statistics.');
+    const payload = {
+      event_uuid: crypto.randomUUID(),
+      team_id: selected.team_id,
+      team_player_id: selected.team_player_id,
+      event_type: eventType,
+      period: periodNumber(data.game.current_period),
+      game_clock_seconds: remainingSeconds,
+    };
+    if (!navigator.onLine) {
+      saveQueue([...pendingEvents, payload]);
+      setMessage(`${eventType.replaceAll('_', ' ')} queued offline for ${selected.full_name}. It will sync when the connection returns.`);
+      return;
+    }
     setBusy(true);
     try {
-      await scoringAccessService.stat(session, {
-        event_uuid: crypto.randomUUID(),
-        team_id: selected.team_id,
-        team_player_id: selected.team_player_id,
-        event_type: eventType,
-        period: periodNumber(data.game.current_period),
-        game_clock_seconds: remainingSeconds,
-      });
+      await scoringAccessService.stat(session, payload);
       setMessage(`${eventType.replaceAll('_', ' ')} recorded for ${selected.full_name}.`);
+      setLastSavedAt(new Date());
       await load();
     } catch (statError) {
-      setError(statError.response?.data?.message || 'Unable to record the statistic.');
+      if (!statError.response) {
+        saveQueue([...pendingEvents, payload]);
+        setMessage('Connection lost. The statistic was saved on this device and will sync automatically.');
+      } else setError(statError.response?.data?.message || 'Unable to record the statistic.');
     } finally {
       setBusy(false);
     }
+  };
+
+  const syncPending = useCallback(async () => {
+    if (!session || !navigator.onLine || !pendingEvents.length) return;
+    const remaining=[];let synced=0;
+    for (const payload of pendingEvents) {
+      try { await scoringAccessService.stat(session,payload); synced+=1; }
+      catch (syncError) { if (!syncError.response) remaining.push(payload); }
+    }
+    saveQueue(remaining);
+    if (synced) { setLastSavedAt(new Date()); setMessage(`${synced} offline statistic${synced===1?'':'s'} synchronized.`); await load(); }
+  }, [load, pendingEvents, saveQueue, session]);
+
+  useEffect(() => { if (online && pendingEvents.length) syncPending(); }, [online, pendingEvents.length, syncPending]);
+
+  const submitFinal = async () => {
+    if (!data || busy || pendingEvents.length) return;
+    setBusy(true);setError('');setMessage('');
+    try {
+      const result=await scoringAccessService.submitFinal(session);
+      setSubmittedFinal(result);setShowFinalReview(false);
+      sessionStorage.removeItem(`fc_score_${token}`);
+    } catch (finalError) { setError(finalError.response?.data?.message||'Unable to submit the final score.');setShowFinalReview(false); }
+    finally { setBusy(false); }
   };
 
   const substitute = async (playerIn) => {
@@ -208,6 +263,13 @@ const GuestScoringConsole = () => {
     { id: data.game.team2_id, name: data.game.team2_name, score: data.game.team2_score },
   ] : [], [data]);
 
+  if (submittedFinal) return <main className="score-access-page"><section className="score-access-card score-final-success">
+    <div className="score-access-topbar"><div className="score-brand"><i className="bi bi-dribbble"/><b>FULLCOURT</b></div><span><i/> SCORE SUBMITTED</span></div>
+    <div className="score-final-success-icon"><i className="bi bi-shield-check"/></div><span className="score-kicker">ORGANIZER REVIEW</span><h1>Game recorded.</h1>
+    <p>The final score <b>{submittedFinal.team1_score}-{submittedFinal.team2_score}</b> is locked and waiting for the organizer to confirm. Once confirmed, it will appear in Live Games, standings, reports, awards, and share cards.</p>
+    <Link className="score-access-home" to="/"><i className="bi bi-arrow-left"/> Return to FullCourt</Link>
+  </section></main>;
+
   if (!session || !data) {
     return <main className="score-access-page"><section className="score-access-card">
       <div className="score-access-topbar"><div className="score-brand"><i className="bi bi-dribbble"/><b>FULLCOURT</b></div><span><i/> SECURE COURTSIDE ACCESS</span></div>
@@ -240,6 +302,7 @@ const GuestScoringConsole = () => {
       <div className="courtside-live"><i/> LIVE COURTSIDE</div>
       <div className="courtside-operator"><small>Operator</small><b>{data.operator_name}</b></div>
     </header>
+    <div className={`courtside-sync-bar ${online?'is-online':'is-offline'}`} role="status"><span><i className={`bi ${online?'bi-cloud-check':'bi-cloud-slash'}`}/>{online?'Online - game actions are syncing':'Offline - player statistics will queue on this device'}</span><span>{pendingEvents.length?`${pendingEvents.length} waiting to sync`:lastSavedAt?`Last saved ${lastSavedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Ready'}</span>{pendingEvents.length>0&&online&&<button type="button" onClick={syncPending}>Sync now</button>}</div>
     <section className="courtside-scoreboard">
       <article><small>HOME</small><h2>{teams[0]?.name || 'TBD'}</h2><strong>{teams[0]?.score || 0}</strong></article>
       <div className="courtside-clock"><span>{data.game.current_period || 'PRE-GAME'}</span><b>{clockDisplay}</b><em>GAME #{data.game.match_id}</em></div>
@@ -294,7 +357,9 @@ const GuestScoringConsole = () => {
         <div className="stat-action-grid">{actions.map(([type, mark, label]) => <button type="button" disabled={busy || !selected} className={type.includes('made') ? 'made' : type.includes('missed') ? 'missed' : ''} onClick={() => record(type)} key={type}><strong>{mark}</strong><span>{label}</span></button>)}</div>
       </section>
     </div>
+    <section className="courtside-finalize"><div><span className="score-kicker">END OF GAME</span><h3>Submit the final score</h3><p>Review the scoreboard first. Submission locks scoring until the organizer confirms the official result.</p></div><button type="button" disabled={busy||pendingEvents.length>0||Number(teams[0]?.score)===Number(teams[1]?.score)} onClick={()=>setShowFinalReview(true)}><i className="bi bi-flag-fill"/> Review final score</button>{pendingEvents.length>0&&<small>Sync all pending actions before ending the game.</small>}{Number(teams[0]?.score)===Number(teams[1]?.score)&&<small>A tied score cannot be submitted. Continue to overtime.</small>}</section>
     <footer><span><i className="bi bi-cloud-check"/> Every action is saved to the FullCourt game log.</span><button type="button" onClick={() => load()}><i className="bi bi-arrow-clockwise"/> Refresh</button></footer>
+    {showFinalReview&&<div className="courtside-final-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setShowFinalReview(false)}}><section className="courtside-final-dialog" role="dialog" aria-modal="true" aria-labelledby="guest-final-title"><span className="score-kicker">FINAL SCORE REVIEW</span><h2 id="guest-final-title">Confirm before submitting</h2><div className="courtside-final-score"><span><small>{teams[0]?.name}</small><b>{teams[0]?.score||0}</b></span><em>FINAL</em><span><small>{teams[1]?.name}</small><b>{teams[1]?.score||0}</b></span></div><p>This will pause the clock, lock the scoring link, and send the result to the organizer for official confirmation.</p><div><button type="button" className="secondary" disabled={busy} onClick={()=>setShowFinalReview(false)}>Go back</button><button type="button" disabled={busy} onClick={submitFinal}>{busy?'Submitting…':'Submit final score'}</button></div></section></div>}
   </main>;
 };
 

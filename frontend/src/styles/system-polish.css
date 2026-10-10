@@ -1,0 +1,76 @@
+/* Final shared visual polish: consistent readability, rhythm, and responsive feedback. */
+:root {
+  --fc-radius-card: 16px;
+  --fc-shadow-card: 0 8px 26px rgba(20, 28, 40, .065);
+  --fc-shadow-hover: 0 16px 38px rgba(20, 28, 40, .11);
+}
+
+body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+.main-content { background-image: radial-gradient(circle at 88% 2%, rgba(205,45,23,.035), transparent 24rem); }
+.main-content > main { animation: fc-page-in .28s ease-out both; }
+@keyframes fc-page-in { from { opacity:0; transform:translateY(5px) } to { opacity:1; transform:none } }
+@media (prefers-reduced-motion: reduce) { .main-content > main { animation:none } }
+
+.card-custom,
+.ops-table-shell,
+.modal-content {
+  border-color: var(--surface-border) !important;
+  border-radius: var(--fc-radius-card) !important;
+  box-shadow: var(--fc-shadow-card);
+}
+.card-custom { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.card-custom:hover { border-color: color-mix(in srgb, var(--evsu-primary) 22%, var(--surface-border)) !important; }
+
+.btn { min-height: 40px; border-radius: 10px; font-weight: 750; }
+.btn-sm { min-height: 34px; }
+.form-control,.form-select { min-height: 44px; border-radius: 10px; }
+.form-control:focus,.form-select:focus { border-color: color-mix(in srgb,var(--evsu-primary) 65%,#fff); box-shadow: 0 0 0 3px rgba(205,45,23,.13); }
+
+/* Explicit light-mode contrast. These guard against dark component defaults leaking into light pages. */
+:root:not([data-fullcourt-theme="dark"]) .role-dashboard .border.rounded-3,
+:root[data-fullcourt-theme="light"] .role-dashboard .border.rounded-3,
+:root:not([data-fullcourt-theme="dark"]) .role-dashboard .btn-light.border,
+:root[data-fullcourt-theme="light"] .role-dashboard .btn-light.border {
+  border-color:#dce2e9 !important;
+  background:#f7f9fb !important;
+  color:#17212f !important;
+}
+:root:not([data-fullcourt-theme="dark"]) .role-dashboard .border.rounded-3 b,
+:root[data-fullcourt-theme="light"] .role-dashboard .border.rounded-3 b { color:#17212f !important; }
+:root:not([data-fullcourt-theme="dark"]) .role-dashboard .btn-light.border:hover,
+:root[data-fullcourt-theme="light"] .role-dashboard .btn-light.border:hover { background:#fff1ec !important; border-color:#dc8f83 !important; }
+
+:root:not([data-fullcourt-theme="dark"]) .tournament-operations-page,
+:root[data-fullcourt-theme="light"] .tournament-operations-page { --text-primary:#17212f; --text-secondary:#526173; --text-muted:#667085; }
+:root:not([data-fullcourt-theme="dark"]) .tournament-ops-card-title,
+:root[data-fullcourt-theme="light"] .tournament-ops-card-title,
+:root:not([data-fullcourt-theme="dark"]) .tournament-ops-hero h1,
+:root[data-fullcourt-theme="light"] .tournament-ops-hero h1 { color:#17212f !important; -webkit-text-fill-color:#17212f; }
+:root:not([data-fullcourt-theme="dark"]) .tournament-ops-card-description,
+:root[data-fullcourt-theme="light"] .tournament-ops-card-description { color:#526173 !important; }
+:root:not([data-fullcourt-theme="dark"]) .tournament-ops-card,
+:root[data-fullcourt-theme="light"] .tournament-ops-card { background:#fff !important; }
+
+/* Staff Admin: make an empty assignment day feel intentional rather than unfinished. */
+.staff-courtside-page { --staff-accent:#d8321e; }
+.staff-courtside-hero { position:relative; overflow:hidden; padding:24px 26px; border:1px solid var(--surface-border); border-radius:18px; background:linear-gradient(112deg,var(--surface-card) 58%,color-mix(in srgb,var(--staff-accent) 9%,var(--surface-card))); box-shadow:var(--fc-shadow-card); }
+.staff-courtside-hero::after { position:absolute; right:-34px; top:-55px; width:175px; height:175px; border:25px solid color-mix(in srgb,var(--staff-accent) 6%,transparent); border-radius:50%; content:""; pointer-events:none; }
+.staff-courtside-hero > * { position:relative; z-index:1; }
+.staff-courtside-hero h3 { color:var(--text-primary); font-size:clamp(1.45rem,2.5vw,2rem); letter-spacing:-.045em; }
+.staff-courtside-empty { display:grid; min-height:280px; place-content:center; justify-items:center; background:linear-gradient(145deg,var(--surface-card),color-mix(in srgb,var(--surface-bg) 75%,var(--surface-card))); }
+.staff-courtside-empty > span { display:grid; width:64px; height:64px; margin-bottom:14px; place-items:center; border-radius:18px; background:color-mix(in srgb,var(--staff-accent) 11%,var(--surface-card)); color:var(--staff-accent); font-size:1.55rem; }
+.staff-courtside-empty h4 { margin:0 0 6px; color:var(--text-primary); font-size:1.05rem; font-weight:850; }
+.staff-courtside-empty p { max-width:370px; margin:0; color:var(--text-secondary); font-size:.78rem; line-height:1.55; }
+
+/* Better table density and row tracking across administration screens. */
+.table-modern tbody tr { transition:background .15s ease; }
+.table-modern tbody tr:hover { background:color-mix(in srgb,var(--evsu-primary) 4%,var(--surface-card)); }
+.table-modern thead th { color:var(--text-muted) !important; font-size:.64rem !important; letter-spacing:.07em; }
+
+@media (max-width: 767.98px) {
+  .main-content { background-image:none; }
+  .card-custom,.ops-table-shell,.modal-content { border-radius:13px !important; }
+  .staff-courtside-hero { align-items:flex-start; flex-direction:column; padding:19px; }
+  .staff-courtside-empty { min-height:220px; padding:30px 18px !important; }
+  .btn:not(.btn-sm) { min-height:44px; }
+}

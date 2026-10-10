@@ -12,8 +12,8 @@ class TeamPlayer {
     }
 
     public function getByTeam(int $teamId): array {
-        $sql = "SELECT tp.*, u.full_name, u.email, u.phone_number, u.avatar_url, u.department_course, v.full_name as verifier_name,
-                       pp.birth_date, d.name AS division_name, d.min_age, d.max_age,
+        $sql = "SELECT tp.*, COALESCE(tp.player_name,u.full_name) AS full_name, u.email, u.phone_number, u.avatar_url, u.department_course, v.full_name as verifier_name,
+                       COALESCE(tp.birth_date,pp.birth_date) AS birth_date, d.name AS division_name, d.min_age, d.max_age,
                        COALESCE(d.age_cutoff_date,t.start_date) AS age_cutoff_date, t.start_date
                 FROM team_players tp
                 JOIN teams tm ON tm.id=tp.team_id
@@ -35,7 +35,7 @@ class TeamPlayer {
 
     public function getAllPending(): array {
         $sql = "SELECT tp.*, tm.team_name, t.name as tournament_name, s.name as sport_name,
-                u.full_name as user_full_name, u.email as user_email, u.phone_number as user_phone
+                COALESCE(tp.player_name,u.full_name) as user_full_name, u.email as user_email, u.phone_number as user_phone
                 FROM team_players tp
                 JOIN teams tm ON tp.team_id = tm.id
                 JOIN tournaments t ON tm.tournament_id = t.id
@@ -49,7 +49,7 @@ class TeamPlayer {
 
     public function getForCoach(int $coachId): array {
         $sql = "SELECT tp.*, tm.team_name, t.name AS tournament_name, s.name AS sport_name,
-                       u.full_name AS user_full_name, u.email AS user_email, u.phone_number AS user_phone
+                       COALESCE(tp.player_name,u.full_name) AS user_full_name, u.email AS user_email, u.phone_number AS user_phone
                 FROM team_players tp
                 JOIN teams tm ON tp.team_id = tm.id
                 JOIN tournaments t ON tm.tournament_id = t.id
@@ -151,14 +151,23 @@ class TeamPlayer {
         return (bool) $stmt->fetch();
     }
 
+    public function hasRosterDuplicate(int $teamId, string $playerName, string $birthDate): bool {
+        $stmt = $this->db->prepare("SELECT id FROM team_players WHERE team_id=:team_id AND LOWER(TRIM(COALESCE(player_name,'')))=LOWER(TRIM(:player_name)) AND birth_date=:birth_date AND eligibility_status<>'rejected' LIMIT 1");
+        $stmt->execute([':team_id'=>$teamId, ':player_name'=>$playerName, ':birth_date'=>$birthDate]);
+        return (bool)$stmt->fetch();
+    }
+
     public function addPlayer(array $data): int {
-        $sql = "INSERT INTO team_players (team_id, user_id, student_id_number, jersey_number, position, eligibility_status, request_type)
-                VALUES (:team_id, :user_id, :student_id_number, :jersey_number, :position, 'pending', 'coach_invitation')";
+        $sql = "INSERT INTO team_players (team_id, user_id, student_id_number, player_name, birth_date, guardian_name, guardian_contact, jersey_number, position, eligibility_status, request_type)
+                VALUES (:team_id, NULL, :student_id_number, :player_name, :birth_date, :guardian_name, :guardian_contact, :jersey_number, :position, 'pending', 'coach_registration')";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':team_id' => $data['team_id'],
-            ':user_id' => $data['user_id'] ?? null,
             ':student_id_number' => $data['student_id_number'],
+            ':player_name' => $data['player_name'],
+            ':birth_date' => $data['birth_date'],
+            ':guardian_name' => trim((string)($data['guardian_name'] ?? '')) ?: null,
+            ':guardian_contact' => trim((string)($data['guardian_contact'] ?? '')) ?: null,
             ':jersey_number' => $data['jersey_number'] ?? null,
             ':position' => $data['position'] ?? null
         ]);
@@ -168,10 +177,13 @@ class TeamPlayer {
 
     public function updateEligibility(int $id, string $status, int $verifierId, ?string $remarks): bool {
         if ($status === 'verified') {
-            $identity=$this->db->prepare("SELECT id,birthdate_match,status FROM eligibility_documents WHERE team_player_id=:id AND document_type='Identity Verification' ORDER BY created_at DESC LIMIT 1");
-            $identity->execute([':id'=>$id]);$identityRow=$identity->fetch();
-            if(!$identityRow||$identityRow['status']!=='verified')throw new InvalidArgumentException('Verification blocked: review and verify the player ID and live selfie first.');
-            if($identityRow['birthdate_match']!==true&&$identityRow['birthdate_match']!==1)throw new InvalidArgumentException('Verification blocked: the ID birthdate does not match the registered player birthdate.');
+            $birthRecord=$this->db->prepare("SELECT birthdate_match,status FROM eligibility_documents WHERE team_player_id=:id AND document_type='Birth Certificate / PSA' ORDER BY created_at DESC LIMIT 1");
+            $birthRecord->execute([':id'=>$id]);$birthRow=$birthRecord->fetch();
+            if(!$birthRow||$birthRow['status']!=='verified')throw new InvalidArgumentException('Verification blocked: Admin must verify the Birth Certificate or PSA first.');
+            if($birthRow['birthdate_match']!==true&&$birthRow['birthdate_match']!==1)throw new InvalidArgumentException('Verification blocked: the roster and document birth dates do not match.');
+            $permit=$this->db->prepare("SELECT status FROM eligibility_documents WHERE team_player_id=:id AND document_type='Parent Permit' ORDER BY created_at DESC LIMIT 1");
+            $permit->execute([':id'=>$id]);$permitRow=$permit->fetch();
+            if(!$permitRow||$permitRow['status']!=='verified')throw new InvalidArgumentException('Verification blocked: Admin must verify the Parent Permit first.');
             $eligibility = $this->ageEligibility($id);
             if (!$eligibility['qualified']) {
                 throw new InvalidArgumentException($eligibility['message']);
@@ -201,7 +213,7 @@ class TeamPlayer {
     }
 
     public function ageEligibility(int $id): array {
-        $stmt = $this->db->prepare("SELECT pp.birth_date,d.min_age,d.max_age,d.age_cutoff_date,t.start_date
+        $stmt = $this->db->prepare("SELECT COALESCE(tp.birth_date,pp.birth_date) AS birth_date,d.min_age,d.max_age,d.age_cutoff_date,t.start_date
             FROM team_players tp JOIN teams tm ON tm.id=tp.team_id
             JOIN tournaments t ON t.id=tm.tournament_id
             LEFT JOIN divisions d ON d.id=tm.division_id AND d.tournament_id=t.id

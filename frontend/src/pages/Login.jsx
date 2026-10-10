@@ -85,7 +85,7 @@ const Login = () => {
             <button type="button" className="auth-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label="Show or hide password"><i className={`bi bi-eye${showPassword ? '-slash' : ''}`} /></button>
           </div>
         </div>
-        <div className="text-end mb-4"><Link to="/forgot-password" className="auth-link small fw-semibold">Forgot password?</Link></div>
+        <div className="auth-forgot-row"><Link to="/forgot-password" className="auth-forgot-link"><span><i className="bi bi-key-fill" /></span>Forgot password?<i className="bi bi-arrow-right" /></Link></div>
 
         <button
           type="submit"
@@ -106,13 +106,14 @@ const Login = () => {
         </button>
       </form>
 
-      <div className="auth-register-prompt text-center mt-4">
-        <span className="text-muted small">Don't have an account yet? </span>
-        <Link to="/register" className="text-evsu-primary fw-semibold small text-decoration-none">
-          Create an account <i className="bi bi-arrow-up-right" />
+      <div className="auth-register-prompt">
+        <span className="auth-register-icon"><i className="bi bi-person-plus-fill" /></span>
+        <span className="auth-register-copy"><small>NEW TO FULLCOURT?</small><b>Create your courtside account</b></span>
+        <Link to="/register" aria-label="Create a FullCourt account">
+          Join <i className="bi bi-arrow-right" />
         </Link>
       </div>
-      <div className="text-center mt-2"><Link to="/" className="text-muted small text-decoration-none"><i className="bi bi-arrow-left me-1"/>Back to home</Link></div>
+      <div className="auth-login-home"><Link to="/"><span><i className="bi bi-house-door-fill"/></span><b>FullCourt home</b><i className="bi bi-arrow-up-right"/></Link></div>
     </div>
   );
 };

@@ -7,8 +7,8 @@ require_once __DIR__.'/../utils/response.php';
 
 class GameDayOperationsController {
     private GameDayOperations $model;private AuditLog $audit;
-    private const VIEWERS=['platform_admin','admin','organization_admin','tournament_organizer'];
-    private const OPERATORS=['organization_admin','tournament_organizer'];
+    private const VIEWERS=['platform_admin','admin','statistician'];
+    private const OPERATORS=['platform_admin','admin'];
     public function __construct(){$this->model=new GameDayOperations();$this->audit=new AuditLog();}
     public function index(int $tournamentId):void{$user=AuthMiddleware::authorizeRoles(self::VIEWERS);OrganizationAccess::requireTournament($tournamentId,$user);Response::success('Game-day operations retrieved',['games'=>$this->model->tournamentGames($tournamentId),'incidents'=>$this->model->incidents($tournamentId)]);}
     public function readiness(int $matchId):void{$user=AuthMiddleware::authorizeRoles(self::OPERATORS);OrganizationAccess::requireMatch($matchId,$user);$data=$this->input();$this->model->saveReadiness($matchId,$data,(int)$user['user_id']);$this->audit->log((int)$user['user_id'],'UPDATE_GAME_READINESS','GAME_DAY',"Updated readiness for match {$matchId}.");Response::success('Game readiness saved');}

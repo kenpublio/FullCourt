@@ -18,8 +18,7 @@ class ScheduleController {
     }
 
     public function autoSchedule(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
-        OrganizationAccess::requireTournament($tournamentId,$user);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         $startDate = $input['start_date'] ?? date('Y-m-d');
@@ -37,10 +36,8 @@ class ScheduleController {
     public function show(int $tournamentId): void {
         $user=AuthMiddleware::authenticate();OrganizationAccess::requireTournament($tournamentId,$user);
         $schedule = $this->scheduleModel->getMasterSchedule($tournamentId);
-        if (in_array($user['role'], ['coach','coach_manager','player'], true)) {
-            $teamIds = $user['role']==='player'
-                ? $this->playerTeamIds((int)$user['user_id'],$tournamentId)
-                : $this->coachTeamIds((int)$user['user_id'], $tournamentId);
+        if ($user['role'] === 'coach') {
+            $teamIds = $this->coachTeamIds((int)$user['user_id'], $tournamentId);
             $schedule = array_values(array_filter($schedule, static fn(array $match): bool =>
                 in_array((int)($match['team1_id'] ?? 0), $teamIds, true)
                 || in_array((int)($match['team2_id'] ?? 0), $teamIds, true)
@@ -58,8 +55,7 @@ class ScheduleController {
 
     // PUT /matches/{id}/slot  { scheduled_start_time, court_id }
     public function updateSlot(int $matchId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
-        OrganizationAccess::requireMatch($matchId,$user);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
         $start = $input['scheduled_start_time'] ?? null;
         $courtId = isset($input['court_id']) ? (int)$input['court_id'] : null;
@@ -87,8 +83,7 @@ class ScheduleController {
 
     // POST /tournaments/{id}/schedule/constraints  { max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes }
     public function saveConstraints(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
-        OrganizationAccess::requireTournament($tournamentId,$user);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
         $c = [
             'max_games_per_team_per_day' => $input['max_games_per_team_per_day'] ?? 2,
@@ -106,8 +101,7 @@ class ScheduleController {
     }
 
     public function publish(int $tournamentId): void {
-        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
-        OrganizationAccess::requireTournament($tournamentId,$user);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $conflicts=$this->scheduleModel->detectConflicts($tournamentId);
         $total=count($conflicts['court_clashes']??[])+count($conflicts['team_clashes']??[])+count($conflicts['venue_violations']??[]);
         if($total>0)Response::error('Resolve all schedule conflicts before publication.',409,$conflicts);
@@ -124,10 +118,4 @@ class ScheduleController {
         return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    private function playerTeamIds(int $userId,int $tournamentId):array {
-        $db=(new Database())->getConnection();
-        $stmt=$db->prepare("SELECT DISTINCT tm.id FROM teams tm JOIN team_players tp ON tp.team_id=tm.id WHERE tm.tournament_id=:tournament_id AND tm.status='registered' AND tp.user_id=:user_id AND tp.eligibility_status='verified'");
-        $stmt->execute([':tournament_id'=>$tournamentId,':user_id'=>$userId]);
-        return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
-    }
 }

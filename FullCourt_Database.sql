@@ -977,6 +977,9 @@ CREATE TABLE `schedule_constraints` (
   `min_rest_minutes_between_games` int(11) DEFAULT 120,
   `default_match_duration_minutes` int(11) DEFAULT 40,
   `default_break_minutes` int(11) DEFAULT 15,
+  `daily_start_time` time NOT NULL DEFAULT '08:00:00',
+  `daily_end_time` time NOT NULL DEFAULT '20:00:00',
+  `available_weekdays` varchar(27) NOT NULL DEFAULT 'mon,tue,wed,thu,fri,sat,sun',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_constraint_tournament` (`tournament_id`),
   CONSTRAINT `fk_schedule_constraints_tournament` FOREIGN KEY (`tournament_id`) REFERENCES `tournaments` (`id`) ON DELETE CASCADE
@@ -989,7 +992,7 @@ CREATE TABLE `schedule_constraints` (
 
 LOCK TABLES `schedule_constraints` WRITE;
 /*!40000 ALTER TABLE `schedule_constraints` DISABLE KEYS */;
-INSERT INTO `schedule_constraints` VALUES (1,1,2,120,40,15);
+INSERT INTO `schedule_constraints` VALUES (1,1,2,120,40,15,'08:00:00','20:00:00','mon,tue,wed,thu,fri,sat,sun');
 /*!40000 ALTER TABLE `schedule_constraints` ENABLE KEYS */;
 UNLOCK TABLES;
 

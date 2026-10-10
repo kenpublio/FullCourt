@@ -3,6 +3,7 @@ import scheduleService from '../services/scheduleService';
 import tournamentService from '../services/tournamentService';
 import eligibilityService from '../services/eligibilityService';
 import teamService from '../services/teamService';
+import venueService from '../services/venueService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
 import '../styles/schedule-optimizer.css';
@@ -20,6 +21,7 @@ const ScheduleOptimizerView = () => {
   const [loadError, setLoadError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ start: '', court_id: '' });
+  const [organizationCourts, setOrganizationCourts] = useState([]);
   const activeTournament=tournaments.find(t=>String(t.id)===String(selectedTournament));
 
   useEffect(() => {
@@ -51,6 +53,16 @@ const ScheduleOptimizerView = () => {
     };
     load();
   }, [isPlayer, isCoach]);
+
+  useEffect(() => {
+    if (!canOptimize) return;
+    venueService.getVenues().then((data) => {
+      const courts = (data.venues || []).flatMap((venue) => (venue.courts || [])
+        .filter((court) => Boolean(Number(court.is_available)))
+        .map((court) => ({ ...court, venue_name: venue.name })));
+      setOrganizationCourts(courts);
+    }).catch(() => setOrganizationCourts([]));
+  }, [canOptimize]);
 
   const fetchSchedule = useCallback(async () => {
     if (!selectedTournament) { setSchedule([]); return; }
@@ -197,7 +209,7 @@ const ScheduleOptimizerView = () => {
                       </td>
                       <td><span className="schedule-stage">{s.stage_name || `Round ${s.round_number}`}</span></td>
                       <td><div className="schedule-matchup"><strong>{s.team1_name || 'TBD'}</strong><span>vs</span><strong>{s.team2_name || 'TBD'}</strong></div></td>
-                      <td><div className="schedule-venue"><i className="bi bi-geo-alt"></i><span>{s.court_name || 'Unassigned Court'}<small>{s.venue_name || 'Venue TBA'}</small></span></div></td>
+                      <td>{editingId === s.id ? <select className="form-select form-select-sm schedule-venue-select" value={draft.court_id} onChange={(event) => setDraft({ ...draft, court_id: event.target.value })} aria-label="Change game venue and court"><option value="">Choose venue</option>{organizationCourts.map((court) => <option key={court.id} value={court.id}>{court.venue_name} — {court.court_name}</option>)}</select> : <div className="schedule-venue"><i className="bi bi-geo-alt"></i><span>{s.court_name || 'Unassigned Court'}<small>{s.venue_name || 'Venue TBA'}</small></span></div>}</td>
                       <td>
                         <span className={`schedule-status ${s.status}`}>
                           {s.status}

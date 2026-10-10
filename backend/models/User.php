@@ -64,7 +64,7 @@ class User {
             ':role' => $data['role'] ?? 'player',
             ':department_course' => $data['department_course'] ?: null,
             ':year_level' => $data['year_level'] ?: null,
-            ':phone_number' => $data['phone_number'] ?? null
+            ':phone_number' => trim((string)($data['phone_number'] ?? '')) !== '' ? $data['phone_number'] : null
         ]);
 
         $id = (int) $this->db->lastInsertId();
@@ -148,7 +148,8 @@ class User {
 
     public function saveVerificationCode(string $email, string $purpose, string $code): void {
         $this->db->prepare("DELETE FROM email_verifications WHERE email = :email AND purpose = :purpose")->execute([':email'=>$email, ':purpose'=>$purpose]);
-        $stmt=$this->db->prepare("INSERT INTO email_verifications (email,purpose,code_hash,expires_at) VALUES (:email,:purpose,:hash,NOW() + INTERVAL '3 minutes')");
+        $expiry=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?'DATE_ADD(NOW(), INTERVAL 3 MINUTE)':"NOW() + INTERVAL '3 minutes'";
+        $stmt=$this->db->prepare("INSERT INTO email_verifications (email,purpose,code_hash,expires_at) VALUES (:email,:purpose,:hash,{$expiry})");
         $stmt->execute([':email'=>$email,':purpose'=>$purpose,':hash'=>password_hash($code,PASSWORD_BCRYPT)]);
     }
 

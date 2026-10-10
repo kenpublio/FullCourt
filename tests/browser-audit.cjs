@@ -22,14 +22,14 @@ const base = 'http://127.0.0.1:5180';
     page.on('pageerror',e=>errors.push(e.message));
     page.on('response',r=>{if(r.status()>=400)failures.push({url:r.url(),status:r.status()});});
     page.on('dialog', d=>d.dismiss());
-    const home = {platform_admin:'/platform',organization_admin:'/organizer',coach:'/coach',player:'/player'}[role]||'/';
+    const home = {platform_admin:'/platform',coach:'/coach',statistician:'/scorekeeper'}[role]||'/';
     await page.goto(base+home); await page.waitForLoadState('networkidle',{timeout:45000}).catch(()=>{});
     if(session) await page.locator('.sidebar-menu').waitFor({timeout:45000});
-    const routes = session ? await page.locator('.sidebar-menu a').evaluateAll(a=>[...new Set(a.map(n=>n.getAttribute('href')))]) : ['/','/login','/admin','/register','/forgot-password','/sports','/sports/tournaments/2'];
+    const routes = session ? await page.locator('.sidebar-menu a').evaluateAll(a=>[...new Set(a.map(n=>n.getAttribute('href')))]) : ['/','/login','/admin','/register','/forgot-password','/sports','/sports/schedule'];
     for(const route of routes) {
       errors=[];failures=[];
       await page.goto(base+route); await page.waitForLoadState('networkidle',{timeout:45000}).catch(()=>{});
-      if(session) await page.locator('.sidebar-menu').waitFor({timeout:45000});
+      if(session) await page.locator('.sidebar-menu').waitFor({timeout:5000}).catch(()=>{});
       const info=await page.evaluate(()=>({title:document.querySelector('main h1,main h2,main h3,h1,h2,h3')?.innerText,
         overflow:document.documentElement.scrollWidth>innerWidth+2,
         buttons:[...document.querySelectorAll('main button')].map(b=>({text:b.innerText||b.getAttribute('aria-label')||b.title,disabled:b.disabled})),

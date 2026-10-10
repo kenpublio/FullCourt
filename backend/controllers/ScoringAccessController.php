@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../models/ScoringAccess.php';
 require_once __DIR__ . '/../models/GameOperations.php';
 require_once __DIR__ . '/../models/Scorekeeper.php';
+require_once __DIR__ . '/../models/AuditLog.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../middleware/OrganizationAccess.php';
 require_once __DIR__ . '/../utils/jwt.php';
@@ -12,9 +13,10 @@ class ScoringAccessController {
     private ScoringAccess $links;
     private GameOperations $operations;
     private Scorekeeper $scores;
+    private AuditLog $audit;
     private const MANAGERS=['platform_admin','admin','organization_admin','tournament_organizer'];
 
-    public function __construct(){ $this->links=new ScoringAccess();$this->operations=new GameOperations();$this->scores=new Scorekeeper(); }
+    public function __construct(){ $this->links=new ScoringAccess();$this->operations=new GameOperations();$this->scores=new Scorekeeper();$this->audit=new AuditLog(); }
 
     public function create(int $matchId):void{
         $user=AuthMiddleware::authorizeRoles(self::MANAGERS);OrganizationAccess::requireMatch($matchId,$user);$in=$this->input();
@@ -70,6 +72,22 @@ class ScoringAccessController {
         $access=$this->session();$in=$this->input();
         try{$this->operations->substitute((int)$access['match_id'],(int)($in['player_out_id']??0),(int)($in['player_in_id']??0),$this->periodNumber($in['current_period']??$in['period']??'Q1'),(int)($in['game_clock_seconds']??600),(int)$access['created_by']);}
         catch(InvalidArgumentException $e){Response::error($e->getMessage(),422);}Response::success('Substitution and minutes recorded.');
+    }
+
+    public function submitFinal():void{
+        $access=$this->session();$matchId=(int)$access['match_id'];$score=$this->scores->getMatchScoreState($matchId);
+        if(!$score)Response::error('The scoreboard is not ready for final review.',404);
+        $home=(int)$score['team1_score'];$away=(int)$score['team2_score'];
+        if($home===$away)Response::error('A tied score cannot be submitted as final. Resolve the score or play overtime first.',422);
+        $winner=$home>$away?(int)$score['team1_id']:(int)$score['team2_id'];
+        try{$this->scores->submitMatchForConfirmation($matchId,$winner);}
+        catch(InvalidArgumentException $e){Response::error($e->getMessage(),409);}
+        $period=(string)($score['current_period']??'Q4');
+        $remaining=max(0,(int)($score['clock_remaining_seconds']??$score['timer_seconds']??0));
+        $this->links->updateGameClock($matchId,$period,$remaining,false);
+        $operator=trim((string)($access['operator_name']??'Guest statistician'));
+        $this->audit->log((int)$access['created_by'],'SUBMIT_FINAL_SCORE','LIVE_SCORING',"{$operator} submitted match {$matchId} for organizer confirmation at {$home}-{$away}.");
+        Response::success('Final score submitted for organizer confirmation. Scoring is now locked.',['match_id'=>$matchId,'team1_score'=>$home,'team2_score'=>$away,'winner_team_id'=>$winner,'status'=>'awaiting_confirmation']);
     }
 
     public function revoke(int $id):void{

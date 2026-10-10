@@ -79,17 +79,17 @@ class ReportController {
         ")->fetchAll();
 
         $playerLeaders = $this->db->query("
-            SELECT u.full_name, tm.team_name, COUNT(DISTINCT e.match_id) games_played,
+            SELECT COALESCE(tp.player_name,u.full_name) AS full_name, tm.team_name, COUNT(DISTINCT e.match_id) games_played,
                 SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,
                 SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,
                 SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists,
                 SUM(CASE WHEN e.event_type IN ('steal','block') THEN 1 ELSE 0 END) defensive_plays
             FROM basketball_stat_events e
             JOIN team_players tp ON tp.id=e.team_player_id
-            JOIN users u ON u.id=tp.user_id
+            LEFT JOIN users u ON u.id=tp.user_id
             JOIN teams tm ON tm.id=e.team_id
             WHERE e.is_void=0
-            GROUP BY u.id,u.full_name,tm.id,tm.team_name
+            GROUP BY tp.id,tp.player_name,u.full_name,tm.id,tm.team_name
             ORDER BY points DESC,rebounds DESC,assists DESC LIMIT 10
         ")->fetchAll();
 
@@ -180,7 +180,7 @@ class ReportController {
         $eligibility=$rows("SELECT eligibility_status,COUNT(*) count FROM team_players WHERE team_id IN ($marks) GROUP BY eligibility_status");
         $top=$rows("SELECT tm.team_name,t.name tournament_name,st.tournament_points,st.net_points,st.rank_position FROM standings st JOIN teams tm ON tm.id=st.team_id JOIN tournaments t ON t.id=st.tournament_id WHERE tm.id IN ($marks) ORDER BY st.tournament_points DESC");
         $outcomes=$rows("SELECT status,COUNT(*) count FROM matches WHERE team1_id IN ($marks) OR team2_id IN ($marks) GROUP BY status");
-        $leaders=$rows("SELECT u.full_name,tm.team_name,COUNT(DISTINCT e.match_id) games_played,SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists,SUM(CASE WHEN e.event_type IN ('steal','block') THEN 1 ELSE 0 END) defensive_plays FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id WHERE e.is_void=0 AND tm.id IN ($marks) GROUP BY u.id,u.full_name,tm.id,tm.team_name ORDER BY points DESC LIMIT 10");
+        $leaders=$rows("SELECT COALESCE(tp.player_name,u.full_name) AS full_name,tm.team_name,COUNT(DISTINCT e.match_id) games_played,SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists,SUM(CASE WHEN e.event_type IN ('steal','block') THEN 1 ELSE 0 END) defensive_plays FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id WHERE e.is_void=0 AND tm.id IN ($marks) GROUP BY tp.id,tp.player_name,u.full_name,tm.id,tm.team_name ORDER BY points DESC LIMIT 10");
         Response::success($message,['metrics'=>$metrics,'sports_breakdown'=>[['sport'=>'Basketball','tournament_count'=>$metrics['total_tournaments'],'team_count'=>count($teamIds)]],'eligibility_stats'=>$eligibility,'top_teams'=>$top,'match_outcomes'=>$outcomes,'player_leaders'=>$leaders]);
     }
 }

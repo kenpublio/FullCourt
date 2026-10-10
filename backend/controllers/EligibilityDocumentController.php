@@ -16,6 +16,12 @@ class EligibilityDocumentController {
         $dir=__DIR__.'/../uploads/eligibility';if(!is_dir($dir)&&!mkdir($dir,0750,true)&&!is_dir($dir))Response::error('Document storage is unavailable.',500);
         $name=bin2hex(random_bytes(20)).'.'.$allowed[$mime];$path=$dir.'/'.$name;if(!move_uploaded_file($file['tmp_name'],$path))Response::error('Document could not be stored.',500);
         $identity=[];
+        if($type==='Birth Certificate / PSA'){
+            $dob=trim($_POST['declared_birth_date']??'');
+            if(!preg_match('/^\d{4}-\d{2}-\d{2}$/',$dob)){@unlink($path);Response::error('Enter the birth date shown on the Birth Certificate or PSA.',422);}
+            $rosterDob=$this->model->profileBirthDate($teamPlayerId);
+            $identity=['declared_birth_date'=>$dob,'birthdate_match'=>$rosterDob!==null&&$rosterDob===$dob,'mismatch_flag'=>$rosterDob===$dob?null:'birth_date_mismatch'];
+        }
         if($type==='Identity Verification'){
             if(empty($_FILES['selfie'])||$_FILES['selfie']['error']!==UPLOAD_ERR_OK){@unlink($path);Response::error('A live selfie is required with the ID.',422);}
             if(empty($_POST['consent_confirmed'])){@unlink($path);Response::error('Privacy consent is required.',422);}
@@ -30,6 +36,6 @@ class EligibilityDocumentController {
         $id=$this->model->create($teamPlayerId,$type,$path,$mime,$identity);Response::success('Eligibility document uploaded',['id'=>$id,'birthdate_match'=>$identity['birthdate_match']??null],201);
     }
     public function download(int $id,bool $selfie=false):void{$u=AuthMiddleware::authenticate();$doc=$this->model->get($id);if(!$doc)Response::error('Document not found.',404);$this->guard((int)$doc['team_player_id'],$u);$path=$selfie?($doc['selfie_path']??''):$doc['file_path'];$mime=$selfie?($doc['selfie_mime_type']??''):$doc['mime_type'];if(!$path||!is_file($path))Response::error('Stored document is unavailable.',404);header('Content-Type: '.$mime);header('Content-Disposition: inline; filename="'.($selfie?'identity-selfie':'eligibility-document').'-'.$id.'"');header('X-Content-Type-Options: nosniff');header('Cache-Control: private, no-store');readfile($path);exit;}
-    public function review(int $id):void{$u=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);$doc=$this->model->get($id);if(!$doc)Response::error('Document not found.',404);$this->guard((int)$doc['team_player_id'],$u);$in=json_decode(file_get_contents('php://input'),true)?:[];$status=$in['status']??'';if(!in_array($status,['verified','rejected'],true))Response::error('Invalid review status.',422);$this->model->review($id,$status,$in['notes']??null,(int)$u['user_id']);Response::success('Document review saved');}
+    public function review(int $id):void{$u=AuthMiddleware::authorizeRoles(['platform_admin','admin']);$doc=$this->model->get($id);if(!$doc)Response::error('Document not found.',404);$this->guard((int)$doc['team_player_id'],$u);$in=json_decode(file_get_contents('php://input'),true)?:[];$status=$in['status']??'';if(!in_array($status,['verified','rejected'],true))Response::error('Invalid review status.',422);$this->model->review($id,$status,$in['notes']??null,(int)$u['user_id']);Response::success('Document review saved');}
     private function guard(int $id,array $u):void{if(!$this->model->canAccessPlayer($id,(int)$u['user_id'],$u['role']))Response::forbidden('You cannot access this private eligibility record.');}
 }

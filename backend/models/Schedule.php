@@ -35,7 +35,7 @@ class Schedule {
     }
 
     private function constraints(int $tournamentId): ?array {
-        $stmt = $this->db->prepare("SELECT max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes FROM schedule_constraints WHERE tournament_id = :tid LIMIT 1");
+        $stmt = $this->db->prepare("SELECT max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes, daily_start_time, daily_end_time, available_weekdays FROM schedule_constraints WHERE tournament_id = :tid LIMIT 1");
         $stmt->execute([':tid' => $tournamentId]);
         $c = $stmt->fetch();
         if (!$c) return null;
@@ -44,6 +44,9 @@ class Schedule {
             'min_rest_minutes_between_games' => (int)$c['min_rest_minutes_between_games'],
             'duration_mins' => (int)$c['default_match_duration_minutes'],
             'break_mins' => (int)$c['default_break_minutes'],
+            'daily_start_time' => substr((string)($c['daily_start_time'] ?? '08:00'), 0, 5),
+            'daily_end_time' => substr((string)($c['daily_end_time'] ?? '20:00'), 0, 5),
+            'available_weekdays' => array_filter(explode(',', (string)($c['available_weekdays'] ?? 'mon,tue,wed,thu,fri,sat,sun'))),
         ];
     }
 
@@ -98,16 +101,18 @@ class Schedule {
         if (!$c) {
             // Ensure a constraints row exists with sensible defaults.
             $duration = (int)($tinfo['duration_mins'] ?? 40);
-            $c = ['max_games_per_team_per_day' => 2, 'min_rest_minutes_between_games' => 120, 'duration_mins' => $duration, 'break_mins' => 15];
-            $this->db->prepare("INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes) VALUES (:tid, 2, 120, :dur, 15) ON CONFLICT (tournament_id) DO NOTHING")
+            $c = ['max_games_per_team_per_day' => 2, 'min_rest_minutes_between_games' => 120, 'duration_mins' => $duration, 'break_mins' => 15, 'daily_start_time' => '08:00', 'daily_end_time' => '20:00', 'available_weekdays' => ['mon','tue','wed','thu','fri','sat','sun']];
+            $this->db->prepare("INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes, daily_start_time, daily_end_time, available_weekdays) VALUES (:tid, 2, 120, :dur, 15, '08:00', '20:00', 'mon,tue,wed,thu,fri,sat,sun') ON CONFLICT (tournament_id) DO NOTHING")
                 ->execute([':tid' => $tournamentId, ':dur' => $duration]);
         }
 
         $courts = $this->availableCourts($tournamentId);
         if (empty($courts)) throw new Exception("No available courts configured in venue system.");
 
-        $start = new DateTime($startDate . ' ' . $startTimeStr);
-        if ($start < new DateTime($tinfo['start_date'])) $start = new DateTime($tinfo['start_date'] . ' 00:00:00');
+        $dailyStart = $c['daily_start_time'] ?: substr($startTimeStr, 0, 5);
+        $dailyEnd = $c['daily_end_time'] ?: '20:00';
+        $start = new DateTime($startDate . ' ' . $dailyStart);
+        if ($start < new DateTime($tinfo['start_date'] . ' ' . $dailyStart)) $start = new DateTime($tinfo['start_date'] . ' ' . $dailyStart);
         $endTournament = new DateTime($tinfo['end_date'] . ' 23:59:59');
 
         // Matches to schedule, ordered by round (knockouts must keep seeding order; RR can reshuffle but we keep order).
@@ -136,6 +141,18 @@ class Schedule {
                 $slotStart = clone $candidate;
                 $slotEnd = (clone $slotStart)->modify("+{$c['duration_mins']} minutes");
                 $day = $slotStart->format('Y-m-d');
+                $weekday = strtolower($slotStart->format('D'));
+                if (!in_array($weekday, $c['available_weekdays'], true)) {
+                    $candidate = (new DateTime($day . ' ' . $dailyStart))->modify('+1 day');
+                    $attempts++;
+                    continue;
+                }
+                $closing = new DateTime($day . ' ' . $dailyEnd);
+                if ($slotEnd > $closing) {
+                    $candidate = (new DateTime($day . ' ' . $dailyStart))->modify('+1 day');
+                    $attempts++;
+                    continue;
+                }
 
                 foreach ($courts as $court) {
                     // Venue unavailable on this date?
@@ -314,8 +331,8 @@ class Schedule {
             $hasTournamentCourts=$this->db->prepare('SELECT 1 FROM tournament_courts WHERE tournament_id=:tid LIMIT 1');
             $hasTournamentCourts->execute([':tid'=>(int)$m['tournament_id']]);
             if ($hasTournamentCourts->fetchColumn()) {
-                $allowedCourt=$this->db->prepare("SELECT 1 FROM tournament_courts tc JOIN courts c ON c.id=tc.court_id JOIN venues v ON v.id=c.venue_id WHERE tc.tournament_id=:tid AND tc.court_id=:cid AND c.is_available=1 AND v.approval_status='approved' LIMIT 1");
-                $allowedCourt->execute([':tid'=>(int)$m['tournament_id'],':cid'=>$courtId]);
+                $allowedCourt=$this->db->prepare("SELECT 1 FROM courts c JOIN venues v ON v.id=c.venue_id WHERE c.id=:cid AND c.is_available=1 AND v.approval_status='approved' LIMIT 1");
+                $allowedCourt->execute([':cid'=>$courtId]);
                 if (!$allowedCourt->fetchColumn()) $conflicts[]=['type'=>'court_not_selected','court_id'=>$courtId];
             }
             $r = $this->db->prepare("SELECT id, scheduled_start_time, scheduled_end_time FROM matches WHERE court_id = :cid AND id != :mid AND status IN ('scheduled','in_progress') AND scheduled_start_time IS NOT NULL");
@@ -389,19 +406,11 @@ class Schedule {
         if (!$match) return 0;
 
         $recipients = $this->db->prepare("SELECT DISTINCT recipient.user_id FROM (
-                SELECT tp.user_id FROM teams tm JOIN team_players tp ON tp.team_id=tm.id
-                JOIN matches m ON tm.id IN (m.team1_id,m.team2_id) WHERE m.id=:players_match AND tp.user_id IS NOT NULL
-                UNION SELECT tm.coach_user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
+                SELECT tm.coach_user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
                     WHERE m.id=:coaches_match AND tm.coach_user_id IS NOT NULL
-                UNION SELECT tm.manager_user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
-                    WHERE m.id=:managers_match AND tm.manager_user_id IS NOT NULL
-                UNION SELECT ga.user_id FROM game_assignments ga WHERE ga.match_id=:assignment_match AND ga.status='accepted'
             ) recipient JOIN users u ON u.id=recipient.user_id WHERE u.is_active=1");
         $recipients->execute([
-            ':players_match' => $matchId,
             ':coaches_match' => $matchId,
-            ':managers_match' => $matchId,
-            ':assignment_match' => $matchId,
         ]);
         $users = $recipients->fetchAll(PDO::FETCH_COLUMN);
         if (!$users) return 0;

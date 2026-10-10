@@ -159,6 +159,9 @@ const CoachDashboard = () => {
                             {team.division_name || "Open division"} ·{" "}
                             {team.tournament_name}
                           </small>
+                          <span className="badge rounded-pill text-bg-light border mt-2">
+                            {Number(team.wins||0)} W · {Number(team.losses||0)} L
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -215,7 +218,7 @@ const CoachDashboard = () => {
             <div className="d-grid gap-2">
               <Link to="/teams" className="btn btn-light border text-start">
                 <i className="bi bi-person-plus-fill text-primary me-2" />
-                Invite a Player
+                Add a Player
               </Link>
               <Link
                 to="/eligibility"

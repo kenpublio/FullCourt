@@ -12,22 +12,22 @@ import '../styles/dashboard-professional.css';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const role = user?.role || 'player';
-  const roleLabel = ['platform_admin','admin'].includes(role) ? 'Platform Administrator' : role.replaceAll('_', ' ');
-  const dashboardMode = ['platform_admin','admin'].includes(role) ? 'admin' : ['organization_admin','tournament_organizer'].includes(role) ? 'organizer' : 'player';
+  const role = user?.role || 'coach';
+  const roleLabel = ['platform_admin','admin'].includes(role) ? 'Administrator' : role === 'statistician' ? 'Staff Admin' : 'Coach';
+  const dashboardMode = ['platform_admin','admin'].includes(role) ? 'admin' : role === 'statistician' ? 'staff' : 'coach';
   const roleIntro = dashboardMode === 'admin'
-    ? 'Monitor organizations, accounts, approvals, and basketball operations across FullCourt.'
-    : dashboardMode === 'organizer'
-      ? 'Run competitions, watch active courts, and keep every game operation moving.'
-      : 'Your team, next matchup, performance, and tournament journey—together in one place.';
-  const roleEyebrow = dashboardMode === 'admin' ? 'Platform overview' : dashboardMode === 'organizer' ? 'Competition overview' : 'Player overview';
-  const primaryAction = dashboardMode === 'admin' ? ['/organizations','Review organizations'] : dashboardMode === 'organizer' ? ['/tournaments','Open tournaments'] : ['/schedules','View my schedule'];
+    ? 'Manage tournaments, accounts, eligibility, schedules, and basketball operations.'
+    : dashboardMode === 'staff'
+      ? 'Open assigned games and record the official team and player scores.'
+      : 'Manage your team roster, documents, upcoming tournaments, and schedule.';
+  const roleEyebrow = dashboardMode === 'admin' ? 'Administration overview' : dashboardMode === 'staff' ? 'Staff operations' : 'Coach workspace';
+  const primaryAction = dashboardMode === 'admin' ? ['/tournaments','Manage tournaments'] : dashboardMode === 'staff' ? ['/scorekeeper','Open scoring console'] : ['/teams','Manage my team'];
   const quickActions = dashboardMode === 'admin' ? [
-    ['Organizations','/organizations','bi-buildings-fill'],['Users & Roles','/users','bi-shield-lock-fill'],['Approvals','/eligibility','bi-patch-check-fill'],['System Reports','/reports','bi-file-earmark-bar-graph-fill'],
-  ] : dashboardMode === 'organizer' ? [
-    ['Create Tournament','/tournaments','bi-trophy-fill'],['Manage Teams','/teams','bi-people-fill'],['Schedules','/schedules','bi-calendar-event-fill'],['Live Operations','/live-scoring','bi-broadcast-pin'],
+    ['Tournaments','/tournaments','bi-trophy-fill'],['Users & Roles','/users','bi-shield-lock-fill'],['Eligibility','/eligibility','bi-patch-check-fill'],['System Reports','/reports','bi-file-earmark-bar-graph-fill'],
+  ] : dashboardMode === 'staff' ? [
+    ['Assigned Games','/scorekeeper','bi-clipboard-data-fill'],['Live Scores','/live-scoring','bi-broadcast-pin'],['Schedule','/schedules','bi-calendar-event-fill'],['Standings','/standings','bi-list-ol'],
   ] : [
-    ['My Performance','/player/performance','bi-graph-up-arrow'],['My Schedule','/schedules','bi-calendar2-event-fill'],['Standings','/standings','bi-list-ol'],['Notifications','/notifications','bi-bell-fill'],
+    ['My Team','/teams','bi-people-fill'],['Upcoming Tournaments','/tournaments','bi-trophy-fill'],['My Schedule','/schedules','bi-calendar2-event-fill'],['Notifications','/notifications','bi-bell-fill'],
   ];
   const [membership, setMembership] = useState(null);
   const [membershipLoading, setMembershipLoading] = useState(role === 'player');
@@ -132,7 +132,7 @@ const Dashboard = () => {
     ['Pending Eligibility', analytics?.metrics?.pending_eligibility || 0, 'bi-hourglass-split', '/eligibility'],
   ];
   const adminControlLinks = [
-    { title: 'Organization access', description: 'Review organization records and platform access.', value: 'Review', icon: 'bi-buildings-fill', path: '/organizations', tone: 'red' },
+    { title: 'Tournament control', description: 'Create and manage official tournaments directly.', value: analytics ? Number(analytics.metrics?.active_tournaments || 0).toLocaleString() : '—', icon: 'bi-trophy-fill', path: '/tournaments', tone: 'red' },
     { title: 'Account governance', description: 'Manage users, role assignments, and audit history.', value: analytics ? Number(analytics.metrics?.total_users || 0).toLocaleString() : '—', icon: 'bi-shield-lock-fill', path: '/users', tone: 'gold' },
     { title: 'Eligibility queue', description: 'Player records waiting for an eligibility decision.', value: analytics ? Number(analytics.metrics?.pending_eligibility || 0).toLocaleString() : '—', icon: 'bi-patch-check-fill', path: '/eligibility', tone: Number(analytics?.metrics?.pending_eligibility || 0) > 0 ? 'red' : 'green' },
     { title: 'Live game operations', description: 'Monitor active courts and scoring operations.', value: analytics ? Number(analytics.metrics?.active_games || 0).toLocaleString() : '—', icon: 'bi-broadcast-pin', path: '/live-scoring', tone: Number(analytics?.metrics?.active_games || 0) > 0 ? 'green' : 'neutral' },
@@ -158,9 +158,9 @@ const Dashboard = () => {
           <div className="role-hero-topline mb-3">
             <span className="role-hero-eyebrow"><i className="bi bi-dribbble" /> {roleEyebrow}</span>
           </div>
-          <h3 className="fw-bold mb-1 dashboard-welcome-title">
+          <h1 className="fw-bold mb-1 dashboard-welcome-title">
             Welcome back, {user?.full_name?.split(' ')[0] || 'User'}
-          </h3>
+          </h1>
           <p className="mb-2 dashboard-welcome-meta">
             Signed in as&nbsp;
             <span className="badge dashboard-role-badge">
@@ -222,7 +222,32 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {dashboardMode === 'organizer' && activeTournament && (()=>{const total=tournamentSchedule.length,scheduled=tournamentSchedule.filter(game=>game.scheduled_start_time).length,completed=tournamentSchedule.filter(game=>game.status==='completed').length;const stages=[['Registration',Number(analytics?.metrics?.registered_teams||0)>0,'/teams','Teams and rosters'],['Eligibility',Number(analytics?.metrics?.verified_players||0)>0&&Number(analytics?.metrics?.pending_eligibility||0)===0,'/eligibility','Player clearance'],['Scheduling',total>0&&scheduled===total,'/schedules','Courts and game times'],['Competition',total>0&&completed===total,'/brackets','Bracket results'],['Awards',total>0&&completed===total,'/awards','MVP and Mythical Five']];return <section className="organizer-journey card-custom mb-4"><header><div><span>TOURNAMENT WORKFLOW</span><h5>{activeTournament.name}</h5><p>Follow each stage from registration to official awards.</p></div><Link to="/tournaments">Open tournament <i className="bi bi-arrow-up-right"/></Link></header><div className="organizer-stage-track">{stages.map(([label,done,path,description],index)=><Link className={done?'is-complete':'needs-action'} to={path} key={label}><i className={`bi ${done?'bi-check-circle-fill':'bi-circle'}`}/><small>STEP {index+1}</small><b>{label}</b><span>{description}</span></Link>)}</div><footer><span><b>{analytics?.metrics?.registered_teams||0}</b> teams</span><span><b>{analytics?.metrics?.verified_players||0}</b> verified players</span><span><b>{completed}/{total}</b> games completed</span>{Number(analytics?.metrics?.pending_eligibility||0)>0&&<Link to="/eligibility"><i className="bi bi-exclamation-circle"/> {analytics.metrics.pending_eligibility} eligibility reviews need attention</Link>}</footer></section>})()}
+      {dashboardMode === 'organizer' && (()=>{
+        const total=tournamentSchedule.length;
+        const scheduled=tournamentSchedule.filter(game=>game.scheduled_start_time).length;
+        const assignedCourts=tournamentSchedule.filter(game=>game.court_id||game.court_name||game.venue_name).length;
+        const completed=tournamentSchedule.filter(game=>game.status==='completed').length;
+        const teams=Number(analytics?.metrics?.registered_teams||0);
+        const verified=Number(analytics?.metrics?.verified_players||0);
+        const pending=Number(analytics?.metrics?.pending_eligibility||0);
+        const approved=Boolean(activeTournament)&&(activeTournament.approval_status==='approved'||['upcoming','ongoing','completed'].includes(activeTournament.status));
+        const checks=[
+          {label:activeTournament?'Tournament approval':'Create a tournament',description:approved?'Approved for competition operations':activeTournament?'Waiting for platform approval':'Submit the competition details for administrator review',done:approved,path:'/tournaments',icon:'bi-patch-check-fill'},
+          {label:'Registered teams',description:teams>=2?`${teams} teams ready`:'At least two approved teams are required',done:teams>=2,path:'/teams',icon:'bi-people-fill'},
+          {label:'Player eligibility',description:verified>0&&pending===0?`${verified} players cleared`:pending?`${pending} review${pending===1?'':'s'} need attention`:'No verified players yet',done:verified>0&&pending===0,path:'/eligibility',icon:'bi-person-check-fill'},
+          {label:'Venue & court assignment',description:total>0&&assignedCourts===total?`${assignedCourts}/${total} games assigned`:'Assign every game to a playable court',done:total>0&&assignedCourts===total,path:'/venues',icon:'bi-geo-alt-fill'},
+          {label:'Published game schedule',description:total>0&&scheduled===total?`${scheduled}/${total} games scheduled`:'Generate and publish conflict-free game times',done:total>0&&scheduled===total,path:'/schedules',icon:'bi-calendar2-check-fill'},
+        ];
+        const ready=checks.filter(item=>item.done).length;
+        const readiness=Math.round(ready/checks.length*100);
+        const next=checks.find(item=>!item.done);
+        return <section className="organizer-readiness card-custom mb-4" aria-labelledby="organizer-readiness-title">
+          <header className="organizer-readiness-head"><div><span>TOURNAMENT COMMAND CENTER</span><h2 id="organizer-readiness-title">{activeTournament?.name||'Build your first competition'}</h2><p>{activeTournament?'Complete the verified requirements before opening game-day scoring.':'Start with a tournament application. FullCourt will guide you through every requirement after approval.'}</p></div><Link to="/tournaments">{activeTournament?'Tournament details':'Create tournament'} <i className="bi bi-arrow-up-right"/></Link></header>
+          <div className="organizer-readiness-overview"><div className={`organizer-readiness-score ${readiness===100?'is-ready':''}`}><div className="organizer-readiness-ring" style={{'--readiness':`${readiness*3.6}deg`}}><span><strong>{readiness}%</strong><small>READY</small></span></div><div><b>{readiness===100?'Ready for game day':'Setup in progress'}</b><p>{ready} of {checks.length} verified requirements complete.</p></div></div><div className="organizer-readiness-next"><span>{next?'NEXT PRIORITY':'ALL REQUIREMENTS COMPLETE'}</span><b>{next?.label||'Open game-day operations'}</b><p>{next?.description||'Generate a secure scoring link for each upcoming game.'}</p><Link to={next?.path||'/officials'}>{next?'Complete requirement':'Create scoring link'} <i className="bi bi-arrow-right"/></Link></div></div>
+          <div className="organizer-readiness-checks">{checks.map((item,index)=><Link className={item.done?'is-complete':'needs-action'} to={item.path} key={item.label}><span className="organizer-check-icon"><i className={`bi ${item.icon}`}/></span><span className="organizer-check-copy"><small>REQUIREMENT {index+1}</small><b>{item.label}</b><em>{item.description}</em></span><i className={`bi ${item.done?'bi-check-circle-fill':'bi-arrow-up-right'}`}/></Link>)}</div>
+          <footer><span><b>{teams}</b> teams</span><span><b>{verified}</b> verified players</span><span><b>{total?`${assignedCourts}/${total}`:'—'}</b> courts assigned</span><span><b>{total?`${completed}/${total}`:'—'}</b> games completed</span><Link to="/game-day"><i className="bi bi-clipboard2-check"/> Open readiness &amp; incidents</Link></footer>
+        </section>;
+      })()}
 
       {dashboardMode === 'admin' && <section className="admin-operations-grid mb-4" aria-label="Platform operations overview">
         <article className="card-custom admin-overview-card">

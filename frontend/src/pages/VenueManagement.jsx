@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import venueService from '../services/venueService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { useAuth } from '../hooks/useAuth';
 import '../styles/operations-polish.css';
 
 const VenueManagement = () => {
-  const { user } = useAuth();
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -14,10 +12,8 @@ const VenueManagement = () => {
   const [venueForm, setVenueForm] = useState({ name: '', location: '' });
   const [showCourtModal, setShowCourtModal] = useState(false);
   const [courtForm, setCourtForm] = useState({ venue_id: '', court_name: '', sport_id: '', is_available: true });
-  const isPlatformAdmin = ['platform_admin', 'admin'].includes(user?.role);
   const totalCourts = venues.reduce((sum, venue) => sum + (venue.courts || []).length, 0);
   const availableCourts = venues.reduce((sum, venue) => sum + (venue.courts || []).filter(court => Boolean(Number(court.is_available))).length, 0);
-  const pendingVenues = venues.filter(venue => (venue.approval_status || 'approved') === 'pending').length;
 
   const load = async () => {
     try {
@@ -100,38 +96,22 @@ const VenueManagement = () => {
     }
   };
 
-  const reviewVenue = async (venue, status) => {
-    const notes = window.prompt(`${status === 'approved' ? 'Approval' : 'Review'} notes (optional):`, venue.review_notes || '');
-    if (notes === null) return;
-    try {
-      await venueService.reviewVenue(venue.id, status, notes);
-      notify(`Venue ${status}.`);
-      load();
-    } catch (err) {
-      notify(err.response?.data?.message || 'Unable to review venue.', 'danger');
-    }
-  };
-
   return (
     <div className="container-fluid p-0 page-enter">
       <div className="ops-page-head venue-page-head">
         <div>
-          <span className="ops-eyebrow">{isPlatformAdmin ? 'PLATFORM OVERSIGHT' : 'COMPETITION SETUP'}</span>
-          <h3 className="fw-bold mb-1"><i className="bi bi-geo-alt-fill text-evsu-primary me-2" />{isPlatformAdmin ? 'Venue & Court Oversight' : 'Venue & Court Management'}</h3>
-          <p className="text-muted small mb-0">{isPlatformAdmin ? 'Monitor organizer-submitted basketball venues, court availability, and scheduling readiness.' : 'Add the venues and playable courts that will be used by your tournament schedules.'}</p>
+          <span className="ops-eyebrow">COMPETITION SETUP</span>
+          <h3 className="fw-bold mb-1"><i className="bi bi-geo-alt-fill text-evsu-primary me-2" />Venue & Court Management</h3>
+          <p className="text-muted small mb-0">Add and manage the venues and playable courts used by your tournament schedules.</p>
         </div>
-        {!isPlatformAdmin && <button className="btn btn-evsu text-nowrap" onClick={() => openVenueModal()}><i className="bi bi-plus-lg me-1" />Add Venue</button>}
-        {isPlatformAdmin && <div className="ops-head-mark"><i className="bi bi-shield-check" /></div>}
+        <button className="btn btn-evsu text-nowrap" onClick={() => openVenueModal()}><i className="bi bi-plus-lg me-1" />Add Venue</button>
       </div>
 
       <div className="venue-summary-grid">
         <article><i className="bi bi-buildings"/><div><small>Registered venues</small><strong>{venues.length}</strong></div></article>
         <article><i className="bi bi-grid-3x3-gap"/><div><small>Total courts</small><strong>{totalCourts}</strong></div></article>
         <article><i className="bi bi-check2-circle"/><div><small>Available courts</small><strong>{availableCourts}</strong></div></article>
-        <article><i className="bi bi-hourglass-split"/><div><small>Pending review</small><strong>{pendingVenues}</strong></div></article>
       </div>
-
-      {isPlatformAdmin && <div className="venue-role-notice"><i className="bi bi-info-circle-fill"/><div><b>Administrator review mode</b><span>Organizers submit venues and courts. Approve valid venues before they become available to the scheduling engine.</span></div></div>}
 
       {msg.text && <div className={`alert alert-${msg.type} py-2 px-3 small rounded-3 mb-3`}>{msg.text}</div>}
 
@@ -152,7 +132,6 @@ const VenueManagement = () => {
                       </div>
                       <span className="badge bg-light text-dark border">{v.court_count || 0} courts</span>
                     </div>
-                    <div className="d-flex align-items-center justify-content-between gap-2 mt-2"><span className={`badge ${v.approval_status === 'approved' ? 'bg-success' : v.approval_status === 'rejected' || v.approval_status === 'suspended' ? 'bg-danger' : 'bg-warning text-dark'}`}>{(v.approval_status || 'approved').replaceAll('_',' ')}</span>{v.review_notes && <small className="text-muted text-truncate" title={v.review_notes}>{v.review_notes}</small>}</div>
                     <div className="mt-2 flex-grow-1">
                       {(v.courts || []).length === 0 ? (
                         <small className="text-muted">No courts yet.</small>
@@ -161,18 +140,17 @@ const VenueManagement = () => {
                           {v.courts.map(c => (
                             <li key={c.id} className="d-flex justify-content-between align-items-center border-bottom py-1">
                               <span>{c.court_name}{c.sport_name ? ` · ${c.sport_name}` : ''}{!c.is_available && <span className="text-danger"> · offline</span>}</span>
-                              {!isPlatformAdmin && <button className="btn btn-sm btn-outline-danger py-0 px-1" title="Delete court" aria-label={`Delete court ${c.court_name}`} onClick={() => deleteCourt(c)}><i className="bi bi-trash" /></button>}
+                              <button className="btn btn-sm btn-outline-danger py-0 px-1" title="Delete court" aria-label={`Delete court ${c.court_name}`} onClick={() => deleteCourt(c)}><i className="bi bi-trash" /></button>
                             </li>
                           ))}
                         </ul>
                       )}
                     </div>
-                    {!isPlatformAdmin && <div className="d-flex gap-2 mt-3">
+                    <div className="d-flex gap-2 mt-3">
                       <button className="btn btn-outline-primary btn-sm" onClick={() => openCourtModal(v.id)}><i className="bi bi-plus-lg me-1" />Add Court</button>
                       <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={() => openVenueModal(v)}><i className="bi bi-pencil me-1" />Edit</button>
                       <button className="btn btn-outline-danger btn-sm" aria-label={`Delete venue ${v.name}`} title={`Delete ${v.name}`} onClick={() => deleteVenue(v)}><i className="bi bi-trash" /></button>
-                    </div>}
-                    {isPlatformAdmin && <div className="d-flex flex-wrap gap-2 mt-3"><button className="btn btn-success btn-sm" onClick={() => reviewVenue(v,'approved')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm" onClick={() => reviewVenue(v,'rejected')}><i className="bi bi-x-lg me-1"/>Reject</button><button className="btn btn-outline-warning btn-sm ms-auto" onClick={() => reviewVenue(v,'suspended')}><i className="bi bi-pause-circle me-1"/>Suspend</button></div>}
+                    </div>
                   </div>
                 </div>
               ))}

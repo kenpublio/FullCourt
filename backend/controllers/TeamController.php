@@ -5,6 +5,7 @@ require_once __DIR__ . '/../models/Team.php';
 require_once __DIR__ . '/../models/Tournament.php';
 require_once __DIR__ . '/../models/TeamPlayer.php';
 require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../models/Bracket.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../utils/response.php';
 require_once __DIR__ . '/../middleware/OrganizationAccess.php';
@@ -20,7 +21,7 @@ class TeamController {
 
     public function index(): void {
         $user = AuthMiddleware::authenticate();
-        if (in_array($user['role'], ['coach','coach_manager'], true)) {
+        if ($user['role'] === 'coach') {
             $teams = $this->teamModel->getForCoach((int) $user['user_id']);
         } elseif (OrganizationAccess::isPlatform($user)) {
             $teams = $this->teamModel->getAll();
@@ -31,14 +32,14 @@ class TeamController {
     }
 
     public function store(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'organization_admin', 'tournament_organizer', 'coach', 'coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'coach']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['team_name']) || empty($input['tournament_id'])) {
             Response::error('Team Name and Tournament ID are required.', 400);
         }
         $tournamentId=(int)$input['tournament_id'];
-        $isCoach=in_array($user['role'],['coach','coach_manager'],true);
+        $isCoach=$user['role']==='coach';
         if ($isCoach) {
             $tournament=(new Tournament())->getById($tournamentId);
             if (!$tournament || ($tournament['approval_status'] ?? 'approved') !== 'approved' || !in_array($tournament['status'],['upcoming','ongoing'],true)) {
@@ -58,11 +59,11 @@ class TeamController {
 
         $this->auditLog->log($user['user_id'], 'REGISTER_TEAM', 'TEAM_MGMT', "Registered team '{$input['team_name']}' for tournament ID {$input['tournament_id']}.");
 
-        Response::success($isCoach ? 'Team application submitted for organizer review.' : 'Team registered successfully', ['team_id' => $teamId], 201);
+        Response::success($isCoach ? 'Team submitted for Admin approval.' : 'Team registered successfully', ['team_id' => $teamId], 201);
     }
 
     public function reviewApplication(int $id): void {
-        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $team=$this->teamModel->getById($id);
         if (!$team) Response::error('Team application not found.',404);
         OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
@@ -72,27 +73,38 @@ class TeamController {
         if ($team['status'] !== 'draft') Response::error('Only pending team applications can be reviewed.',409);
         $status=$decision === 'approve' ? 'registered' : 'disqualified';
         $this->teamModel->updateStatus($id,$status);
+        $bracketGenerated=false;
+        if($decision==='approve'){
+            $teams=$this->teamModel->getByTournament((int)$team['tournament_id']);
+            $teamIds=array_map('intval',array_column($teams,'id'));
+            if(count($teamIds)>=2){
+                try{
+                    $tournament=(new Tournament())->getById((int)$team['tournament_id']);
+                    shuffle($teamIds);
+                    (new Bracket())->generate((int)$team['tournament_id'],$teamIds,$tournament['format']??'single_elimination',1);
+                    $bracketGenerated=true;
+                }catch(Exception $e){
+                    $this->auditLog->log((int)$user['user_id'],'AUTO_BRACKET_DEFERRED','BRACKET_ENGINE',$e->getMessage());
+                }
+            }
+        }
         $this->auditLog->log((int)$user['user_id'],strtoupper($decision).'_TEAM_APPLICATION','TEAM_MGMT',ucfirst($decision)."d team application '{$team['team_name']}' (ID: {$id}).");
-        Response::success($decision === 'approve' ? 'Team application approved.' : 'Team application rejected.');
+        Response::success($decision === 'approve' ? ($bracketGenerated?'Team approved and the bracket was updated automatically.':'Team approved. The bracket will be created automatically when at least two teams are approved.') : 'Team application rejected.');
     }
 
     public function getByTournament(int $tournamentId): void {
         $user = AuthMiddleware::authenticate();
         OrganizationAccess::requireTournament($tournamentId, $user);
         $teams = $this->teamModel->getByTournament($tournamentId);
-        if (in_array($user['role'],['coach','coach_manager'],true)) {
+        if ($user['role']==='coach') {
             $uid=(int)$user['user_id'];
             $teams=array_values(array_filter($teams,static fn(array $team):bool=>(int)$team['coach_user_id']===$uid || (int)($team['manager_user_id']??0)===$uid));
-        } elseif ($user['role']==='player') {
-            $membership=(new TeamPlayer())->getMembershipForUser((int)$user['user_id']);
-            $ownTeamId=(int)($membership['team_id']??0);
-            $teams=array_values(array_filter($teams,static fn(array $team):bool=>(int)$team['id']===$ownTeamId));
         }
         Response::success('Teams for tournament retrieved', ['teams' => $teams]);
     }
 
     public function update(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'organization_admin', 'tournament_organizer', 'coach', 'coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'coach']);
         $team = $this->teamModel->getById($id);
         if (!$team) {
             Response::error('Team not found.', 404);
@@ -103,7 +115,7 @@ class TeamController {
         if (empty($input['team_name']) || empty($input['tournament_id'])) {
             Response::error('Team name and tournament are required.', 400);
         }
-        if (in_array($user['role'],['coach','coach_manager'],true)) {
+        if ($user['role']==='coach') {
             $input['tournament_id']=$team['tournament_id'];
             $input['division_id']=$team['division_id'];
         } else {
@@ -116,7 +128,7 @@ class TeamController {
     }
 
     public function destroy(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'organization_admin', 'tournament_organizer', 'coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
         $team = $this->teamModel->getById($id);
         if (!$team) {
             Response::error('Team not found.', 404);
@@ -133,25 +145,25 @@ class TeamController {
     }
 
     public function players(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'organization_admin', 'tournament_organizer', 'coach', 'coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'coach']);
         $team = $this->teamModel->getById($id);
         if (!$team) {
             Response::error('Team not found.', 404);
         }
         $this->authorizeTeamOwner($user, $team);
-        if (!in_array($user['role'],['coach','coach_manager'],true)) OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
+        if ($user['role']!=='coach') OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
         $players = (new TeamPlayer())->getByTeam($id);
         Response::success('Team roster retrieved', ['team' => $team, 'players' => $players]);
     }
 
     public function uploadLogo(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'organization_admin', 'tournament_organizer', 'coach', 'coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'coach']);
         $team = $this->teamModel->getById($id);
         if (!$team) {
             Response::error('Team not found.', 404);
         }
         $this->authorizeTeamOwner($user, $team);
-        if (!in_array($user['role'],['coach','coach_manager'],true)) OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
+        if ($user['role']!=='coach') OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
         if (!isset($_FILES['logo']) || $_FILES['logo']['error'] !== UPLOAD_ERR_OK) {
             Response::error('A team logo image is required.', 400);
         }

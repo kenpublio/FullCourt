@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import authService from '../services/authService';
+import EmailOtpPanel from '../components/EmailOtpPanel';
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1);
@@ -12,6 +13,14 @@ const ForgotPassword = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [developmentCode, setDevelopmentCode] = useState('');
+  const [codeSeconds, setCodeSeconds] = useState(0);
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    if (codeSeconds <= 0) return undefined;
+    const timer = window.setInterval(() => setCodeSeconds(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [codeSeconds]);
 
   const requestCode = async () => {
     setLoading(true); setError(''); setMessage('');
@@ -21,20 +30,23 @@ const ForgotPassword = () => {
       setDevelopmentCode(localCode);
       if (localCode) setCode(localCode);
       setMessage(response.message || 'Verification code sent.');
+      setCodeSeconds(180);
+      setVerified(false);
       setStep(2);
     } catch (e) {
       setError(e.response?.data?.message || e.message || 'Unable to send the reset code.');
     } finally { setLoading(false); }
   };
 
-  const verifyCode = async (e) => {
-    e.preventDefault(); setError(''); setMessage('');
+  const verifyCode = async () => {
+    setError(''); setMessage('');
     if (code.length !== 6) return setError('Enter the complete 6-digit code.');
     setLoading(true);
     try {
       const response = await authService.verifyPasswordResetCode(email, code);
       setMessage(response.message);
-      setStep(3);
+      setVerified(true);
+      window.setTimeout(() => setStep(3), 700);
     } catch (e) {
       setError(e.response?.data?.message || 'The reset code is invalid or expired.');
     } finally { setLoading(false); }
@@ -55,15 +67,15 @@ const ForgotPassword = () => {
   };
 
   return <div className="auth-form">
-    <Link to="/" className="auth-back"><i className="bi bi-arrow-left" /> Home</Link>
+    <Link to="/" className="auth-back forgot-home-link"><span><i className="bi bi-house-door-fill" /></span><b>FullCourt home</b><i className="bi bi-arrow-up-right" /></Link>
     <div className="auth-heading"><span className="auth-icon"><i className="bi bi-key" /></span><h1 className="auth-form-title">Reset your password</h1><p>{step === 1 ? 'Enter your registered email address.' : step === 2 ? 'Confirm the verification code sent to your email.' : step === 3 ? 'Create your new password.' : 'Your password is ready.'}</p></div>
     {error && <div className="form-alert error"><i className="bi bi-exclamation-circle" />{error}</div>}
     {message && step < 4 && <div className="form-alert success"><i className="bi bi-check-circle" />{message}</div>}
-    {step === 1 && <form onSubmit={(e) => { e.preventDefault(); requestCode(); }}><label htmlFor="reset-email">Email address</label><input id="reset-email" className="modern-input" type="email" autoComplete="email" placeholder="name@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required /><button className="btn btn-neon w-100 mt-3" disabled={loading}>{loading ? 'Sending…' : 'Send verification code'}</button></form>}
-    {step === 2 && <form onSubmit={verifyCode}>{developmentCode && <div className="form-alert success"><i className="bi bi-code-slash" /><span>Local test code: <strong>{developmentCode}</strong></span></div>}<label>6-digit code</label><input className="modern-input code-input" inputMode="numeric" maxLength="6" placeholder="000000" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} required /><button className="btn btn-neon w-100 mt-3" disabled={loading}>{loading ? 'Checking…' : 'Verify code'}</button><button type="button" className="btn btn-outline-secondary w-100 mt-2" onClick={requestCode} disabled={loading}><i className="bi bi-arrow-clockwise me-2" />{loading ? 'Sending…' : 'Resend Code'}</button></form>}
+    {step === 1 && <form className="forgot-email-form" onSubmit={(e) => { e.preventDefault(); requestCode(); }}><label className="forgot-email-field" htmlFor="reset-email"><span>Email address</span><div><i className="bi bi-envelope"/><input id="reset-email" className="modern-input" type="email" inputMode="email" autoComplete="email" placeholder="name@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required /></div><small>We'll send a secure 6-digit reset code to this email.</small></label><button className="btn btn-neon w-100" disabled={loading}>{loading ? 'Sending…' : <><i className="bi bi-send-fill me-2"/>Send verification code</>}</button></form>}
+    {step === 2 && <>{developmentCode && <div className="form-alert success"><i className="bi bi-code-slash" /><span>Local test code: <strong>{developmentCode}</strong></span></div>}<EmailOtpPanel email={email} value={code} onChange={setCode} seconds={codeSeconds} onResend={requestCode} onBack={() => { setStep(1); setCode(''); setMessage(''); setError(''); }} onVerify={verifyCode} loading={loading} verified={verified} /></>}
     {step === 3 && <form onSubmit={reset}><label>New password</label><input className="modern-input" type="password" placeholder="At least 8 characters" value={password} onChange={e => setPassword(e.target.value)} required /><label className="mt-3">Confirm password</label><input className="modern-input" type="password" placeholder="Enter the same password" value={confirm} onChange={e => setConfirm(e.target.value)} required /><button className="btn btn-neon w-100 mt-3" disabled={loading}>{loading ? 'Resetting…' : 'Reset password'}</button></form>}
     {step === 4 && <div className="text-center"><div className="success-check"><i className="bi bi-check-lg" /></div><p>Password changed successfully. You can now sign in using your new password.</p><Link className="btn btn-neon w-100" to="/login">Return to sign in</Link></div>}
-    {step < 4 && <div className="mt-4"><Link to="/login" className="btn btn-light border w-100"><i className="bi bi-arrow-left me-2" />Back to Sign In</Link></div>}
+    {step !== 2 && step < 4 && <div className="forgot-signin-return"><span>Remembered your password?</span><Link to="/login"><i className="bi bi-arrow-left" /> Return to sign in</Link></div>}
   </div>;
 };
 
