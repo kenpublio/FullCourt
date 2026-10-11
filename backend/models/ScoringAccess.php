@@ -14,18 +14,20 @@ class ScoringAccess {
     public function create(int $matchId, int $createdBy, string $label, int $hours): array {
         $token = bin2hex(random_bytes(32));
         $pin = (string)random_int(100000, 999999);
+        $databaseNow = (string)$this->db->query('SELECT CURRENT_TIMESTAMP')->fetchColumn();
+        $expiresAt = (new DateTimeImmutable($databaseNow))->modify("+{$hours} hours")->format('Y-m-d H:i:s');
         $this->db->prepare("UPDATE game_scoring_links SET revoked_at=NOW() WHERE match_id=:match_id AND revoked_at IS NULL")
             ->execute([':match_id'=>$matchId]);
+        $returning = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? '' : ' RETURNING id';
         $stmt = $this->db->prepare("INSERT INTO game_scoring_links
             (match_id,created_by,operator_label,token_hash,pin_hash,expires_at)
-            VALUES (:match_id,:created_by,:label,:token_hash,:pin_hash,NOW() + (:hours * INTERVAL '1 hour'))
-            RETURNING id,expires_at");
+            VALUES (:match_id,:created_by,:label,:token_hash,:pin_hash,:expires_at){$returning}");
         $stmt->execute([
             ':match_id'=>$matchId, ':created_by'=>$createdBy, ':label'=>$label,
-            ':token_hash'=>hash('sha256',$token), ':pin_hash'=>password_hash($pin,PASSWORD_DEFAULT), ':hours'=>$hours,
+            ':token_hash'=>hash('sha256',$token), ':pin_hash'=>password_hash($pin,PASSWORD_DEFAULT), ':expires_at'=>$expiresAt,
         ]);
-        $row=$stmt->fetch();
-        return ['id'=>(int)$row['id'],'token'=>$token,'pin'=>$pin,'expires_at'=>$row['expires_at'],'operator_label'=>$label];
+        $id=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?(int)$this->db->lastInsertId():(int)$stmt->fetchColumn();
+        return ['id'=>$id,'token'=>$token,'pin'=>$pin,'expires_at'=>$expiresAt,'operator_label'=>$label];
     }
 
     public function findActiveByToken(string $token): ?array {

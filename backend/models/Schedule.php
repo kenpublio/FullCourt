@@ -84,10 +84,10 @@ class Schedule {
     private function teamGamesToday(int $tournamentId, int $teamId, string $day): int {
         $stmt = $this->db->prepare("
             SELECT COUNT(*) FROM matches
-            WHERE tournament_id = :tid AND (team1_id = :tid2 OR team2_id = :tid2)
+            WHERE tournament_id = :tournament_id AND (team1_id = :team1 OR team2_id = :team2)
               AND DATE(scheduled_start_time) = :day AND status IN ('scheduled','in_progress','completed')
         ");
-        $stmt->execute([':tid' => $tournamentId, ':tid2' => $teamId, ':day' => $day]);
+        $stmt->execute([':tournament_id' => $tournamentId, ':team1' => $teamId, ':team2' => $teamId, ':day' => $day]);
         return (int)$stmt->fetchColumn();
     }
 
@@ -102,7 +102,10 @@ class Schedule {
             // Ensure a constraints row exists with sensible defaults.
             $duration = (int)($tinfo['duration_mins'] ?? 40);
             $c = ['max_games_per_team_per_day' => 2, 'min_rest_minutes_between_games' => 120, 'duration_mins' => $duration, 'break_mins' => 15, 'daily_start_time' => '08:00', 'daily_end_time' => '20:00', 'available_weekdays' => ['mon','tue','wed','thu','fri','sat','sun']];
-            $this->db->prepare("INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes, daily_start_time, daily_end_time, available_weekdays) VALUES (:tid, 2, 120, :dur, 15, '08:00', '20:00', 'mon,tue,wed,thu,fri,sat,sun') ON CONFLICT (tournament_id) DO NOTHING")
+            $upsert = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+                ? "INSERT IGNORE INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes, daily_start_time, daily_end_time, available_weekdays) VALUES (:tid, 2, 120, :dur, 15, '08:00', '20:00', 'mon,tue,wed,thu,fri,sat,sun')"
+                : "INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes, daily_start_time, daily_end_time, available_weekdays) VALUES (:tid, 2, 120, :dur, 15, '08:00', '20:00', 'mon,tue,wed,thu,fri,sat,sun') ON CONFLICT (tournament_id) DO NOTHING";
+            $this->db->prepare($upsert)
                 ->execute([':tid' => $tournamentId, ':dur' => $duration]);
         }
 
@@ -194,8 +197,8 @@ class Schedule {
             $r = $this->db->prepare("SELECT scheduled_start_time, scheduled_end_time FROM matches WHERE court_id = :cid AND status IN ('scheduled','in_progress') AND scheduled_start_time IS NOT NULL");
             $r->execute([':cid' => $id]);
         } else {
-            $r = $this->db->prepare("SELECT scheduled_start_time, scheduled_end_time FROM matches WHERE (team1_id = :tid OR team2_id = :tid) AND status IN ('scheduled','in_progress') AND scheduled_start_time IS NOT NULL");
-            $r->execute([':tid' => $id]);
+            $r = $this->db->prepare("SELECT scheduled_start_time, scheduled_end_time FROM matches WHERE (team1_id = :team1 OR team2_id = :team2) AND status IN ('scheduled','in_progress') AND scheduled_start_time IS NOT NULL");
+            $r->execute([':team1' => $id, ':team2' => $id]);
         }
         $sTs = $start->getTimestamp();
         $eTs = $end->getTimestamp();
@@ -217,8 +220,8 @@ class Schedule {
             if (!$tid) return false;
             if ($this->rangeOverlaps((int)$tid, $start, $end, 'team')) return false;
             // Rest from any prior match of this team at/after start of day.
-            $rest = $this->db->prepare("SELECT scheduled_end_time FROM matches WHERE (team1_id = :tid OR team2_id = :tid) AND tournament_id = :tid2 AND scheduled_end_time <= :now AND status IN ('scheduled','in_progress','completed') ORDER BY scheduled_end_time DESC LIMIT 1");
-            $rest->execute([':tid' => $tid, ':tid2' => $tournamentId, ':now' => $start->format('Y-m-d H:i:s')]);
+            $rest = $this->db->prepare("SELECT scheduled_end_time FROM matches WHERE (team1_id = :team1 OR team2_id = :team2) AND tournament_id = :tournament_id AND scheduled_end_time <= :now AND status IN ('scheduled','in_progress','completed') ORDER BY scheduled_end_time DESC LIMIT 1");
+            $rest->execute([':team1' => $tid, ':team2' => $tid, ':tournament_id' => $tournamentId, ':now' => $start->format('Y-m-d H:i:s')]);
             $lastEnd = $rest->fetchColumn();
             if ($lastEnd) {
                 $gap = $sTs - strtotime($lastEnd);
@@ -358,15 +361,15 @@ class Schedule {
         $mrow = $ms->fetch();
         foreach ([$mrow['team1_id'], $mrow['team2_id']] as $tid) {
             if (!$tid) continue;
-            $tr = $this->db->prepare("SELECT scheduled_start_time, scheduled_end_time FROM matches WHERE (team1_id = :tid OR team2_id = :tid) AND id != :mid AND status IN ('scheduled','in_progress','completed') AND scheduled_start_time IS NOT NULL");
-            $tr->execute([':tid' => $tid, ':mid' => $matchId]);
+            $tr = $this->db->prepare("SELECT scheduled_start_time, scheduled_end_time FROM matches WHERE (team1_id = :team1 OR team2_id = :team2) AND id != :mid AND status IN ('scheduled','in_progress','completed') AND scheduled_start_time IS NOT NULL");
+            $tr->execute([':team1' => $tid, ':team2' => $tid, ':mid' => $matchId]);
             foreach ($tr as $row) {
                 $a = strtotime($row['scheduled_start_time']); $b = strtotime($row['scheduled_end_time']);
                 if ($a && $b && $a < $eTs && $sTs < $b) $conflicts[] = ['type' => 'team', 'match_id' => (int)$row['id'], 'team_id' => (int)$tid];
             }
             // Rest: most recent match ending before the new start
-            $rest = $this->db->prepare("SELECT scheduled_end_time FROM matches WHERE (team1_id = :tid OR team2_id = :tid) AND id != :mid AND scheduled_end_time <= :now ORDER BY scheduled_end_time DESC LIMIT 1");
-            $rest->execute([':tid' => $tid, ':mid' => $matchId, ':now' => $startDt->format('Y-m-d H:i:s')]);
+            $rest = $this->db->prepare("SELECT scheduled_end_time FROM matches WHERE (team1_id = :team1 OR team2_id = :team2) AND id != :mid AND scheduled_end_time <= :now ORDER BY scheduled_end_time DESC LIMIT 1");
+            $rest->execute([':team1' => $tid, ':team2' => $tid, ':mid' => $matchId, ':now' => $startDt->format('Y-m-d H:i:s')]);
             $lastEnd = $rest->fetchColumn();
             if ($lastEnd && ($sTs - strtotime($lastEnd)) < (int)$c['min_rest_minutes_between_games'] * 60) {
                 $conflicts[] = ['type' => 'rest', 'team_id' => (int)$tid];
@@ -429,7 +432,15 @@ class Schedule {
     }
 
     public function saveConstraints(int $tournamentId, array $c): bool {
-        $stmt = $this->db->prepare("
+        $sql = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? "
+            INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes)
+            VALUES (:tid, :m, :r, :d, :b)
+            ON DUPLICATE KEY UPDATE
+                max_games_per_team_per_day = VALUES(max_games_per_team_per_day),
+                min_rest_minutes_between_games = VALUES(min_rest_minutes_between_games),
+                default_match_duration_minutes = VALUES(default_match_duration_minutes),
+                default_break_minutes = VALUES(default_break_minutes)
+        " : "
             INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes)
             VALUES (:tid, :m, :r, :d, :b)
             ON CONFLICT (tournament_id) DO UPDATE SET
@@ -437,7 +448,8 @@ class Schedule {
                 min_rest_minutes_between_games = EXCLUDED.min_rest_minutes_between_games,
                 default_match_duration_minutes = EXCLUDED.default_match_duration_minutes,
                 default_break_minutes = EXCLUDED.default_break_minutes
-        ");
+        ";
+        $stmt = $this->db->prepare($sql);
         return $stmt->execute([
             ':tid' => $tournamentId,
             ':m' => (int)$c['max_games_per_team_per_day'],

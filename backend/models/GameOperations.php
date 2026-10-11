@@ -96,11 +96,11 @@ class GameOperations {
 
     public function lineup(int $matchId): array {
         $stmt=$this->db->prepare("SELECT tp.id team_player_id,tp.team_id,tp.user_id,tp.jersey_number,tp.position,tp.eligibility_status,
-            u.full_name,tm.team_name,COALESCE(gl.is_present,1) is_present,COALESCE(gl.is_starter,0) is_starter,
+            COALESCE(tp.player_name,u.full_name) AS full_name,tm.team_name,COALESCE(gl.is_present,1) is_present,COALESCE(gl.is_starter,0) is_starter,
             COALESCE(pgm.seconds_played,0) seconds_played,COALESCE(pgm.is_on_court,CASE WHEN COALESCE(gl.is_present,1)=1 THEN COALESCE(gl.is_starter,0) ELSE 0 END,0) is_on_court
             FROM matches m JOIN teams tm ON tm.id IN (m.team1_id,m.team2_id)
             JOIN team_players tp ON tp.team_id=tm.id
-            JOIN users u ON u.id=tp.user_id LEFT JOIN game_lineups gl ON gl.match_id=m.id AND gl.team_player_id=tp.id
+            LEFT JOIN users u ON u.id=tp.user_id LEFT JOIN game_lineups gl ON gl.match_id=m.id AND gl.team_player_id=tp.id
             LEFT JOIN player_game_minutes pgm ON pgm.match_id=m.id AND pgm.team_player_id=tp.id
             WHERE m.id=:match_id ORDER BY tm.id,tp.jersey_number,u.full_name");
         $stmt->execute([':match_id'=>$matchId]);return $stmt->fetchAll();
@@ -171,10 +171,16 @@ class GameOperations {
                 ':metadata'=>json_encode($data['metadata'] ?? []), ':recorded_by'=>$userId]);
             $id = (int)$this->db->lastInsertId();
             if ($points > 0) {
-                $score = $this->db->prepare("UPDATE match_scores ms SET
-                    team1_score=ms.team1_score + CASE WHEN m.team1_id=:team_id_home THEN :points_home ELSE 0 END,
-                    team2_score=ms.team2_score + CASE WHEN m.team2_id=:team_id_away THEN :points_away ELSE 0 END
-                    FROM matches m WHERE m.id=ms.match_id AND ms.match_id=:match_id AND m.status NOT IN ('completed','cancelled','awaiting_confirmation')");
+                $scoreSql = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+                    ? "UPDATE match_scores ms JOIN matches m ON m.id=ms.match_id SET
+                        ms.team1_score=ms.team1_score + CASE WHEN m.team1_id=:team_id_home THEN :points_home ELSE 0 END,
+                        ms.team2_score=ms.team2_score + CASE WHEN m.team2_id=:team_id_away THEN :points_away ELSE 0 END
+                        WHERE ms.match_id=:match_id AND m.status NOT IN ('completed','cancelled','awaiting_confirmation')"
+                    : "UPDATE match_scores ms SET
+                        team1_score=ms.team1_score + CASE WHEN m.team1_id=:team_id_home THEN :points_home ELSE 0 END,
+                        team2_score=ms.team2_score + CASE WHEN m.team2_id=:team_id_away THEN :points_away ELSE 0 END
+                        FROM matches m WHERE m.id=ms.match_id AND ms.match_id=:match_id AND m.status NOT IN ('completed','cancelled','awaiting_confirmation')";
+                $score = $this->db->prepare($scoreSql);
                 $score->execute([':team_id_home'=>(int)$data['team_id'],':points_home'=>$points,
                     ':team_id_away'=>(int)$data['team_id'],':points_away'=>$points,':match_id'=>$matchId]);
             }

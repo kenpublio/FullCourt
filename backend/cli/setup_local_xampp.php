@@ -68,6 +68,22 @@ $schema = [
     "CREATE TABLE IF NOT EXISTS fouls (id BIGINT AUTO_INCREMENT PRIMARY KEY, match_id INT NOT NULL, player_id INT NOT NULL, team_id INT NOT NULL, foul_type VARCHAR(40) NOT NULL, recorded_by INT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_foul_match (match_id,team_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     "CREATE TABLE IF NOT EXISTS timeouts (id BIGINT AUTO_INCREMENT PRIMARY KEY, match_id INT NOT NULL, team_id INT NOT NULL, timeout_number INT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'active', duration_seconds INT NOT NULL DEFAULT 60, recorded_by INT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_timeout (match_id,team_id,timeout_number)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     "CREATE TABLE IF NOT EXISTS substitutions (id BIGINT AUTO_INCREMENT PRIMARY KEY, match_id INT NOT NULL, team_id INT NOT NULL, player_in_id INT NOT NULL, player_out_id INT NOT NULL, period VARCHAR(20) NULL, clock_seconds INT NULL, recorded_by INT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+    "CREATE TABLE IF NOT EXISTS game_scoring_links (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        match_id INT NOT NULL,
+        created_by INT NOT NULL,
+        operator_label VARCHAR(120) NOT NULL,
+        operator_name VARCHAR(120) NULL,
+        token_hash CHAR(64) NOT NULL UNIQUE,
+        pin_hash VARCHAR(255) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        last_used_at DATETIME NULL,
+        revoked_at DATETIME NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_scoring_link_match_active (match_id, expires_at, revoked_at),
+        CONSTRAINT fk_scoring_link_match FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
+        CONSTRAINT fk_scoring_link_creator FOREIGN KEY (created_by) REFERENCES users(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 ];
 
 foreach ($schema as $statement) $db->exec($statement);
