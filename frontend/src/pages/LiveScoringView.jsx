@@ -18,10 +18,17 @@ const LiveScoringView = () => {
     timer_seconds: 600,
   });
   const [scoreSnapshot, setScoreSnapshot] = useState({ team1_score: 0, team2_score: 0 });
+  const [scoreHistory, setScoreHistory] = useState([]);
+  const [saveState, setSaveState] = useState('idle');
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [matchFilter, setMatchFilter] = useState('active');
   const [confirmingWinnerId, setConfirmingWinnerId] = useState(null);
   const [finalizing, setFinalizing] = useState(false);
   const liveMatchCount = matches.filter((item) => item.status === 'in_progress').length;
   const awaitingReviews = matches.filter((item) => item.status === 'awaiting_confirmation');
+  const visibleMatches = matches.filter((item) => matchFilter === 'all'
+    || (matchFilter === 'active' && ['scheduled','in_progress','awaiting_confirmation'].includes(item.status))
+    || item.status === matchFilter);
 
   const refreshMatches = useCallback(async (tournamentId = selectedTournament) => {
     if (!tournamentId) return;
@@ -52,6 +59,8 @@ const LiveScoringView = () => {
 
   const selectMatchToScore = async (m) => {
     setConfirmingWinnerId(null);
+    setScoreHistory([]);
+    setSaveState('idle');
     setActiveMatch(m);
     setScoreData({ team1_score: 0, team2_score: 0, current_period: 'Q1', timer_seconds: 600 });
     setScoreSnapshot({ team1_score: 0, team2_score: 0 });
@@ -73,17 +82,41 @@ const LiveScoringView = () => {
   };
 
   const handleScoreChange = (team, delta) => {
-    setScoreData(prev => ({ ...prev, [team]: Math.max(0, prev[team] + delta) }));
+    setScoreData(prev => {
+      const next = Math.max(0, Number(prev[team]) + delta);
+      if (next === Number(prev[team])) return prev;
+      setScoreHistory(history => [...history.slice(-19), { team, previous: Number(prev[team]), delta }]);
+      setSaveState('unsaved');
+      return { ...prev, [team]: next };
+    });
+  };
+
+  const undoLastScore = (team) => {
+    const index = scoreHistory.map((entry) => entry.team).lastIndexOf(team);
+    if (index < 0) return;
+    const action = scoreHistory[index];
+    setScoreData(prev => ({ ...prev, [team]: action.previous }));
+    setScoreHistory(history => history.filter((_, itemIndex) => itemIndex !== index));
+    setSaveState('unsaved');
+  };
+
+  const updateGameControl = (field, value) => {
+    setScoreData(prev => ({ ...prev, [field]: value }));
+    setSaveState('unsaved');
   };
 
   const saveScore = async () => {
     if (!activeMatch) return;
     try {
+      setSaveState('saving');
       await scoringService.updateScore(activeMatch.id, scoreData);
       setScoreSnapshot({ team1_score: Number(scoreData.team1_score), team2_score: Number(scoreData.team2_score) });
-      alert('Score updated live!');
-    } catch {
-      alert('Error updating score');
+      setScoreHistory([]);
+      setLastSavedAt(new Date());
+      setSaveState('saved');
+    } catch (error) {
+      setSaveState('error');
+      console.error('Unable to update live score', error);
     }
   };
 
@@ -156,15 +189,18 @@ const LiveScoringView = () => {
         <div className="col-md-5">
           <div className="card-custom p-3 live-scoring-match-panel">
             <div className="live-scoring-panel-heading"><div><span>GAME LIST</span><h2>Select a match</h2></div><b>{matches.length}</b></div>
-            <div className="d-flex flex-column gap-2">
-              {matches.length === 0 && (
+            <div className="live-match-filters" aria-label="Filter games">
+              {[['active','Active'],['in_progress','Live'],['awaiting_confirmation','Review'],['all','All']].map(([value,label])=><button type="button" key={value} className={matchFilter===value?'active':''} onClick={()=>setMatchFilter(value)}>{label}</button>)}
+            </div>
+            <div className="d-flex flex-column gap-2 live-match-scroll">
+              {visibleMatches.length === 0 && (
                 <div className="live-scoring-empty">
                   <i className="bi bi-calendar2-x" />
                   <b>{tournaments.length ? 'No games scheduled yet' : 'No tournament available'}</b>
                   <span>{tournaments.length ? 'Games will appear after the tournament schedule is created.' : 'Create or publish a tournament schedule to begin scorekeeping.'}</span>
                 </div>
               )}
-              {matches.map(m => (
+              {visibleMatches.map(m => (
                 <button type="button"
                   key={m.id}
                   className={`match-item${activeMatch?.id === m.id ? ' active' : ''}`}
@@ -196,10 +232,19 @@ const LiveScoringView = () => {
           {activeMatch ? (
             <div className="live-scoreboard live-scoreboard-enhanced text-center">
               {/* Live badge */}
-              <div className="d-flex justify-content-center mb-3">
-                <span className="live-badge">
-                  Courtside console · {activeMatch.stage_name || `Round ${activeMatch.round_number}`}
+              <div className="live-console-topbar">
+                <span className="live-badge"><i className="bi bi-broadcast-pin"/> Courtside console</span>
+                <span className={`live-save-state is-${saveState}`}>
+                  <i className={`bi ${saveState==='saving'?'bi-arrow-repeat':saveState==='saved'?'bi-cloud-check-fill':saveState==='error'?'bi-cloud-slash-fill':'bi-cloud'}`}/>
+                  {saveState==='saving'?'Saving':saveState==='saved'?`Saved ${lastSavedAt?.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:saveState==='error'?'Save failed':saveState==='unsaved'?'Unsaved changes':'Ready'}
                 </span>
+              </div>
+
+              <div className="live-game-control" aria-label="Game clock and period">
+                <label><span>Period</span><select value={scoreData.current_period} onChange={event=>updateGameControl('current_period',event.target.value)}>{['Q1','Q2','Q3','Q4','OT1','OT2','OT3'].map(value=><option key={value}>{value}</option>)}</select></label>
+                <div className="live-clock-display"><small>GAME CLOCK</small><strong>{String(Math.floor(Number(scoreData.timer_seconds)/60)).padStart(2,'0')}:{String(Number(scoreData.timer_seconds)%60).padStart(2,'0')}</strong><span>{activeMatch.stage_name || `Round ${activeMatch.round_number || 1}`}</span></div>
+                <label><span>Set minutes</span><input type="number" min="0" max="99" value={Math.floor(Number(scoreData.timer_seconds)/60)} onChange={event=>updateGameControl('timer_seconds',Math.max(0,Number(event.target.value||0)*60+(Number(scoreData.timer_seconds)%60)))}/></label>
+                <label><span>Seconds</span><input type="number" min="0" max="59" value={Number(scoreData.timer_seconds)%60} onChange={event=>updateGameControl('timer_seconds',Math.max(0,Math.floor(Number(scoreData.timer_seconds)/60)*60+Math.min(59,Number(event.target.value||0))))}/></label>
               </div>
 
               {/* Scores */}
@@ -216,9 +261,10 @@ const LiveScoringView = () => {
                   <button
                     className="btn btn-outline-light btn-sm mt-2 px-3"
                     style={{ borderRadius: 8, fontSize: '0.75rem', opacity: 0.7 }}
-                    onClick={() => handleScoreChange('team1_score', -1)}
+                    onClick={() => undoLastScore('team1_score')}
+                    disabled={!scoreHistory.some(action=>action.team==='team1_score')}
                   >
-                    <i className="bi bi-dash" /> Undo
+                    <i className="bi bi-arrow-counterclockwise" /> Undo last
                   </button>
                 </div>
 
@@ -240,9 +286,10 @@ const LiveScoringView = () => {
                   <button
                     className="btn btn-outline-light btn-sm mt-2 px-3"
                     style={{ borderRadius: 8, fontSize: '0.75rem', opacity: 0.7 }}
-                    onClick={() => handleScoreChange('team2_score', -1)}
+                    onClick={() => undoLastScore('team2_score')}
+                    disabled={!scoreHistory.some(action=>action.team==='team2_score')}
                   >
-                    <i className="bi bi-dash" /> Undo
+                    <i className="bi bi-arrow-counterclockwise" /> Undo last
                   </button>
                 </div>
               </div>
@@ -256,9 +303,11 @@ const LiveScoringView = () => {
                   className="btn btn-warning fw-bold px-4"
                   style={{ borderRadius: 10 }}
                   onClick={saveScore}
+                  disabled={saveState==='saving'}
                 >
-                  <i className="bi bi-broadcast me-1" /> Update Live Score
+                  <i className="bi bi-broadcast me-1" /> {saveState==='saving'?'Updating…':'Update Live Score'}
                 </button>}
+                {saveState==='error'&&<span className="live-save-error"><i className="bi bi-exclamation-triangle-fill"/> Score was not saved. Check the connection and try again.</span>}
                 {selectedIsPendingReview && <span className="final-review-score-note"><i className="bi bi-lock-fill"/> Scoring is paused while you review this submitted result.</span>}
                 {canReviewScores && <button
                   className="btn btn-success px-3"
