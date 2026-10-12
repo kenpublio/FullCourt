@@ -116,6 +116,10 @@ class EligibilityController {
             Response::error('Enter a valid player birth date.', 400);
         }
         $input['player_name'] = trim($input['player_name']);
+        $capacity=$this->playerModel->rosterCapacity((int)$input['team_id']);
+        if($capacity['count'] >= $capacity['limit']) {
+            Response::error("This roster is full. A team can register up to {$capacity['limit']} active players.", 422, ['roster_count'=>$capacity['count'],'roster_limit'=>$capacity['limit']]);
+        }
         if ($this->playerModel->hasRosterDuplicate((int)$input['team_id'], $input['player_name'], $input['birth_date'])) {
             Response::error('A player with the same name and birth date is already on this roster.', 409);
         }

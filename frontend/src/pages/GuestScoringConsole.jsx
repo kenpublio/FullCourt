@@ -52,6 +52,7 @@ const GuestScoringConsole = () => {
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [showFinalReview, setShowFinalReview] = useState(false);
   const [submittedFinal, setSubmittedFinal] = useState(null);
+  const [advancedStats, setAdvancedStats] = useState(false);
 
   const saveQueue = useCallback((items) => {
     localStorage.setItem(queueKey, JSON.stringify(items));
@@ -354,7 +355,8 @@ const GuestScoringConsole = () => {
       </aside>
       <section className="courtside-actions">
         <div className="selected-player"><div><span className="score-kicker">RECORDING FOR</span><h2>{selected ? `#${selected.jersey_number || '—'} ${selected.full_name}` : 'Select a player'}</h2><p>{selected?.team_name || 'Choose an active roster player to begin.'}</p></div><i className="bi bi-person-bounding-box"/></div>
-        <div className="stat-action-grid">{actions.map(([type, mark, label]) => <button type="button" disabled={busy || !selected} className={type.includes('made') ? 'made' : type.includes('missed') ? 'missed' : ''} onClick={() => record(type)} key={type}><strong>{mark}</strong><span>{label}</span></button>)}</div>
+        <div className="courtside-action-heading"><div><span className="score-kicker">QUICK SCORING</span><p>{advancedStats?'All basketball statistics are available.':'Only essential score and foul controls are shown.'}</p></div><button type="button" aria-pressed={advancedStats} onClick={()=>setAdvancedStats(value=>!value)}><i className={`bi ${advancedStats?'bi-dash-circle':'bi-plus-circle'}`}/> {advancedStats?'Simple mode':'More stats'}</button></div>
+        <div className="stat-action-grid">{actions.filter(([type])=>advancedStats||['2pt_made','3pt_made','ft_made','personal_foul'].includes(type)).map(([type, mark, label]) => <button type="button" disabled={busy || !selected} className={type.includes('made') ? 'made' : type.includes('missed') ? 'missed' : ''} onClick={() => record(type)} key={type}><strong>{mark}</strong><span>{label}</span></button>)}</div>
       </section>
     </div>
     <section className="courtside-finalize"><div><span className="score-kicker">END OF GAME</span><h3>Submit the final score</h3><p>Review the scoreboard first. Submission locks scoring until the organizer confirms the official result.</p></div><button type="button" disabled={busy||pendingEvents.length>0||Number(teams[0]?.score)===Number(teams[1]?.score)} onClick={()=>setShowFinalReview(true)}><i className="bi bi-flag-fill"/> Review final score</button>{pendingEvents.length>0&&<small>Sync all pending actions before ending the game.</small>}{Number(teams[0]?.score)===Number(teams[1]?.score)&&<small>A tied score cannot be submitted. Continue to overtime.</small>}</section>

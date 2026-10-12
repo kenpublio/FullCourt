@@ -907,19 +907,15 @@ const TournamentManagement = () => {
                       </select>
                     </div>
                     <div className="col-md-4">
+                      <label htmlFor="division-roster-limit" className="form-label small fw-semibold">Roster limit</label>
                       <input
+                        id="division-roster-limit"
                         type="number"
-                        min="5"
-                        max="20"
                         className="form-control"
-                        value={divisionForm.max_roster_size}
-                        onChange={(e) =>
-                          setDivisionForm({
-                            ...divisionForm,
-                            max_roster_size: e.target.value,
-                          })
-                        }
+                        value="15"
+                        readOnly
                       />
+                      <div className="form-text">FullCourt allows up to 15 active players per team.</div>
                     </div>
                     <div className="col-md-4"><label htmlFor="division-min-age" className="form-label small fw-semibold">Minimum age</label><input id="division-min-age" type="number" min="0" max="99" className="form-control" placeholder="No minimum" value={divisionForm.min_age} onChange={e=>setDivisionForm({...divisionForm,min_age:e.target.value})}/></div>
                     <div className="col-md-4"><label htmlFor="division-max-age" className="form-label small fw-semibold">Maximum age</label><input id="division-max-age" type="number" min="0" max="99" className="form-control" placeholder="No maximum" value={divisionForm.max_age} onChange={e=>setDivisionForm({...divisionForm,max_age:e.target.value})}/></div>

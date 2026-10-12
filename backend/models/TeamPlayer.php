@@ -157,6 +157,16 @@ class TeamPlayer {
         return (bool)$stmt->fetch();
     }
 
+    public function rosterCapacity(int $teamId): array {
+        $stmt = $this->db->prepare("SELECT 15 AS roster_limit,
+            (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status<>'rejected') AS roster_count
+            FROM teams tm LEFT JOIN divisions d ON d.id=tm.division_id
+            WHERE tm.id=:team_id LIMIT 1");
+        $stmt->execute([':team_id'=>$teamId]);
+        $row=$stmt->fetch() ?: ['roster_limit'=>15,'roster_count'=>0];
+        return ['limit'=>(int)$row['roster_limit'],'count'=>(int)$row['roster_count']];
+    }
+
     public function addPlayer(array $data): int {
         $sql = "INSERT INTO team_players (team_id, user_id, student_id_number, player_name, birth_date, guardian_name, guardian_contact, jersey_number, position, eligibility_status, request_type)
                 VALUES (:team_id, NULL, :student_id_number, :player_name, :birth_date, :guardian_name, :guardian_contact, :jersey_number, :position, 'pending', 'coach_registration')";

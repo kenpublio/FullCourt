@@ -63,13 +63,14 @@ const CoachDashboard = () => {
     )[0];
   const readinessRows = teams.map(team => {
     const teamRoster=players.filter(player=>Number(player.team_id)===Number(team.id));
+    const rosterLimit=Number(team.max_roster_size||15);
     const cleared=teamRoster.filter(player=>player.eligibility_status==='verified').length;
     const teamPayments=payments.filter(payment=>Number(payment.team_id)===Number(team.id));
     const fee=Number(teamPayments[0]?.registration_fee||0);
     const paid=Number(teamPayments[0]?.approved_total||0);
     const hasGame=schedule.some(game=>(Number(game.team1_id)===Number(team.id)||Number(game.team2_id)===Number(team.id))&&Boolean(game.scheduled_start_time));
     const checks=[
-      {label:'Roster added',done:teamRoster.length>0,detail:`${teamRoster.length} player${teamRoster.length===1?'':'s'}`,path:'/teams'},
+      {label:'Roster capacity',done:teamRoster.length>0,detail:`${teamRoster.length}/${rosterLimit} players`,path:'/teams'},
       {label:'Eligibility cleared',done:teamRoster.length>0&&cleared===teamRoster.length,detail:`${cleared}/${teamRoster.length} verified`,path:'/eligibility'},
       {label:'Payment standing',done:fee<=0||paid>=fee,detail:fee<=0?'No fee':`₱${Math.max(0,fee-paid).toLocaleString()} balance`,path:'/payments'},
       {label:'First game scheduled',done:hasGame,detail:hasGame?'Schedule published':'Waiting for schedule',path:'/schedules'},

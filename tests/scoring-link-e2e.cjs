@@ -148,6 +148,10 @@ async function requestForm(route, token, form) {
   await page.getByLabel('6-digit access PIN').fill(access.pin);
   await page.getByRole('button', { name: /Enter courtside console/i }).click();
   await page.getByText(/Quarter & game clock/i).waitFor({ timeout: 30000 });
+  await page.getByRole('button', { name: /More stats/i }).waitFor();
+  if (await page.getByRole('button', { name: /Assist/i }).count()) throw new Error('Advanced statistics should be hidden in simple scoring mode.');
+  await page.getByRole('button', { name: /More stats/i }).click();
+  await page.getByRole('button', { name: /Assist/i }).waitFor();
   const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2);
   await browser.close();
   if (pageErrors.length || mobileOverflow) throw new Error(`Scoring UI issue: ${pageErrors.join('; ') || 'mobile horizontal overflow'}`);
