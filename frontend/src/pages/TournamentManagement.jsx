@@ -193,13 +193,32 @@ const TournamentManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this tournament?")) return;
+  const handleRosterLock = async (tournament) => {
+    const locked = !tournament.roster_locked_at;
+    if (!window.confirm(`${locked ? 'Lock' : 'Reopen'} roster registration for “${tournament.name}”?`)) return;
     try {
-      await tournamentService.deleteTournament(id);
-      loadData();
+      setReviewingId(tournament.id);
+      await tournamentService.setRosterLock(tournament.id, locked);
+      setMsg(locked ? 'Roster registration locked. Coaches can no longer add players.' : 'Roster registration reopened for coaches.');
+      await loadData();
     } catch (err) {
-      alert(err.response?.data?.message || "Error deleting tournament");
+      alert(err.response?.data?.message || 'Unable to change the roster lock.');
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleArchive = async (tournament) => {
+    if (!window.confirm(`Archive “${tournament.name}”? It will be unpublished, but its records and reports will remain safe.`)) return;
+    try {
+      setReviewingId(tournament.id);
+      await tournamentService.archiveTournament(tournament.id);
+      setMsg('Tournament archived safely. Historical records were preserved.');
+      await loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Unable to archive the tournament.');
+    } finally {
+      setReviewingId(null);
     }
   };
 
@@ -528,10 +547,20 @@ const TournamentManagement = () => {
                       Divisions
                     </button>}
                     {canCreateTournaments && <button
-                      className="btn btn-outline-danger btn-sm"
-                      onClick={() => handleDelete(t.id)}
+                      className={`btn btn-sm ${t.roster_locked_at ? 'btn-warning' : 'btn-outline-warning'}`}
+                      disabled={reviewingId === t.id}
+                      onClick={() => handleRosterLock(t)}
+                      title="Control whether coaches can add players"
                     >
-                      <i className="bi bi-trash"></i> Delete
+                      <i className={`bi ${t.roster_locked_at ? 'bi-lock-fill' : 'bi-unlock'} me-1`} />
+                      {t.roster_locked_at ? 'Roster locked' : 'Lock roster'}
+                    </button>}
+                    {canCreateTournaments && <button
+                      className="btn btn-outline-secondary btn-sm"
+                      disabled={reviewingId === t.id}
+                      onClick={() => handleArchive(t)}
+                    >
+                      <i className="bi bi-archive me-1" /> Archive
                     </button>}
                     {canReviewTournaments && t.approval_status === 'pending' && <>
                       <button className="btn btn-success btn-sm" disabled={reviewingId === t.id} onClick={() => handleReview(t, 'approved')}><i className="bi bi-check-lg me-1"/>{reviewingId === t.id ? 'Saving…' : 'Approve & publish'}</button>

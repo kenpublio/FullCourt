@@ -5,7 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const out = path.join(root, 'output', 'browser-audit');
 fs.mkdirSync(out, { recursive: true });
-const base = 'http://127.0.0.1:5180';
+const base = process.env.FULLCOURT_WEB_URL || 'http://127.0.0.1:5173';
 (async () => {
   const browser = await chromium.launch({channel:'msedge',headless:true});
   const sessions = JSON.parse(execFileSync('php', [path.join(__dirname,'BrowserAuditSession.php')], {cwd:root,encoding:'utf8'}));

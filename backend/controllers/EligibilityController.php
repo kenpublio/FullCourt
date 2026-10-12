@@ -116,6 +116,9 @@ class EligibilityController {
             Response::error('Enter a valid player birth date.', 400);
         }
         $input['player_name'] = trim($input['player_name']);
+        $registration=$this->playerModel->rosterRegistrationState((int)$input['team_id']);
+        if($registration['locked']) Response::error('This tournament roster is locked. Ask the Admin to reopen registration before adding a player.',423,['locked_at'=>$registration['lock_time']]);
+        if($registration['deadline_passed']) Response::error('The roster registration deadline has passed. Admin approval is required for a late addition.',423,['registration_deadline'=>$registration['deadline']]);
         $capacity=$this->playerModel->rosterCapacity((int)$input['team_id']);
         if($capacity['count'] >= $capacity['limit']) {
             Response::error("This roster is full. A team can register up to {$capacity['limit']} active players.", 422, ['roster_count'=>$capacity['count'],'roster_limit'=>$capacity['limit']]);
@@ -124,11 +127,12 @@ class EligibilityController {
             Response::error('A player with the same name and birth date is already on this roster.', 409);
         }
         $input['student_id_number'] = 'ROSTER-' . strtoupper(substr(hash('sha256', $input['team_id'].'|'.$input['player_name'].'|'.$input['birth_date']), 0, 12));
+        $duplicates=$this->playerModel->potentialDuplicates($input['player_name'],$input['birth_date'],(int)$input['team_id']);
         $id = $this->playerModel->addPlayer($input);
 
         $this->auditLog->log($user['user_id'], 'ADD_PLAYER', 'PLAYER_ELIGIBILITY', "Added player ID {$id} to team ID {$input['team_id']}.");
 
-        Response::success('Player added to the roster. Upload the birth record and parent permit for admin verification.', ['id' => $id], 201);
+        Response::success($duplicates?'Player added, but a possible duplicate registration needs Admin review.':'Player added to the roster. Upload the birth record and parent permit for admin verification.', ['id' => $id,'duplicate_warning'=>!empty($duplicates),'possible_matches'=>$duplicates], 201);
     }
 
     private function requirePlayerRecordAccess(int $id,array $user):void {

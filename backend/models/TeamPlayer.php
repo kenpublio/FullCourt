@@ -167,6 +167,30 @@ class TeamPlayer {
         return ['limit'=>(int)$row['roster_limit'],'count'=>(int)$row['roster_count']];
     }
 
+    public function rosterRegistrationState(int $teamId): array {
+        $stmt=$this->db->prepare("SELECT t.roster_locked_at,t.registration_deadline,t.start_date
+            FROM teams tm JOIN tournaments t ON t.id=tm.tournament_id WHERE tm.id=:team_id LIMIT 1");
+        $stmt->execute([':team_id'=>$teamId]);
+        $row=$stmt->fetch() ?: [];
+        $deadline=$row['registration_deadline'] ?? null;
+        return [
+            'locked'=>!empty($row['roster_locked_at']),
+            'lock_time'=>$row['roster_locked_at'] ?? null,
+            'deadline'=>$deadline,
+            'deadline_passed'=>$deadline ? strtotime((string)$deadline) < time() : false,
+        ];
+    }
+
+    public function potentialDuplicates(string $playerName,string $birthDate,int $excludeTeamId): array {
+        $stmt=$this->db->prepare("SELECT tp.id,tp.team_id,tm.team_name,t.name AS tournament_name
+            FROM team_players tp JOIN teams tm ON tm.id=tp.team_id JOIN tournaments t ON t.id=tm.tournament_id
+            WHERE tp.team_id<>:team_id AND tp.eligibility_status<>'rejected'
+              AND LOWER(TRIM(COALESCE(tp.player_name,'')))=LOWER(TRIM(:player_name)) AND tp.birth_date=:birth_date
+            ORDER BY tp.created_at DESC LIMIT 5");
+        $stmt->execute([':team_id'=>$excludeTeamId,':player_name'=>$playerName,':birth_date'=>$birthDate]);
+        return $stmt->fetchAll();
+    }
+
     public function addPlayer(array $data): int {
         $sql = "INSERT INTO team_players (team_id, user_id, student_id_number, player_name, birth_date, guardian_name, guardian_contact, jersey_number, position, eligibility_status, request_type)
                 VALUES (:team_id, NULL, :student_id_number, :player_name, :birth_date, :guardian_name, :guardian_contact, :jersey_number, :position, 'pending', 'coach_registration')";

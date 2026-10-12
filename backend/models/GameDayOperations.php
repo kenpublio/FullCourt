@@ -6,7 +6,7 @@ class GameDayOperations {
     public function __construct(){ $connection=(new Database())->getConnection();if(!$connection)throw new RuntimeException('Database unavailable.');$this->db=$connection; }
 
     public function tournamentGames(int $tournamentId):array{
-        $stmt=$this->db->prepare("SELECT m.id,m.stage_name,m.round_number,m.scheduled_start_time,m.status,t.name tournament_name,
+        $stmt=$this->db->prepare("SELECT m.id,m.stage_name,m.round_number,m.scheduled_start_time,m.status,m.operational_status_reason,t.name tournament_name,
           h.team_name home_team,a.team_name away_team,c.court_name,v.name venue_name,
           COALESCE(gr.venue_ready,FALSE) venue_ready,COALESCE(gr.equipment_ready,FALSE) equipment_ready,
           COALESCE(gr.home_team_present,FALSE) home_team_present,COALESCE(gr.away_team_present,FALSE) away_team_present,
@@ -46,4 +46,24 @@ class GameDayOperations {
     }
     public function incidentTournamentId(int $id):?int{$stmt=$this->db->prepare("SELECT m.tournament_id FROM game_incidents gi JOIN matches m ON m.id=gi.match_id WHERE gi.id=:id");$stmt->execute([':id'=>$id]);$value=$stmt->fetchColumn();return$value===false?null:(int)$value;}
     public function resolveIncident(int $id,int $userId):bool{$stmt=$this->db->prepare("UPDATE game_incidents SET status='resolved',resolved_by=:user_id,resolved_at=NOW() WHERE id=:id AND status='open'");$stmt->execute([':user_id'=>$userId,':id'=>$id]);return$stmt->rowCount()>0;}
+
+    public function updateOperationalStatus(int $matchId,string $status,string $reason,int $userId):int{
+        $this->db->beginTransaction();
+        try{
+            $stmt=$this->db->prepare("UPDATE matches SET status=:status,operational_status_reason=:reason,operational_status_updated_by=:user_id,operational_status_updated_at=NOW() WHERE id=:id");
+            $stmt->execute([':status'=>$status,':reason'=>$reason?:null,':user_id'=>$userId,':id'=>$matchId]);
+            if($stmt->rowCount()===0)throw new RuntimeException('Match not found.');
+            $lookup=$this->db->prepare("SELECT m.tournament_id,t.name tournament_name,h.team_name home_team,a.team_name away_team,h.coach_user_id home_coach,a.coach_user_id away_coach FROM matches m JOIN tournaments t ON t.id=m.tournament_id LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id WHERE m.id=:id");
+            $lookup->execute([':id'=>$matchId]);$game=$lookup->fetch();
+            $coachIds=array_values(array_unique(array_filter([(int)($game['home_coach']??0),(int)($game['away_coach']??0)])));
+            if($coachIds){
+                $notify=$this->db->prepare("INSERT INTO notifications(user_id,notification_type,title,message,action_url) VALUES(:user_id,'schedule_change',:title,:message,:action_url)");
+                $label=ucfirst(str_replace('_',' ',$status));
+                $title="Game {$label}: ".($game['home_team']??'TBD').' vs '.($game['away_team']??'TBD');
+                $message="{$game['tournament_name']} game status changed to {$label}.".($reason?" Reason: {$reason}":'');
+                foreach($coachIds as $coachId)$notify->execute([':user_id'=>$coachId,':title'=>$title,':message'=>$message,':action_url'=>'/schedules']);
+            }
+            $this->db->commit();return count($coachIds);
+        }catch(Throwable $error){if($this->db->inTransaction())$this->db->rollBack();throw$error;}
+    }
 }

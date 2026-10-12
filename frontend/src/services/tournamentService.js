@@ -19,6 +19,14 @@ export const tournamentService = {
   async deleteTournament(id) {
     const res = await api.delete(`/tournaments/${id}`);
     return res.data;
+  },
+
+  async setRosterLock(id, locked) {
+    return (await api.put(`/tournaments/${id}/roster-lock`, { locked })).data;
+  },
+
+  async archiveTournament(id) {
+    return (await api.post(`/tournaments/${id}/archive`)).data;
   }
 };
 

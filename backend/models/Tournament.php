@@ -17,7 +17,7 @@ class Tournament {
                 FROM tournaments t
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON t.created_by = u.id
-                WHERE LOWER(s.name) = 'basketball'";
+                WHERE LOWER(s.name) = 'basketball' AND t.archived_at IS NULL";
         if (!$platform && $userId !== null) {
             $sql .= " AND (t.approval_status='approved' OR t.created_by=:creator_id)";
             $sql .= " AND (t.created_by=:user_id OR EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:member_id AND om.status='active') OR EXISTS (SELECT 1 FROM teams own_tm LEFT JOIN team_players own_tp ON own_tp.team_id=own_tm.id WHERE own_tm.tournament_id=t.id AND (own_tm.coach_user_id=:coach_id OR own_tm.manager_user_id=:manager_id OR own_tp.user_id=:player_id)))";
@@ -39,7 +39,7 @@ class Tournament {
                 JOIN users u ON t.created_by=u.id
                 LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id
                   AND (coach_team.coach_user_id=:coach_id OR coach_team.manager_user_id=:manager_id)
-                WHERE LOWER(s.name)='basketball'
+                WHERE LOWER(s.name)='basketball' AND t.archived_at IS NULL
                   AND t.approval_status='approved'
                   AND (t.status IN ('upcoming','ongoing') OR coach_team.id IS NOT NULL)
                 ORDER BY CASE WHEN coach_team.id IS NOT NULL THEN 0 ELSE 1 END, t.start_date ASC";
@@ -144,6 +144,20 @@ class Tournament {
 
     public function delete(int $id): bool {
         $stmt = $this->db->prepare("DELETE FROM tournaments WHERE id = :id");
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function setRosterLock(int $id, bool $locked, int $userId): bool {
+        $stmt = $this->db->prepare("UPDATE tournaments SET roster_locked_at = :locked_at, roster_locked_by = :locked_by WHERE id = :id");
+        return $stmt->execute([
+            ':locked_at' => $locked ? date('Y-m-d H:i:s') : null,
+            ':locked_by' => $locked ? $userId : null,
+            ':id' => $id,
+        ]);
+    }
+
+    public function archive(int $id): bool {
+        $stmt = $this->db->prepare("UPDATE tournaments SET archived_at = NOW(), is_published = 0 WHERE id = :id");
         return $stmt->execute([':id' => $id]);
     }
 

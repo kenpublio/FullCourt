@@ -100,6 +100,8 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/tournaments' && $method === 'GET') { (new TournamentController())->index(); return; }
     if ($path === '/tournaments' && $method === 'POST') { (new TournamentController())->store(); return; }
     if (preg_match('#^/tournaments/(\d+)/review$#', $path, $m) && $method === 'PUT') { (new TournamentController())->review((int)$m[1]); return; }
+    if (preg_match('#^/tournaments/(\d+)/roster-lock$#', $path, $m) && $method === 'PUT') { (new TournamentController())->rosterLock((int)$m[1]); return; }
+    if (preg_match('#^/tournaments/(\d+)/archive$#', $path, $m) && $method === 'POST') { (new TournamentController())->archiveTournament((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'GET') { (new TournamentController())->show((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'PUT') { (new TournamentController())->update((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'DELETE') { (new TournamentController())->destroy((int)$m[1]); return; }
@@ -179,6 +181,7 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/game-access/validate' && $method === 'POST') { (new AttendanceController())->validateOfficial(); return; }
     if (preg_match('#^/tournaments/(\d+)/game-day$#', $path, $m) && $method === 'GET') { (new GameDayOperationsController())->index((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/readiness$#', $path, $m) && $method === 'PUT') { (new GameDayOperationsController())->readiness((int)$m[1]); return; }
+    if (preg_match('#^/matches/(\d+)/operational-status$#', $path, $m) && $method === 'PUT') { (new GameDayOperationsController())->operationalStatus((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/incidents$#', $path, $m) && $method === 'POST') { (new GameDayOperationsController())->incident((int)$m[1]); return; }
     if (preg_match('#^/game-incidents/(\d+)/resolve$#', $path, $m) && $method === 'PUT') { (new GameDayOperationsController())->resolve((int)$m[1]); return; }
 

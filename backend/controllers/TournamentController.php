@@ -122,6 +122,27 @@ class TournamentController {
         Response::success('Tournament deleted successfully');
     }
 
+    public function rosterLock(int $id): void {
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        OrganizationAccess::requireTournament($id, $user);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        if (!array_key_exists('locked', $input)) Response::error('Locked state is required.', 422);
+        $locked = filter_var($input['locked'], FILTER_VALIDATE_BOOLEAN);
+        $this->tournamentModel->setRosterLock($id, $locked, (int)$user['user_id']);
+        $this->auditLog->log((int)$user['user_id'], $locked ? 'LOCK_TOURNAMENT_ROSTERS' : 'UNLOCK_TOURNAMENT_ROSTERS', 'TOURNAMENT_MGMT', ($locked ? 'Locked' : 'Unlocked')." rosters for tournament {$id}.");
+        Response::success($locked ? 'Tournament rosters locked.' : 'Tournament rosters unlocked.');
+    }
+
+    public function archiveTournament(int $id): void {
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        OrganizationAccess::requireTournament($id, $user);
+        $existing = $this->tournamentModel->getById($id);
+        if (!$existing) Response::error('Tournament not found.', 404);
+        $this->tournamentModel->archive($id);
+        $this->auditLog->log((int)$user['user_id'], 'ARCHIVE_TOURNAMENT', 'TOURNAMENT_MGMT', "Archived tournament '{$existing['name']}' (ID: {$id}).");
+        Response::success('Tournament archived. Its records remain available for reports.');
+    }
+
     public function review(int $id): void {
         $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];

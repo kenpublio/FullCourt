@@ -4,5 +4,6 @@ const gameDayService={
   async saveReadiness(matchId,data){return (await api.put(`/matches/${matchId}/readiness`,data)).data;},
   async reportIncident(matchId,data){return (await api.post(`/matches/${matchId}/incidents`,data)).data;},
   async resolveIncident(id){return (await api.put(`/game-incidents/${id}/resolve`)).data;},
+  async updateStatus(matchId,data){return (await api.put(`/matches/${matchId}/operational-status`,data)).data;},
 };
 export default gameDayService;
