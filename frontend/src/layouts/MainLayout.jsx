@@ -67,7 +67,7 @@ const MainLayout = () => {
       )}
       <div className="main-content">
         <Navbar onMenuClick={() => setSidebarOpen(true)} adminTheme={isPlatformAdmin ? adminTheme : null} appearance={appearance} onAppearanceToggle={toggleAppearance} onThemeToggle={() => setAdminTheme(theme => theme === 'dark' ? 'light' : 'dark')} />
-        {platformSettings?.maintenance_enabled&&<div className="maintenance-banner" role="status"><i className="bi bi-tools"/><div><b>Scheduled maintenance</b><span>{platformSettings.maintenance_message}</span></div>{isPlatformAdmin&&<small>Administrator access remains available</small>}</div>}
+        {Boolean(platformSettings?.maintenance_enabled)&&<div className="maintenance-banner" role="status"><i className="bi bi-tools"/><div><b>Scheduled maintenance</b><span>{platformSettings.maintenance_message}</span></div>{isPlatformAdmin&&<small>Administrator access remains available</small>}</div>}
         <main className="app-page flex-grow-1">
           <Suspense fallback={<div className="route-loading-state" role="status" aria-live="polite"><span className="spinner-border spinner-border-sm" aria-hidden="true"/><span>Opening this section…</span></div>}>
             <Outlet />

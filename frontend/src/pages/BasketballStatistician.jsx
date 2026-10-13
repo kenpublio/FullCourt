@@ -232,8 +232,12 @@ const BasketballStatistician = () => {
           {!board ? (
             <div className="card-custom staff-courtside-empty p-5 text-center text-muted">
               <span><i className="bi bi-clipboard2-pulse" /></span>
-              <h4>No game selected</h4>
-              <p>Select an assigned game to open the courtside scoring console.</p>
+              <h4>{assignments.length ? "Choose your assigned game" : "Waiting for an Admin assignment"}</h4>
+              <p>{assignments.length ? "Select a game from the assignment list to open the courtside scoring console." : "Once Admin assigns and publishes a game, it will appear here automatically."}</p>
+              <div className="staff-courtside-flow" aria-label="Staff scoring workflow">
+                {[['bi-person-check-fill','1','Accept assignment'],['bi-people-fill','2','Confirm player lineups'],['bi-clipboard-data-fill','3','Record score & points'],['bi-check2-circle','4','Submit final score']].map(([icon,step,label])=><div key={step}><span><i className={`bi ${icon}`}/></span><b>{step}</b><small>{label}</small></div>)}
+              </div>
+              <small className="staff-courtside-note"><i className="bi bi-info-circle"/> Rebounds and assists stay optional. Official team score and individual points are required.</small>
             </div>
           ) : (
             <>
