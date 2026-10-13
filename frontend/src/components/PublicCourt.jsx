@@ -23,7 +23,7 @@ export function CourtFooter() {
       </div>
       <div className="court-footer-links">
         <nav aria-label="Explore FullCourt"><b>Explore</b><Link to="/">Home</Link><Link to="/sports">Game center</Link><Link to="/login">Sign in</Link><Link to="/register">Create account</Link></nav>
-        <nav aria-label="Legal information"><b>Trust &amp; Legal</b><Link to="/legal/privacy">Privacy</Link><Link to="/legal/terms">Terms</Link><Link to="/legal/cookies">Cookies</Link><Link to="/legal/accessibility">Accessibility</Link><Link to="/legal/claims">Claims</Link><Link to="/legal/responsible">Responsible use</Link></nav>
+        <nav aria-label="Legal information"><b>Trust &amp; Legal</b><Link to="/legal/privacy">Privacy Policy</Link><Link to="/legal/terms">Terms of Service</Link></nav>
       </div>
     </div>
     <div className="court-footer-bottom court-container"><span>© {new Date().getFullYear()} FullCourt Basketball Management</span><span>One passion <i className="bi bi-dribbble" /> Every court <i className="bi bi-dribbble" /> One community</span></div>
