@@ -8,6 +8,7 @@ const sessionConfig=token=>({headers:{Authorization:`Bearer ${token}`}});
 const scoringAccessService={
   async create(matchId,payload){return(await api.post(`/matches/${matchId}/scoring-link`,payload)).data?.data?.access;},
   async revoke(id){return(await api.delete(`/scoring-links/${id}`)).data;},
+  async releaseDevice(id){return(await api.put(`/scoring-links/${id}/release-device`)).data;},
   async activate(token,payload){return(await guest.post(`/public/scoring-links/${token}/activate`,payload)).data?.data;},
   async console(session){return(await guest.get('/scoring-session/console',sessionConfig(session))).data?.data;},
   async stat(session,payload){return(await guest.post('/scoring-session/stats',payload,sessionConfig(session))).data;},

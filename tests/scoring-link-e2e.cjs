@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const apiBase = 'http://127.0.0.1:8767/api';
+const apiBase = process.env.FULLCOURT_API_URL || 'http://127.0.0.1:8767/api';
 const webBase = process.env.FULLCOURT_WEB_URL || 'http://127.0.0.1:5173';
 const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd: root, encoding: 'utf8' }));
 const admin = sessions.find((entry) => entry.user.role === 'platform_admin');
@@ -107,9 +107,11 @@ async function requestForm(route, token, form) {
   if (!access?.token || !/^\d{6}$/.test(access.pin)) throw new Error('Scoring link did not return a token and 6-digit PIN.');
 
   const activation = await request(`/public/scoring-links/${access.token}/activate`, {
-    method: 'POST', token: null, body: { operator_name: 'Full E2E Statistician', pin: access.pin },
+    method: 'POST', token: null, body: { operator_name: 'Full E2E Statistician', pin: access.pin, device_id: 'fullcourt-e2e-device-0001' },
   });
   const guestToken = activation.session_token;
+  const blockedDevice = await fetch(`${apiBase}/public/scoring-links/${access.token}/activate`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({operator_name:'Unauthorized second device',pin:access.pin,device_id:'fullcourt-e2e-device-0002'}) });
+  if(blockedDevice.status!==409)throw new Error(`Second scoring device should be blocked, received ${blockedDevice.status}.`);
   let consoleData = await request('/scoring-session/console', { token: guestToken });
   const beforeHome = Number(consoleData.game.team1_score || 0);
   const beforeAway = Number(consoleData.game.team2_score || 0);
@@ -141,6 +143,7 @@ async function requestForm(route, token, form) {
 
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.addInitScript(() => localStorage.setItem('fc_scoring_device_id', 'fullcourt-e2e-device-0001'));
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.goto(`${webBase}/score/${access.token}`, { waitUntil: 'domcontentloaded' });

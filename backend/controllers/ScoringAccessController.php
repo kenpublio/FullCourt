@@ -28,11 +28,12 @@ class ScoringAccessController {
     }
 
     public function activate(string $token):void{
-        $in=$this->input();$pin=trim((string)($in['pin']??''));$name=trim((string)($in['operator_name']??''));
-        if(!preg_match('/^\d{6}$/',$pin)||$name==='')Response::error('Enter your name and the 6-digit access PIN.',422);
-        $row=$this->links->activate($token,$pin,$name);if(!$row)Response::error('The scoring link or PIN is invalid, expired, or revoked.',401);
+        $in=$this->input();$pin=trim((string)($in['pin']??''));$name=trim((string)($in['operator_name']??''));$deviceId=trim((string)($in['device_id']??''));
+        if(!preg_match('/^\d{6}$/',$pin)||$name===''||strlen($deviceId)<16)Response::error('Enter your name and PIN from a valid scoring device.',422);
+        try{$row=$this->links->activate($token,$pin,$name,$deviceId);}catch(DomainException $e){Response::error($e->getMessage(),409);}
+        if(!$row)Response::error('The scoring link or PIN is invalid, expired, or revoked.',401);
         $remaining=max(60,strtotime((string)$row['expires_at'])-time());
-        $session=JWT::generate(['scoring_link_id'=>(int)$row['id'],'match_id'=>(int)$row['match_id'],'role'=>'guest_statistician','operator_name'=>$name],$remaining);
+        $session=JWT::generate(['scoring_link_id'=>(int)$row['id'],'match_id'=>(int)$row['match_id'],'role'=>'guest_statistician','operator_name'=>$name,'device_hash'=>hash('sha256',$deviceId)],$remaining);
         Response::success('Courtside access granted',['session_token'=>$session,'game'=>$this->gameSummary($row)]);
     }
 
@@ -95,9 +96,12 @@ class ScoringAccessController {
         OrganizationAccess::requireMatch($matchId,$user);if(!$this->links->revoke($id))Response::error('Scoring link is already inactive.',409);Response::success('Scoring link revoked.');
     }
 
+    public function releaseDevice(int $id):void{$user=AuthMiddleware::authorizeRoles(self::MANAGERS);$matchId=$this->links->matchIdForLink($id);if(!$matchId)Response::error('Scoring link not found.',404);OrganizationAccess::requireMatch($matchId,$user);$this->links->releaseDevice($id);$this->audit->log((int)$user['user_id'],'RELEASE_SCORING_DEVICE','LIVE_SCORING',"Released the active device for scoring link {$id}.");Response::success('Scoring device released. The statistician can reconnect on a new device.');}
+
     private function session():array{
         $payload=AuthMiddleware::authenticate();if(($payload['role']??'')!=='guest_statistician'||empty($payload['scoring_link_id']))Response::forbidden('A valid scoring-link session is required.');
         $row=$this->links->findActiveById((int)$payload['scoring_link_id']);if(!$row||(int)$row['match_id']!==(int)$payload['match_id'])Response::unauthorized('This scoring session has expired or was revoked.');
+        if(empty($payload['device_hash'])||empty($row['active_device_hash'])||!hash_equals((string)$row['active_device_hash'],(string)$payload['device_hash']))Response::unauthorized('This device no longer controls the scoreboard. Ask the Admin for a new access session.');
         if(in_array($row['match_status'],['completed','cancelled','awaiting_confirmation'],true))Response::forbidden('Scoring is locked while this game awaits organizer confirmation.');
         $this->links->touch((int)$row['id']);return array_merge($payload,['created_by'=>(int)$row['created_by']]);
     }

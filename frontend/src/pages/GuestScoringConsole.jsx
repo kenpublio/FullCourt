@@ -45,6 +45,7 @@ const GuestScoringConsole = () => {
   const clockSyncAt = useRef(Date.now());
   const [clockNow, setClockNow] = useState(Date.now());
   const queueKey = `fc_score_queue_${token}`;
+  const deviceId = useMemo(() => { let value=localStorage.getItem('fc_scoring_device_id');if(!value){value=crypto.randomUUID();localStorage.setItem('fc_scoring_device_id',value);}return value; }, []);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [pendingEvents, setPendingEvents] = useState(() => {
     try { return JSON.parse(localStorage.getItem(queueKey) || '[]'); } catch { return []; }
@@ -113,7 +114,7 @@ const GuestScoringConsole = () => {
     setBusy(true);
     setError('');
     try {
-      const result = await scoringAccessService.activate(token, { operator_name: name, pin });
+      const result = await scoringAccessService.activate(token, { operator_name: name, pin, device_id: deviceId });
       sessionStorage.setItem(`fc_score_${token}`, result.session_token);
       setSession(result.session_token);
     } catch (activationError) {

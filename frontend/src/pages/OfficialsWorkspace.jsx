@@ -145,6 +145,10 @@ const OfficialsWorkspace = () => {
   const revokeScoringLink = async () => {
     if(!scoringAccess)return;await scoringAccessService.revoke(scoringAccess.id);setScoringAccess(null);setAssignmentMessage("The scoring link has been revoked and can no longer be used.");
   };
+  const releaseScoringDevice = async () => {
+    if(!scoringAccess||!window.confirm('Release the active scoring device? The scorer must enter the PIN again on the replacement device.'))return;
+    await scoringAccessService.releaseDevice(scoringAccess.id);setAssignmentMessage('Device lock released. The statistician can now reconnect using the same link and PIN.');
+  };
   const review = async (id, status) => {
     try {
       await gameOperationsService.reviewCorrection(id, status);
@@ -196,7 +200,7 @@ const OfficialsWorkspace = () => {
           <label><span>Link expires after</span><select value={linkHours} onChange={event=>setLinkHours(event.target.value)}><option value="4">4 hours</option><option value="8">8 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label>
           <button disabled={linkBusy||!selectedMatch||!linkOperator.trim()}>{linkBusy?"Generating…":<><i className="bi bi-send-fill"/> Generate secure link</>}</button>
         </form>
-        {scoringAccess&&<div className="scoring-invite-card"><div><small>READY TO SEND</small><h5>{scoringAccess.operator_label}</h5><p>Expires {new Date(scoringAccess.expires_at).toLocaleString()}</p></div><label><span>Secure game link</span><input readOnly value={scoringAccess.url}/></label><div className="scoring-pin"><span>ACCESS PIN</span><strong>{scoringAccess.pin}</strong></div><div className="scoring-invite-actions"><button type="button" onClick={copyScoringInvite}><i className="bi bi-copy"/> Copy invitation</button><a href={scoringAccess.url} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"/> Preview</a><button type="button" className="danger" onClick={revokeScoringLink}><i className="bi bi-x-circle"/> Revoke</button></div><p className="scoring-link-warning"><i className="bi bi-exclamation-triangle"/> Send the link and PIN only to the designated scorer. Creating another link for this game automatically disables the previous one.</p></div>}
+        {scoringAccess&&<div className="scoring-invite-card"><div><small>READY TO SEND · ONE ACTIVE DEVICE</small><h5>{scoringAccess.operator_label}</h5><p>Expires {new Date(scoringAccess.expires_at).toLocaleString()}</p></div><label><span>Secure game link</span><input readOnly value={scoringAccess.url}/></label><div className="scoring-pin"><span>ACCESS PIN</span><strong>{scoringAccess.pin}</strong></div><div className="scoring-invite-actions"><button type="button" onClick={copyScoringInvite}><i className="bi bi-copy"/> Copy invitation</button><a href={scoringAccess.url} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right"/> Preview</a><button type="button" onClick={releaseScoringDevice}><i className="bi bi-phone"/> Release device</button><button type="button" className="danger" onClick={revokeScoringLink}><i className="bi bi-x-circle"/> Revoke</button></div><p className="scoring-link-warning"><i className="bi bi-shield-lock"/> Only one scoring device can control this game. Release the device only when transferring to a replacement phone or laptop.</p></div>}
       </section>}
       <div className="nav nav-pills gap-2 mb-4">
         <button

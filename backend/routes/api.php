@@ -30,6 +30,7 @@ require_once __DIR__ . '/../controllers/BasketballAnalyticsController.php';
 require_once __DIR__ . '/../controllers/EligibilityDocumentController.php';
 require_once __DIR__ . '/../controllers/GameReminderController.php';
 require_once __DIR__ . '/../controllers/PlatformSettingsController.php';
+require_once __DIR__ . '/../controllers/SystemOperationsController.php';
 require_once __DIR__ . '/../utils/response.php';
 
 function routeRequest(string $uri, string $method) {
@@ -55,6 +56,8 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/public/portal' && $method === 'GET') { (new PublicController())->portal(); return; }
     if ($path === '/public/platform-settings' && $method === 'GET') { (new PlatformSettingsController())->show(); return; }
     if ($path === '/platform-settings' && $method === 'PUT') { (new PlatformSettingsController())->update(); return; }
+    if ($path === '/system/health' && $method === 'GET') { (new SystemOperationsController())->health(); return; }
+    if ($path === '/system/backups' && $method === 'POST') { (new SystemOperationsController())->backup(); return; }
     if (preg_match('#^/public/organizations/([a-z0-9-]+)$#', $path, $m) && $method === 'GET') { (new PublicController())->organization($m[1]); return; }
     if (preg_match('#^/public/tournaments/(\d+)$#', $path, $m) && $method === 'GET') { (new PublicController())->tournament((int)$m[1]); return; }
     if (preg_match('#^/public/tournaments/(\d+)/bracket$#', $path, $m) && $method === 'GET') { (new PublicController())->bracket((int)$m[1]); return; }
@@ -146,6 +149,7 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/game-assignments' && $method === 'GET') { (new GameOperationsController())->assignments(); return; }
     if (preg_match('#^/matches/(\d+)/scoring-link$#', $path, $m) && $method === 'POST') { (new ScoringAccessController())->create((int)$m[1]); return; }
     if (preg_match('#^/scoring-links/(\d+)$#', $path, $m) && $method === 'DELETE') { (new ScoringAccessController())->revoke((int)$m[1]); return; }
+    if (preg_match('#^/scoring-links/(\d+)/release-device$#', $path, $m) && $method === 'PUT') { (new ScoringAccessController())->releaseDevice((int)$m[1]); return; }
     if (preg_match('#^/public/scoring-links/([a-f0-9]{64})/activate$#', $path, $m) && $method === 'POST') { (new ScoringAccessController())->activate($m[1]); return; }
     if ($path === '/scoring-session/console' && $method === 'GET') { (new ScoringAccessController())->console(); return; }
     if ($path === '/scoring-session/stats' && $method === 'POST') { (new ScoringAccessController())->stat(); return; }

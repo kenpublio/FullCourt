@@ -46,17 +46,21 @@ class ScoringAccess {
         $stmt->execute([':id'=>$id]);$row=$stmt->fetch();return$row?:null;
     }
 
-    public function activate(string $token, string $pin, string $operatorName): ?array {
+    public function activate(string $token, string $pin, string $operatorName, string $deviceId): ?array {
         $row=$this->findActiveByToken($token);
         if(!$row || !password_verify($pin,(string)$row['pin_hash'])) return null;
-        $this->db->prepare("UPDATE game_scoring_links SET operator_name=:name,last_used_at=NOW() WHERE id=:id")
-            ->execute([':name'=>$operatorName,':id'=>$row['id']]);
-        $row['operator_name']=$operatorName;return$row;
+        $deviceHash=hash('sha256',$deviceId);$activeHash=(string)($row['active_device_hash']??'');$activeAt=!empty($row['active_device_at'])?strtotime((string)$row['active_device_at']):0;
+        if($activeHash!==''&&!hash_equals($activeHash,$deviceHash)&&$activeAt>time()-900)throw new DomainException('This scoring link is active on another device. Ask the Admin to release the device lock.');
+        $this->db->prepare("UPDATE game_scoring_links SET operator_name=:name,last_used_at=NOW(),active_device_hash=:device_hash,active_device_at=NOW() WHERE id=:id")
+            ->execute([':name'=>$operatorName,':device_hash'=>$deviceHash,':id'=>$row['id']]);
+        $row['operator_name']=$operatorName;$row['active_device_hash']=$deviceHash;return$row;
     }
 
     public function touch(int $id): void {
-        $this->db->prepare("UPDATE game_scoring_links SET last_used_at=NOW() WHERE id=:id")->execute([':id'=>$id]);
+        $this->db->prepare("UPDATE game_scoring_links SET last_used_at=NOW(),active_device_at=NOW() WHERE id=:id")->execute([':id'=>$id]);
     }
+
+    public function releaseDevice(int $id): bool { $stmt=$this->db->prepare("UPDATE game_scoring_links SET active_device_hash=NULL,active_device_at=NULL WHERE id=:id");$stmt->execute([':id'=>$id]);return$stmt->rowCount()>0; }
 
     public function updateGameClock(int $matchId, string $period, int $timerSeconds, bool $isRunning): bool {
         $this->db->beginTransaction();

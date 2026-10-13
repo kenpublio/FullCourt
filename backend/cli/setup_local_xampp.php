@@ -66,6 +66,8 @@ $schema = [
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS operational_status_reason VARCHAR(500) NULL",
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS operational_status_updated_by INT NULL",
     "ALTER TABLE matches ADD COLUMN IF NOT EXISTS operational_status_updated_at DATETIME NULL",
+    "ALTER TABLE game_scoring_links ADD COLUMN IF NOT EXISTS active_device_hash CHAR(64) NULL",
+    "ALTER TABLE game_scoring_links ADD COLUMN IF NOT EXISTS active_device_at DATETIME NULL",
     "CREATE TABLE IF NOT EXISTS match_officials (id BIGINT AUTO_INCREMENT PRIMARY KEY, match_id INT NOT NULL, user_id INT NOT NULL, role VARCHAR(40) NOT NULL, assigned_by INT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_match_official (match_id,user_id,role)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     "CREATE TABLE IF NOT EXISTS match_rosters (id BIGINT AUTO_INCREMENT PRIMARY KEY, match_id INT NOT NULL, player_id INT NOT NULL, team_id INT NOT NULL, jersey_number VARCHAR(12) NULL, position VARCHAR(50) NULL, is_active TINYINT(1) NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE KEY uq_match_player (match_id,player_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     "CREATE TABLE IF NOT EXISTS game_events (id BIGINT AUTO_INCREMENT PRIMARY KEY, match_id INT NOT NULL, event_type VARCHAR(60) NOT NULL, team_id INT NULL, player_id INT NULL, clock_seconds INT NULL, period VARCHAR(20) NULL, detail_json JSON NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_event_match (match_id,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",

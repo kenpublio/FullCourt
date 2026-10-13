@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import authService from "../services/authService";
 import platformSettingsService from "../services/platformSettingsService";
+import systemOperationsService from "../services/systemOperationsService";
 import '../styles/settings-center.css';
 import '../styles/settings-polish.css';
 
@@ -56,6 +57,7 @@ const SettingsView = () => {
     [passwordError, setPasswordError] = useState("");
   const [platformSettings,setPlatformSettings]=useState({maintenance_enabled:false,maintenance_message:'FullCourt is being improved. Some features may be temporarily unavailable.',registration_enabled:true});
   const [platformSaving,setPlatformSaving]=useState(false),[platformMessage,setPlatformMessage]=useState('');
+  const [systemHealth,setSystemHealth]=useState(null),[backupBusy,setBackupBusy]=useState(false),[backupMessage,setBackupMessage]=useState('');
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(storageKey));
@@ -67,6 +69,7 @@ const SettingsView = () => {
     }
   }, [storageKey]);
   useEffect(()=>{if(isAdmin)platformSettingsService.get().then(data=>data&&setPlatformSettings(data)).catch(()=>{});},[isAdmin]);
+  useEffect(()=>{if(user?.role==='platform_admin')systemOperationsService.health().then(setSystemHealth).catch(()=>setBackupMessage('Production health could not be loaded.'));},[user?.role]);
   useEffect(()=>{const dark=settings.appearance==='dark'||(settings.appearance==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);const resolvedTheme=dark?'dark':'light';document.documentElement.dataset.fullcourtTheme=resolvedTheme;document.documentElement.dataset.bsTheme=resolvedTheme;localStorage.setItem('fullcourt_public_theme',resolvedTheme);window.dispatchEvent(new CustomEvent('fullcourt-theme-change',{detail:{appearance:settings.appearance}}));},[settings.appearance]);
   useEffect(()=>{document.documentElement.dataset.reduceMotion=String(Boolean(settings.reduceMotion));},[settings.reduceMotion]);
   const toggle = (key) =>
@@ -80,6 +83,7 @@ const SettingsView = () => {
   const isPlayer = user?.role === "player",
     isCoach = ["coach", "coach_manager"].includes(user?.role);
   const savePlatform=async()=>{setPlatformSaving(true);setPlatformMessage('');try{const data=await platformSettingsService.update(platformSettings);setPlatformSettings(data);setPlatformMessage('Platform operations settings saved.');window.dispatchEvent(new CustomEvent('fullcourt-platform-settings',{detail:data}));}catch(error){setPlatformMessage(error.response?.data?.message||'Unable to save platform operations settings.');}finally{setPlatformSaving(false);}};
+  const createBackup=async()=>{setBackupBusy(true);setBackupMessage('');try{const backup=await systemOperationsService.backup();setBackupMessage(`Verified backup created: ${backup.file}`);setSystemHealth(await systemOperationsService.health());}catch(error){setBackupMessage(error.response?.data?.message||'Backup could not be created.');}finally{setBackupBusy(false);}};
   const changePassword = async (e) => {
     e.preventDefault();
     setPasswordError("");
@@ -112,6 +116,7 @@ const SettingsView = () => {
       {saveError&&<div className="alert alert-danger settings-alert" role="alert"><i className="bi bi-exclamation-triangle-fill me-2"/>{saveError}</div>}
       <div className="row g-4">
         {isAdmin&&<div className="col-12"><section className="settings-platform-panel"><header><div><span>PLATFORM OPERATIONS</span><h5>Maintenance &amp; Access Control</h5><p>Manage temporary service notices and new account access across FullCourt.</p></div><i className="bi bi-tools"/></header><div className="settings-platform-grid"><Toggle id="maintenanceMode" label="Maintenance notice" description="Show a system-wide maintenance banner while updates are in progress." checked={Boolean(platformSettings.maintenance_enabled)} onChange={()=>setPlatformSettings(value=>({...value,maintenance_enabled:!value.maintenance_enabled}))}/><Toggle id="registrationEnabled" label="Allow new registrations" description="Turn this off temporarily to prevent new accounts from being created." checked={Boolean(platformSettings.registration_enabled)} onChange={()=>setPlatformSettings(value=>({...value,registration_enabled:!value.registration_enabled}))}/><label className="settings-maintenance-message"><span>Maintenance message</span><textarea className="form-control" rows="2" maxLength="240" value={platformSettings.maintenance_message||''} onChange={event=>setPlatformSettings(value=>({...value,maintenance_message:event.target.value}))} disabled={!platformSettings.maintenance_enabled}/><small>{(platformSettings.maintenance_message||'').length}/240 characters</small></label></div><footer>{platformMessage&&<span><i className="bi bi-check-circle"/> {platformMessage}</span>}<button className="btn btn-evsu" disabled={platformSaving} onClick={savePlatform}><i className="bi bi-cloud-check"/> {platformSaving?'Saving…':'Save platform controls'}</button></footer></section></div>}
+        {user?.role==='platform_admin'&&<div className="col-12"><section className="settings-platform-panel system-health-panel"><header><div><span>DISASTER READINESS</span><h5>System health &amp; verified backup</h5><p>Confirm that the database is online and keep a recoverable tournament snapshot before game day.</p></div><i className="bi bi-database-check"/></header><div className="system-health-grid"><article><small>Database</small><b className={systemHealth?.database==='online'?'text-success':'text-danger'}><i className="bi bi-circle-fill"/> {systemHealth?.database||'Checking…'}</b></article><article><small>Last backup</small><b>{systemHealth?.last_backup?new Date(systemHealth.last_backup.created_at).toLocaleString():'No backup yet'}</b></article><article><small>Operational records</small><b>{systemHealth?`${systemHealth.records.tournaments} tournaments · ${systemHealth.records.matches} games`:'Checking…'}</b></article></div><footer>{backupMessage&&<span><i className="bi bi-info-circle"/> {backupMessage}</span>}<button className="btn btn-evsu" disabled={backupBusy||systemHealth?.database!=='online'} onClick={createBackup}><i className="bi bi-cloud-arrow-down-fill"/> {backupBusy?'Creating & verifying…':'Create verified backup'}</button></footer></section></div>}
         <div className="col-lg-7">
           <section className="card-custom p-4 mb-4 settings-section">
             <div className="settings-section-heading"><span className="settings-section-icon is-red"><i className="bi bi-bell-fill"/></span><div><h2>Notifications &amp; reminders</h2><p>Choose the updates you want to keep in your preferences.</p></div></div>
