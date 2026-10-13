@@ -6,14 +6,14 @@ export function CourtNav() {
   return <nav className="court-nav court-container" aria-label="Main navigation">
     <Link to="/" className="court-brand"><span><i className="bi bi-dribbble" aria-hidden="true" /></span>FULLCOURT<span className="court-brand-dot">.</span></Link>
     <div className="court-nav-links"><NavLink to="/" end>Home</NavLink><NavLink to="/sports">Game center</NavLink><NavLink to="/sports/schedule">Schedule</NavLink></div>
-    <div className="court-nav-account"><Link to="/login" className="court-signin"><span className="court-signin-icon"><i className="bi bi-box-arrow-in-right" aria-hidden="true"/></span><span>Sign in</span></Link><Link to="/register" className="court-button compact court-join-button"><span className="court-join-icon"><i className="bi bi-person-plus-fill" aria-hidden="true"/></span><span>Join now</span><i className="bi bi-arrow-right court-join-arrow" aria-hidden="true"/></Link></div>
+    <div className="court-nav-account"><Link to="/login" className="court-signin"><span className="court-signin-icon"><i className="bi bi-box-arrow-in-right" aria-hidden="true"/></span><span>Sign in</span></Link><Link to="/register" className="court-button compact court-join-button"><span className="court-join-icon"><i className="bi bi-person-plus-fill" aria-hidden="true"/></span><span>Coach sign-up</span><i className="bi bi-arrow-right court-join-arrow" aria-hidden="true"/></Link></div>
   </nav>;
 }
 export function CourtFooter() {
   return <footer className="court-footer-shell">
     <div className="court-footer-cta court-container">
       <div><span>READY FOR TIP-OFF?</span><h2>Run every game from one court.</h2><p>Teams, schedules, live scores, standings, and performance analytics—together in FullCourt.</p></div>
-      <div className="court-footer-actions"><Link to="/register" className="court-button">Join FullCourt <i className="bi bi-arrow-up-right" /></Link><Link to="/sports" className="court-footer-secondary">Explore games <i className="bi bi-arrow-right" /></Link></div>
+      <div className="court-footer-actions"><Link to="/register" className="court-button">Register as Coach <i className="bi bi-arrow-up-right" /></Link><Link to="/sports" className="court-footer-secondary">Explore games <i className="bi bi-arrow-right" /></Link></div>
     </div>
     <div className="court-footer court-container">
       <div className="court-footer-brand">
@@ -22,7 +22,7 @@ export function CourtFooter() {
         <span className="court-footer-status"><i className="bi bi-broadcast-pin" /> Built for live basketball operations</span>
       </div>
       <div className="court-footer-links">
-        <nav aria-label="Explore FullCourt"><b>Explore</b><Link to="/">Home</Link><Link to="/sports">Game center</Link><Link to="/login">Sign in</Link><Link to="/register">Create account</Link></nav>
+        <nav aria-label="Explore FullCourt"><b>Explore</b><Link to="/">Home</Link><Link to="/sports">Game center</Link><Link to="/login">Sign in</Link><Link to="/register">Coach sign-up</Link></nav>
         <nav aria-label="Legal information"><b>Trust &amp; Legal</b><Link to="/legal/privacy">Privacy Policy</Link><Link to="/legal/terms">Terms of Service</Link></nav>
       </div>
     </div>
