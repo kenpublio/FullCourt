@@ -29,12 +29,13 @@ const CoachDashboard = () => {
         if (active) setPlayers(playerRows);
         const paymentRows = await paymentService.getPayments().catch(() => []);
         if (active) setPayments(paymentRows);
-        const tournamentId = teamRows[0]?.tournament_id;
-        if (tournamentId) {
-          const rows = await scheduleService
-            .getSchedule(tournamentId)
-            .catch(() => []);
-          if (active) setSchedule(rows);
+        const tournamentIds = [...new Set(teamRows.map(team => Number(team.tournament_id)).filter(Boolean))];
+        if (tournamentIds.length) {
+          const schedules = await Promise.all(
+            tournamentIds.map(tournamentId => scheduleService.getSchedule(tournamentId).catch(() => [])),
+          );
+          const uniqueMatches = [...new Map(schedules.flat().map(match => [Number(match.id), match])).values()];
+          if (active) setSchedule(uniqueMatches);
         }
       } finally {
         if (active) setLoading(false);
@@ -111,7 +112,7 @@ const CoachDashboard = () => {
             "kpi-icon-green",
           ],
           [
-            "Pending Invitations",
+            "Pending Verification",
             pending,
             "bi-hourglass-split",
             "kpi-icon-yellow",

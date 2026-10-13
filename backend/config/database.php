@@ -13,7 +13,7 @@ class Database {
 
         $env = $this->loadEnvironment();
         $lastError = null;
-        $maxAttempts = 1;
+        $maxAttempts = 2;
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
           try {
             $driver = $env['DB_DRIVER'] ?? 'mysql';
@@ -43,7 +43,7 @@ class Database {
             if ($attempt < $maxAttempts) usleep($attempt * 250000);
           }
         }
-        error_log("Connection error after retries: " . ($lastError?->getMessage() ?? 'Unknown database error'));
+        error_log("Connection error after retries: " . $lastError->getMessage());
         return null;
     }
 
