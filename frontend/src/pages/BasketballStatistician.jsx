@@ -38,6 +38,7 @@ const BasketballStatistician = () => {
     [match, setMatch] = useState(null),
     [board, setBoard] = useState(null),
     [players, setPlayers] = useState([]),
+    [recentActions, setRecentActions] = useState([]),
     [selected, setSelected] = useState(null),
     [subOut, setSubOut] = useState(""),
     [subIn, setSubIn] = useState(""),
@@ -46,6 +47,8 @@ const BasketballStatistician = () => {
     [message, setMessage] = useState(""),
     [showFinalReview, setShowFinalReview] = useState(false),
     [submittingFinal, setSubmittingFinal] = useState(false),
+    [undoingId, setUndoingId] = useState(null),
+    [online, setOnline] = useState(()=>navigator.onLine),
     [tournamentFilter, setTournamentFilter] = useState("all");
   const isStatistician = user?.role === "statistician";
   const statisticianAssignments = useMemo(
@@ -70,23 +73,25 @@ const BasketballStatistician = () => {
     } finally { setLoading(false); }
   }, [isStatistician]);
   useEffect(() => { loadAssignments(); }, [loadAssignments]);
+  useEffect(()=>{const up=()=>setOnline(true),down=()=>setOnline(false);window.addEventListener('online',up);window.addEventListener('offline',down);return()=>{window.removeEventListener('online',up);window.removeEventListener('offline',down);};},[]);
   const open = async (assignment) => {
     setMatch(assignment);
     setLoadError("");
     try {
-      const [score, lineup] = await Promise.all([
+      const [score, lineup, recent] = await Promise.all([
         scorekeeperService.getScoreboard(assignment.match_id),
         gameOperationsService.lineup(assignment.match_id),
+        gameOperationsService.recentStats(assignment.match_id),
       ]);
-      setBoard(score);setPlayers(lineup);setSelected(lineup[0] || null);
+      setBoard(score);setPlayers(lineup);setRecentActions(recent);setSelected(lineup[0] || null);
     } catch (error) {
       setBoard(null);setLoadError(error.response?.data?.message || "Could not open this game console. Refresh the assignment list and try again.");
     }
   };
   const refresh = async () => {
     if (!match) return;
-    setBoard(await scorekeeperService.getScoreboard(match.match_id));
-    setPlayers(await gameOperationsService.lineup(match.match_id));
+    const [score,lineup,recent]=await Promise.all([scorekeeperService.getScoreboard(match.match_id),gameOperationsService.lineup(match.match_id),gameOperationsService.recentStats(match.match_id)]);
+    setBoard(score);setPlayers(lineup);setRecentActions(recent);
   };
   const record = async (eventType) => {
     if (!selected || !board) return setMessage("Select a player first.");
@@ -170,6 +175,13 @@ const BasketballStatistician = () => {
       setSubmittingFinal(false);
     }
   };
+  const undoAction = async (event) => {
+    if (!match || undoingId || !window.confirm(`Undo ${String(event.event_type).replaceAll('_',' ')} for ${event.player_name||event.team_name}?`)) return;
+    setUndoingId(event.id);setLoadError("");
+    try { await gameOperationsService.voidStat(match.match_id,event.id);setMessage("The last scoring action was undone and the official score was recalculated.");await refresh(); }
+    catch(error){setLoadError(error.response?.data?.message||"Unable to undo this scoring action.");}
+    finally{setUndoingId(null);}
+  };
   if (loading)
     return <LoadingSpinner message="Loading courtside assignments..." />;
   if (!isStatistician) {
@@ -223,6 +235,7 @@ const BasketballStatistician = () => {
         )}
       </div>
       {message && <div className="alert alert-info py-2">{message}</div>}
+      <div className={`staff-connection-banner ${online?'is-online':'is-offline'}`}><i className={`bi ${online?'bi-cloud-check-fill':'bi-cloud-slash-fill'}`}/><span><b>{online?'Connected to FullCourt':'Connection unavailable'}</b><small>{online?'New scoring actions are saved to the official game record.':'Pause scoring until the connection returns to avoid duplicate entries.'}</small></span></div>
       <div className="row g-4">
         {loadError && <div className="col-12"><div className="alert alert-danger d-flex justify-content-between align-items-center gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={loadAssignments}>Try again</button></div></div>}
         <div className="col-lg-3">
@@ -362,6 +375,7 @@ const BasketballStatistician = () => {
                   </details>
                 </div>
               )}
+              <section className="card-custom staff-recent-actions mt-3" aria-labelledby="recent-actions-title"><header><div><span>SCORING AUDIT</span><h5 id="recent-actions-title">Recent actions</h5></div><b>{recentActions.length} active</b></header>{recentActions.length?<div>{recentActions.map(event=><article key={event.id}><span className="staff-event-points">{{'2pt_made':'+2','3pt_made':'+3','ft_made':'+1'}[event.event_type]||'STAT'}</span><div><b>{String(event.event_type).replaceAll('_',' ')}</b><small>#{event.jersey_number||'—'} {event.player_name||event.team_name} · Q{event.period} · {Math.floor(Number(event.game_clock_seconds||0)/60)}:{String(Number(event.game_clock_seconds||0)%60).padStart(2,'0')}</small></div><button type="button" disabled={undoingId===event.id||!online} onClick={()=>undoAction(event)}><i className="bi bi-arrow-counterclockwise"/> {undoingId===event.id?'Undoing…':'Undo'}</button></article>)}</div>:<div className="ops-empty border-0 py-4"><i className="bi bi-clock-history"/><strong>No scoring actions yet</strong><p>Recorded player points and optional stats will appear here.</p></div>}</section>
             </>
           )}
         </div>

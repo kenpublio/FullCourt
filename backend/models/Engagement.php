@@ -25,6 +25,13 @@ class Engagement {
     public function markAllRead(int $userId): void {
         $this->db->prepare("UPDATE notifications SET read_at=COALESCE(read_at,NOW()) WHERE user_id=:user_id")->execute([':user_id'=>$userId]);
     }
+    public function scheduleAcknowledgments():array {
+        $stmt=$this->db->query("SELECT n.id,n.title,n.message,n.created_at,n.read_at,u.full_name AS coach_name,u.email AS coach_email
+            FROM notifications n JOIN users u ON u.id=n.user_id
+            WHERE n.notification_type='schedule_change' AND u.role='coach'
+            ORDER BY n.created_at DESC LIMIT 100");
+        return$stmt->fetchAll();
+    }
     public function awards(int $tournamentId): array {
         $stmt=$this->db->prepare("SELECT ac.id category_id,ac.name,ac.metric_key,ac.is_public,pa.id award_id,
             pa.status,u.id user_id,u.full_name,u.avatar_url,tp.jersey_number,

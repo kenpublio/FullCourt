@@ -163,6 +163,7 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/matches/(\d+)/substitutions$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->substitute((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/basketball-stats$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->stat((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/basketball-stats/(\d+)$#', $path, $m) && $method === 'DELETE') { (new GameOperationsController())->voidStat((int)$m[1],(int)$m[2]); return; }
+    if (preg_match('#^/matches/(\d+)/basketball-stats/recent$#', $path, $m) && $method === 'GET') { (new GameOperationsController())->recentStats((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/box-score$#', $path, $m) && $method === 'GET') { (new GameOperationsController())->boxScore((int)$m[1]); return; }
     if ($path === '/score-corrections' && $method === 'GET') { (new GameOperationsController())->corrections(); return; }
     if (preg_match('#^/matches/(\d+)/score-corrections$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->requestCorrection((int)$m[1]); return; }
@@ -205,6 +206,7 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/notifications' && $method === 'GET') { (new EngagementController())->notifications(); return; }
     if ($path === '/notifications/game-reminders/dispatch' && $method === 'POST') { (new GameReminderController())->dispatch(); return; }
     if ($path === '/notifications/read-all' && $method === 'PUT') { (new EngagementController())->readAll(); return; }
+    if ($path === '/notifications/schedule-acknowledgments' && $method === 'GET') { (new EngagementController())->scheduleAcknowledgments(); return; }
     if (preg_match('#^/notifications/(\d+)/read$#', $path, $m) && $method === 'PUT') { (new EngagementController())->read((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/awards$#', $path, $m) && $method === 'GET') { (new EngagementController())->awards((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/awards/recommend$#', $path, $m) && $method === 'POST') { (new EngagementController())->recommend((int)$m[1]); return; }

@@ -188,9 +188,31 @@ class GameOperations {
     }
 
     public function voidStat(int $matchId, int $eventId): bool {
-        $stmt = $this->db->prepare("UPDATE basketball_stat_events SET is_void=1 WHERE id=:id AND match_id=:match_id AND is_void=0");
-        $stmt->execute([':id'=>$eventId,':match_id'=>$matchId]);
-        return $stmt->rowCount() > 0;
+        $this->db->beginTransaction();
+        try {
+            $find=$this->db->prepare("SELECT team_id,event_type FROM basketball_stat_events WHERE id=:id AND match_id=:match_id AND is_void=0 FOR UPDATE");
+            $find->execute([':id'=>$eventId,':match_id'=>$matchId]);$event=$find->fetch();
+            if(!$event){$this->db->rollBack();return false;}
+            $stmt=$this->db->prepare("UPDATE basketball_stat_events SET is_void=1 WHERE id=:id AND match_id=:match_id AND is_void=0");
+            $stmt->execute([':id'=>$eventId,':match_id'=>$matchId]);
+            $points=['2pt_made'=>2,'3pt_made'=>3,'ft_made'=>1][$event['event_type']]??0;
+            if($points>0){
+                $sql=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'
+                    ? "UPDATE match_scores ms JOIN matches m ON m.id=ms.match_id SET ms.team1_score=GREATEST(0,ms.team1_score-CASE WHEN m.team1_id=:team_home THEN :points_home ELSE 0 END),ms.team2_score=GREATEST(0,ms.team2_score-CASE WHEN m.team2_id=:team_away THEN :points_away ELSE 0 END) WHERE ms.match_id=:match_id"
+                    : "UPDATE match_scores ms SET team1_score=GREATEST(0,ms.team1_score-CASE WHEN m.team1_id=:team_home THEN :points_home ELSE 0 END),team2_score=GREATEST(0,ms.team2_score-CASE WHEN m.team2_id=:team_away THEN :points_away ELSE 0 END) FROM matches m WHERE m.id=ms.match_id AND ms.match_id=:match_id";
+                $score=$this->db->prepare($sql);$score->execute([':team_home'=>(int)$event['team_id'],':points_home'=>$points,':team_away'=>(int)$event['team_id'],':points_away'=>$points,':match_id'=>$matchId]);
+            }
+            $this->db->commit();return true;
+        }catch(Throwable $error){$this->db->rollBack();throw $error;}
+    }
+
+    public function recentStats(int $matchId,int $limit=12):array {
+        $stmt=$this->db->prepare("SELECT e.id,e.event_type,e.period,e.game_clock_seconds,e.created_at,e.team_id,e.team_player_id,
+            COALESCE(tp.player_name,u.full_name) AS player_name,tp.jersey_number,tm.team_name
+            FROM basketball_stat_events e LEFT JOIN team_players tp ON tp.id=e.team_player_id
+            LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id
+            WHERE e.match_id=:match_id AND e.is_void=0 ORDER BY e.created_at DESC,e.id DESC LIMIT :limit");
+        $stmt->bindValue(':match_id',$matchId,PDO::PARAM_INT);$stmt->bindValue(':limit',$limit,PDO::PARAM_INT);$stmt->execute();return$stmt->fetchAll();
     }
 
     public function boxScore(int $matchId): array {

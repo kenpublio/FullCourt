@@ -58,6 +58,7 @@ class GameOperationsController {
         if (!$this->model->voidStat($matchId,$eventId)) Response::error('Active stat event not found.',404);
         Response::success('Stat event voided');
     }
+    public function recentStats(int $matchId):void { $user=$this->requireAssignedStatistician($matchId);Response::success('Recent scoring actions retrieved',['events'=>$this->model->recentStats($matchId)]); }
     public function boxScore(int $matchId): void { $user=AuthMiddleware::authenticate(); OrganizationAccess::requireMatch($matchId,$user); Response::success('Box score retrieved',['players'=>$this->model->boxScore($matchId)]); }
     public function submitFinal(int $matchId): void {
         $user=$this->requireAssignedStatistician($matchId);

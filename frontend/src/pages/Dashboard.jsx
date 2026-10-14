@@ -8,6 +8,7 @@ import tournamentService from '../services/tournamentService';
 import scheduleService from '../services/scheduleService';
 import basketballAnalyticsService from '../services/basketballAnalyticsService';
 import gameOperationsService from '../services/gameOperationsService';
+import engagementService from '../services/engagementService';
 import MatchupPrediction from '../components/MatchupPrediction';
 import '../styles/dashboard-professional.css';
 
@@ -39,6 +40,7 @@ const Dashboard = () => {
   const [activeTournament, setActiveTournament] = useState(null);
   const [tournamentSchedule, setTournamentSchedule] = useState([]);
   const [staffAssignments, setStaffAssignments] = useState([]);
+  const [scheduleAcknowledgments, setScheduleAcknowledgments] = useState([]);
   const hasTeamAccess = role !== 'player' || membership?.has_team;
 
   useEffect(() => {
@@ -57,6 +59,7 @@ const Dashboard = () => {
     }
     if (['platform_admin','admin','organization_admin','tournament_organizer'].includes(role)) {
       basketballAnalyticsService.dispatchReminders().catch(()=>null);
+      if (['platform_admin','admin'].includes(role)) engagementService.scheduleAcknowledgments().then(setScheduleAcknowledgments).catch(()=>setScheduleAcknowledgments([]));
       const loadLive=()=>basketballAnalyticsService.liveGames().then(setLiveGames).catch(()=>setLiveGames([]));
       loadLive();const timer=setInterval(loadLive,5000);return()=>clearInterval(timer);
     }
@@ -147,6 +150,7 @@ const Dashboard = () => {
     { title: 'Schedule setup', count: tournamentSchedule.filter(game => !game.scheduled_start_time || !(game.court_id || game.court_name || game.venue_name)).length, detail: 'games missing a time or playable court', icon: 'bi-calendar2-x-fill', path: '/schedules', tone: 'warning' },
     { title: 'Staff confirmations', count: staffAssignments.filter(item => item.status === 'pending').length, detail: 'scoring assignments awaiting response', icon: 'bi-person-exclamation', path: '/officials', tone: 'warning' },
     { title: 'Live coverage', count: liveGames.filter(game => game.status === 'in_progress' && Number(game.officials_ready || 0) < 1).length, detail: 'live games without confirmed staff coverage', icon: 'bi-broadcast-pin', path: '/game-day', tone: 'critical' },
+    { title: 'Coach acknowledgments', count: scheduleAcknowledgments.filter(item=>!item.read_at).length, detail: 'schedule-change notices not yet acknowledged', icon: 'bi-bell-fill', path: '/schedules', tone: 'warning' },
   ] : [];
   const attentionTotal = adminAttention.reduce((total, item) => total + item.count, 0);
   const staffQueue = dashboardMode === 'staff' ? staffAssignments
