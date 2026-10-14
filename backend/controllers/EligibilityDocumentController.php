@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/EligibilityDocument.php';
+require_once __DIR__ . '/../models/TeamPlayer.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../utils/response.php';
 
@@ -9,7 +10,9 @@ class EligibilityDocumentController {
     public function __construct(){ $this->model=new EligibilityDocument(); }
     public function index(int $teamPlayerId):void{$u=AuthMiddleware::authenticate();$this->guard($teamPlayerId,$u);Response::success('Eligibility documents retrieved',['documents'=>$this->model->list($teamPlayerId)]);}
     public function upload(int $teamPlayerId):void{
-        $u=AuthMiddleware::authenticate();$this->guard($teamPlayerId,$u);if(empty($_FILES['document'])||$_FILES['document']['error']!==UPLOAD_ERR_OK)Response::error('A valid document upload is required.',422);
+        $u=AuthMiddleware::authorizeRoles(['coach']);
+        if(!(new TeamPlayer())->belongsToCoach($teamPlayerId,(int)$u['user_id']))Response::forbidden('You can only upload documents for players assigned to your own team.');
+        $this->guard($teamPlayerId,$u);if(empty($_FILES['document'])||$_FILES['document']['error']!==UPLOAD_ERR_OK)Response::error('A valid document upload is required.',422);
         $file=$_FILES['document'];if((int)$file['size']>5*1024*1024)Response::error('Document must not exceed 5MB.',413);
         $mime=(new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);$allowed=['application/pdf'=>'pdf','image/jpeg'=>'jpg','image/png'=>'png'];if(!isset($allowed[$mime]))Response::error('Only PDF, JPG, and PNG documents are accepted.',415);
         $type=trim($_POST['document_type']??'Eligibility Document');if(strlen($type)>80)Response::error('Document type is too long.',422);

@@ -315,7 +315,7 @@ const TeamManagement = () => {
                 </button>
                 <div className="d-flex gap-2">
                   {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg"/></button></>}
-                  {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player"><i className="bi bi-person-plus-fill" /></button>}
+                  {isCoach&&tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player"><i className="bi bi-person-plus-fill" /></button>}
                   <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team"><i className="bi bi-pencil-square" /></button>
                   {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team"><i className="bi bi-trash3" /></button>}
                 </div>
@@ -367,7 +367,7 @@ const TeamManagement = () => {
                       {['platform_admin','admin','coach'].includes(user?.role) ? (
                         <div className="d-inline-flex align-items-center gap-2 team-action-group">
                           {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg me-1"/>Reject</button></>}
-                          {tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player">
+                          {isCoach&&tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player">
                             <i className="bi bi-person-plus-fill" />
                           </button>}
                           <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team">
@@ -427,7 +427,7 @@ const TeamManagement = () => {
         </div>
       )}
 
-      {inviteTeam && (
+      {isCoach && inviteTeam && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content card-custom border-0">
@@ -465,7 +465,7 @@ const TeamManagement = () => {
               <div className="modal-header border-bottom">
                 <div>
                   <h5 className="fw-bold mb-0">{rosterTeam.team_name} Roster</h5>
-                  <small className="text-muted">Players, jersey numbers, positions, and eligibility</small>
+                  <small className="text-muted">{isCoach ? 'Manage up to 15 player records, jersey numbers, positions, and documents' : 'Coach-managed roster · Admin reviews player eligibility and documents'}</small>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setRosterTeam(null)} aria-label="Close" />
               </div>
@@ -487,7 +487,7 @@ const TeamManagement = () => {
                             <h6 className="fw-bold text-dark mb-1 text-truncate">{player.full_name || 'Invited Player'}</h6>
                             <div className="small text-muted text-truncate">Born {player.birth_date || 'date pending'}</div>
                           </div>
-                          <button className="btn team-action-btn team-edit-btn flex-shrink-0" onClick={() => startRosterEdit(player)} aria-label={`Edit ${player.full_name || 'player'}`}><i className="bi bi-pencil-square" /></button>
+                          {isCoach&&<button className="btn team-action-btn team-edit-btn flex-shrink-0" onClick={() => startRosterEdit(player)} aria-label={`Edit ${player.full_name || 'player'}`}><i className="bi bi-pencil-square" /></button>}
                         </div>
                         <div className="roster-card-details mt-3 pt-3">
                           <div><span>Jersey</span><strong>{player.jersey_number ? `#${player.jersey_number}` : '—'}</strong></div>
@@ -519,7 +519,7 @@ const TeamManagement = () => {
                           <td><span className={`badge ${ageEligibilityBadge(player)}`} title={player.age_eligibility_message}>{ageEligibilityLabel(player)}</span><small className="d-block text-muted mt-1">Cutoff: {player.age_cutoff_date || 'Tournament start'}</small></td>
                           <td><span className={`badge ${player.eligibility_status === 'verified' ? 'bg-success' : player.eligibility_status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>{player.eligibility_status}</span></td>
                           <td className="text-end text-nowrap">
-                            <button className="btn team-action-btn team-edit-btn" onClick={() => startRosterEdit(player)} aria-label={`Edit ${player.full_name || 'player'}`} title="Edit jersey and position"><i className="bi bi-pencil-square" /></button>
+                            {isCoach&&<button className="btn team-action-btn team-edit-btn" onClick={() => startRosterEdit(player)} aria-label={`Edit ${player.full_name || 'player'}`} title="Edit jersey and position"><i className="bi bi-pencil-square" /></button>}
                           </td>
                         </tr>
                       ))}</tbody>
@@ -534,7 +534,7 @@ const TeamManagement = () => {
         </div>
       )}
 
-      {editingRosterPlayer && (
+      {isCoach && editingRosterPlayer && (
         <div className="modal show d-block roster-edit-modal" style={{ backgroundColor: 'rgba(0,0,0,0.72)' }}>
           <div className="modal-dialog modal-dialog-centered modal-sm">
             <div className="modal-content card-custom border-0 overflow-hidden">

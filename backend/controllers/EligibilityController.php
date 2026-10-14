@@ -82,8 +82,8 @@ class EligibilityController {
     }
 
     public function updateRoster(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach']);
-        if ($user['role'] === 'coach' && !$this->playerModel->belongsToCoach($id, (int) $user['user_id'])) {
+        $user = AuthMiddleware::authorizeRoles(['coach']);
+        if (!$this->playerModel->belongsToCoach($id, (int) $user['user_id'])) {
             Response::forbidden('You can only edit players assigned to your own team.');
         }
         $this->requirePlayerRecordAccess($id,$user);
@@ -95,11 +95,12 @@ class EligibilityController {
         }
         if (strlen($position) > 50) Response::error('Position must be 50 characters or fewer.', 400);
         $this->playerModel->updateRosterDetails($id, $jersey, $position);
+        $this->auditLog->log($user['user_id'], 'UPDATE_ROSTER_PLAYER', 'PLAYER_ELIGIBILITY', "Updated jersey number and position for player ID {$id}.");
         Response::success('Jersey number and position updated.');
     }
 
     public function addPlayer(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'coach']);
+        $user = AuthMiddleware::authorizeRoles(['coach']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['team_id']) || empty(trim((string)($input['player_name'] ?? ''))) || empty($input['birth_date'])) {
@@ -108,7 +109,7 @@ class EligibilityController {
 
         $team = (new Team())->getById((int) $input['team_id']);
         if (!$team) Response::error('Team not found.', 404);
-        if ($user['role'] === 'coach' && (int) $team['coach_user_id'] !== (int) $user['user_id']) {
+        if ((int) $team['coach_user_id'] !== (int) $user['user_id']) {
             Response::forbidden('You can only add players to your own team.');
         }
         $birthDate = DateTimeImmutable::createFromFormat('Y-m-d', (string)$input['birth_date']);
