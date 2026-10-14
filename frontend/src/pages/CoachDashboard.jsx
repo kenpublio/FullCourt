@@ -15,6 +15,7 @@ const CoachDashboard = () => {
     [players, setPlayers] = useState([]),
     [payments, setPayments] = useState([]),
     [schedule, setSchedule] = useState([]),
+    [showAllReadiness, setShowAllReadiness] = useState(false),
     [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
@@ -69,15 +70,20 @@ const CoachDashboard = () => {
     const teamPayments=payments.filter(payment=>Number(payment.team_id)===Number(team.id));
     const fee=Number(teamPayments[0]?.registration_fee||0);
     const paid=Number(teamPayments[0]?.approved_total||0);
-    const hasGame=schedule.some(game=>(Number(game.team1_id)===Number(team.id)||Number(game.team2_id)===Number(team.id))&&Boolean(game.scheduled_start_time));
+    const teamGames=schedule.filter(game=>(Number(game.team1_id)===Number(team.id)||Number(game.team2_id)===Number(team.id))&&Boolean(game.scheduled_start_time));
+    const nearestGame=teamGames.filter(game=>['scheduled','in_progress'].includes(game.status)).sort((a,b)=>new Date(a.scheduled_start_time)-new Date(b.scheduled_start_time))[0];
+    const hasGame=teamGames.length>0;
     const checks=[
       {label:'Roster capacity',done:teamRoster.length>0,detail:`${teamRoster.length}/${rosterLimit} players`,path:'/teams'},
       {label:'Eligibility cleared',done:teamRoster.length>0&&cleared===teamRoster.length,detail:`${cleared}/${teamRoster.length} verified`,path:'/eligibility'},
       {label:'Payment standing',done:fee<=0||paid>=fee,detail:fee<=0?'No fee':`₱${Math.max(0,fee-paid).toLocaleString()} balance`,path:'/payments'},
       {label:'First game scheduled',done:hasGame,detail:hasGame?'Schedule published':'Waiting for schedule',path:'/schedules'},
     ];
-    return {team,checks,percent:Math.round(checks.filter(check=>check.done).length/checks.length*100)};
-  });
+    const deadline=team.registration_deadline?new Date(team.registration_deadline):null;
+    const deadlineLabel=team.roster_locked_at?'Roster locked':deadline?`Roster due ${deadline.toLocaleDateString('en-PH',{month:'short',day:'numeric'})}`:'Roster deadline not set';
+    return {team,checks,nearestGame,deadlineLabel,percent:Math.round(checks.filter(check=>check.done).length/checks.length*100)};
+  }).sort((a,b)=>a.percent-b.percent||new Date(a.nearestGame?.scheduled_start_time||'2999')-new Date(b.nearestGame?.scheduled_start_time||'2999'));
+  const visibleReadiness=showAllReadiness?readinessRows:readinessRows.slice(0,3);
   if (loading)
     return <LoadingSpinner message="Preparing your coach workspace..." />;
   return (
@@ -143,9 +149,9 @@ const CoachDashboard = () => {
         ))}
       </div>
       {readinessRows.length>0&&<section className="coach-readiness-board mb-4" aria-labelledby="coach-readiness-title">
-        <header><div><span>READY FOR GAME DAY</span><h2 id="coach-readiness-title">Team readiness checklist</h2><p>Complete every requirement before your first scheduled game.</p></div><Link to="/teams">Manage team <i className="bi bi-arrow-up-right"/></Link></header>
-        <div className="coach-readiness-grid">{readinessRows.map(({team,checks,percent})=><article key={team.id} className={percent===100?'is-ready':''}>
-          <div className="coach-readiness-team"><span style={{background:team.primary_color||'#dc321d'}}>{team.short_name||team.team_name?.slice(0,2).toUpperCase()}</span><div><b>{team.team_name}</b><small>{team.tournament_name}</small></div><strong>{percent}%</strong></div>
+        <header><div><span>READY FOR GAME DAY</span><h2 id="coach-readiness-title">Team readiness checklist</h2><p>Teams needing action appear first. Complete every requirement before tip-off.</p></div><div className="coach-readiness-head-actions">{readinessRows.length>3&&<button type="button" onClick={()=>setShowAllReadiness(value=>!value)}>{showAllReadiness?'Show priorities only':`Show all ${readinessRows.length} teams`} <i className={`bi ${showAllReadiness?'bi-chevron-up':'bi-chevron-down'}`}/></button>}<Link to="/teams">Manage team <i className="bi bi-arrow-up-right"/></Link></div></header>
+        <div className="coach-readiness-grid">{visibleReadiness.map(({team,checks,percent,nearestGame,deadlineLabel})=><article key={team.id} className={percent===100?'is-ready':''}>
+          <div className="coach-readiness-team"><span style={{background:team.primary_color||'#dc321d'}}>{team.short_name||team.team_name?.slice(0,2).toUpperCase()}</span><div><b>{team.team_name}</b><small>{team.tournament_name}</small><em><i className={`bi ${team.roster_locked_at?'bi-lock-fill':'bi-calendar-event'}`}/> {deadlineLabel}{nearestGame?.scheduled_start_time?` · Next game ${new Date(nearestGame.scheduled_start_time).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}`:''}</em></div><strong>{percent}%</strong></div>
           <div className="coach-readiness-track"><i style={{width:`${percent}%`}}/></div>
           <div className="coach-readiness-checks">{checks.map(check=><Link to={check.path} className={check.done?'done':'missing'} key={check.label}><i className={`bi ${check.done?'bi-check-circle-fill':'bi-exclamation-circle'}`}/><span><b>{check.label}</b><small>{check.detail}</small></span><i className="bi bi-chevron-right"/></Link>)}</div>
           <footer>{percent===100?<><i className="bi bi-shield-check"/> Ready for game day</>:<><i className="bi bi-list-check"/> {checks.filter(check=>!check.done).length} requirement{checks.filter(check=>!check.done).length===1?'':'s'} remaining</>}</footer>
