@@ -7,6 +7,7 @@ import reportService from '../services/reportService';
 import tournamentService from '../services/tournamentService';
 import scheduleService from '../services/scheduleService';
 import basketballAnalyticsService from '../services/basketballAnalyticsService';
+import gameOperationsService from '../services/gameOperationsService';
 import MatchupPrediction from '../components/MatchupPrediction';
 import '../styles/dashboard-professional.css';
 
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const [liveGames, setLiveGames] = useState([]);
   const [activeTournament, setActiveTournament] = useState(null);
   const [tournamentSchedule, setTournamentSchedule] = useState([]);
+  const [staffAssignments, setStaffAssignments] = useState([]);
   const hasTeamAccess = role !== 'player' || membership?.has_team;
 
   useEffect(() => {
@@ -52,6 +54,7 @@ const Dashboard = () => {
     reportService.getAnalytics().then(setAnalytics).catch(() => setAnalytics(null));
     if (['platform_admin','admin','organization_admin','tournament_organizer'].includes(role)) {
       basketballAnalyticsService.dispatchReminders().catch(()=>null);
+      gameOperationsService.assignments().then(setStaffAssignments).catch(()=>setStaffAssignments([]));
       const loadLive=()=>basketballAnalyticsService.liveGames().then(setLiveGames).catch(()=>setLiveGames([]));
       loadLive();const timer=setInterval(loadLive,5000);return()=>clearInterval(timer);
     }
@@ -137,6 +140,13 @@ const Dashboard = () => {
     { title: 'Eligibility queue', description: 'Player records waiting for an eligibility decision.', value: analytics ? Number(analytics.metrics?.pending_eligibility || 0).toLocaleString() : '—', icon: 'bi-patch-check-fill', path: '/eligibility', tone: Number(analytics?.metrics?.pending_eligibility || 0) > 0 ? 'red' : 'green' },
     { title: 'Live game operations', description: 'Monitor active courts and scoring operations.', value: analytics ? Number(analytics.metrics?.active_games || 0).toLocaleString() : '—', icon: 'bi-broadcast-pin', path: '/live-scoring', tone: Number(analytics?.metrics?.active_games || 0) > 0 ? 'green' : 'neutral' },
   ];
+  const adminAttention = dashboardMode === 'admin' ? [
+    { title: 'Eligibility decisions', count: Number(analytics?.metrics?.pending_eligibility || 0), detail: 'player records awaiting Admin review', icon: 'bi-person-vcard-fill', path: '/eligibility', tone: 'critical' },
+    { title: 'Schedule setup', count: tournamentSchedule.filter(game => !game.scheduled_start_time || !(game.court_id || game.court_name || game.venue_name)).length, detail: 'games missing a time or playable court', icon: 'bi-calendar2-x-fill', path: '/schedules', tone: 'warning' },
+    { title: 'Staff confirmations', count: staffAssignments.filter(item => item.status === 'pending').length, detail: 'scoring assignments awaiting response', icon: 'bi-person-exclamation', path: '/officials', tone: 'warning' },
+    { title: 'Live coverage', count: liveGames.filter(game => game.status === 'in_progress' && Number(game.officials_ready || 0) < 1).length, detail: 'live games without confirmed staff coverage', icon: 'bi-broadcast-pin', path: '/game-day', tone: 'critical' },
+  ] : [];
+  const attentionTotal = adminAttention.reduce((total, item) => total + item.count, 0);
 
   const sportIcon = (sport) => {
     if (sport.toLowerCase().includes('basket'))  return 'bi-dribbble';
@@ -179,6 +189,11 @@ const Dashboard = () => {
       <nav className="role-quick-actions mb-4" aria-label={`${roleLabel} quick actions`}>
         {quickActions.map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
       </nav>
+
+      {dashboardMode === 'admin' && <section className={`admin-attention-board mb-4 ${attentionTotal ? 'has-alerts' : 'is-clear'}`} aria-labelledby="admin-attention-title">
+        <header><div><span><i className={`bi ${attentionTotal ? 'bi-exclamation-diamond-fill' : 'bi-shield-check'}`}/> ADMIN PRIORITY QUEUE</span><h2 id="admin-attention-title">{attentionTotal ? `${attentionTotal} item${attentionTotal === 1 ? '' : 's'} need attention` : 'Operations are clear'}</h2><p>{attentionTotal ? 'Resolve these items before the next tip-off to keep tournament operations moving.' : 'No urgent eligibility, schedule, staffing, or live-coverage issues were detected.'}</p></div><Link to="/game-day">Open game-day control <i className="bi bi-arrow-up-right"/></Link></header>
+        <div>{adminAttention.map(item=><Link to={item.path} className={`${item.tone} ${item.count ? 'needs-action' : 'is-done'}`} key={item.title}><span><i className={`bi ${item.count ? item.icon : 'bi-check2'}`}/></span><div><small>{item.count ? 'NEEDS ACTION' : 'CLEAR'}</small><b>{item.title}</b><p>{item.detail}</p></div><strong>{item.count}</strong><i className="bi bi-chevron-right"/></Link>)}</div>
+      </section>}
 
       {dashboardMode === 'admin' && <section className="admin-control-board mb-4" aria-label="Platform control priorities">
         <header className="admin-control-board-head"><div><span>PLATFORM CONTROL</span><h4>Oversight at a glance</h4><p>Key places to review access, eligibility, and live basketball operations.</p></div><span className="admin-control-status"><i/> Platform workspace</span></header>
