@@ -49,6 +49,8 @@ const BasketballStatistician = () => {
     [submittingFinal, setSubmittingFinal] = useState(false),
     [undoingId, setUndoingId] = useState(null),
     [online, setOnline] = useState(()=>navigator.onLine),
+    [clockDraft,setClockDraft]=useState({period:'Q1',minutes:'10',seconds:'00'}),
+    [clockBusy,setClockBusy]=useState(false),
     [tournamentFilter, setTournamentFilter] = useState("all");
   const isStatistician = user?.role === "statistician";
   const statisticianAssignments = useMemo(
@@ -83,7 +85,7 @@ const BasketballStatistician = () => {
         gameOperationsService.lineup(assignment.match_id),
         gameOperationsService.recentStats(assignment.match_id),
       ]);
-      setBoard(score);setPlayers(lineup);setRecentActions(recent);setSelected(lineup[0] || null);
+      setBoard(score);setPlayers(lineup);setRecentActions(recent);setSelected(lineup[0] || null);setClockDraft({period:score.score.current_period||'Q1',minutes:String(Math.floor(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)/60)),seconds:String(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)%60).padStart(2,'0')});
     } catch (error) {
       setBoard(null);setLoadError(error.response?.data?.message || "Could not open this game console. Refresh the assignment list and try again.");
     }
@@ -182,6 +184,10 @@ const BasketballStatistician = () => {
     catch(error){setLoadError(error.response?.data?.message||"Unable to undo this scoring action.");}
     finally{setUndoingId(null);}
   };
+  const updateClock = async (action) => {
+    if(!match||clockBusy)return;const minutes=Number(clockDraft.minutes),seconds=Number(clockDraft.seconds);if(!Number.isInteger(minutes)||!Number.isInteger(seconds)||minutes<0||minutes>59||seconds<0||seconds>59)return setLoadError('Enter a valid game clock from 00:00 to 59:59.');
+    setClockBusy(true);setLoadError('');try{await gameOperationsService.updateClock(match.match_id,{action,current_period:clockDraft.period,timer_seconds:minutes*60+seconds});setMessage(`${clockDraft.period} clock ${action==='pause'?'paused':action==='set'?'saved':'started'}.`);await refresh();}catch(error){setLoadError(error.response?.data?.message||'Unable to update the game clock.');}finally{setClockBusy(false);}
+  };
   if (loading)
     return <LoadingSpinner message="Loading courtside assignments..." />;
   if (!isStatistician) {
@@ -274,6 +280,7 @@ const BasketballStatistician = () => {
           ) : (
             <>
               <div className="card-custom p-4 mb-3 text-center">
+                <div className="staff-clock-control"><select aria-label="Game period" value={clockDraft.period} onChange={event=>setClockDraft({...clockDraft,period:event.target.value})}>{['Q1','Q2','Q3','Q4','OT1','OT2','OT3'].map(value=><option key={value}>{value}</option>)}</select><label><span>MIN</span><input inputMode="numeric" value={clockDraft.minutes} onChange={event=>setClockDraft({...clockDraft,minutes:event.target.value})}/></label><b>:</b><label><span>SEC</span><input inputMode="numeric" value={clockDraft.seconds} onChange={event=>setClockDraft({...clockDraft,seconds:event.target.value})}/></label><div><button disabled={clockBusy||!online} onClick={()=>updateClock(Number(board.score.is_timer_running)?'pause':'start')}><i className={`bi ${Number(board.score.is_timer_running)?'bi-pause-fill':'bi-play-fill'}`}/> {Number(board.score.is_timer_running)?'Pause':'Start'}</button><button disabled={clockBusy||!online} onClick={()=>updateClock('set')}><i className="bi bi-floppy"/> Set</button></div></div>
                 <div className="row align-items-center">
                   <div className="col-5">
                     <h4 className="fw-bold">{board.score.team1_name}</h4>

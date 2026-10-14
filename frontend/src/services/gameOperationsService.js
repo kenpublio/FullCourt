@@ -10,6 +10,7 @@ const gameOperationsService = {
   async substitute(matchId, payload) { return (await api.post(`/matches/${matchId}/substitutions`, payload)).data; },
   async voidStat(matchId, eventId) { return (await api.delete(`/matches/${matchId}/basketball-stats/${eventId}`)).data; },
   async recentStats(matchId) { return (await api.get(`/matches/${matchId}/basketball-stats/recent`)).data?.data?.events || []; },
+  async updateClock(matchId,payload) { return (await api.put(`/matches/${matchId}/game-clock`,payload)).data?.data || {}; },
   async boxScore(matchId) { return (await api.get(`/matches/${matchId}/box-score`)).data?.data?.players || []; },
   async submitFinal(matchId) { return (await api.post(`/matches/${matchId}/submit-final`)).data?.data || {}; },
   async corrections() { return (await api.get('/score-corrections')).data?.data?.corrections || []; },

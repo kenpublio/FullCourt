@@ -59,6 +59,16 @@ class GameOperationsController {
         Response::success('Stat event voided');
     }
     public function recentStats(int $matchId):void { $user=$this->requireAssignedStatistician($matchId);Response::success('Recent scoring actions retrieved',['events'=>$this->model->recentStats($matchId)]); }
+    public function clock(int $matchId):void {
+        $user=$this->requireAssignedStatistician($matchId);$input=$this->input();$action=(string)($input['action']??'');
+        if(!in_array($action,['start','pause','resume','set'],true))Response::error('Choose a valid clock action.',422);
+        $seconds=max(0,min(3599,(int)($input['timer_seconds']??0)));$period=(string)($input['current_period']??'Q1');
+        if(!preg_match('/^(Q[1-4]|OT[1-9])$/',$period))Response::error('Choose Q1-Q4 or a valid overtime period.',422);
+        $scorekeeper=new Scorekeeper();$fields=['timer_seconds'=>$seconds,'current_period'=>$period,'is_timer_running'=>in_array($action,['start','resume'],true)?1:0];
+        $scorekeeper->updateScoreState($matchId,$fields);if($action==='start')$scorekeeper->startMatch($matchId);
+        $this->audit->log((int)$user['user_id'],'UPDATE_GAME_CLOCK','LIVE_SCORING',"Match {$matchId}: {$period}, {$seconds} seconds, {$action}.");
+        Response::success('Game clock updated',['timer_seconds'=>$seconds,'current_period'=>$period,'is_timer_running'=>$fields['is_timer_running']]);
+    }
     public function boxScore(int $matchId): void { $user=AuthMiddleware::authenticate(); OrganizationAccess::requireMatch($matchId,$user); Response::success('Box score retrieved',['players'=>$this->model->boxScore($matchId)]); }
     public function submitFinal(int $matchId): void {
         $user=$this->requireAssignedStatistician($matchId);
