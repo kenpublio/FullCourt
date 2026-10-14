@@ -44,6 +44,8 @@ const BasketballStatistician = () => {
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(""),
     [message, setMessage] = useState(""),
+    [showFinalReview, setShowFinalReview] = useState(false),
+    [submittingFinal, setSubmittingFinal] = useState(false),
     [tournamentFilter, setTournamentFilter] = useState("all");
   const isStatistician = user?.role === "statistician";
   const statisticianAssignments = useMemo(
@@ -149,6 +151,23 @@ const BasketballStatistician = () => {
       await refresh();
     } catch (e) {
       setMessage(e.response?.data?.message || "Unable to record substitution.");
+    }
+  };
+  const submitFinal = async () => {
+    if (!match || !board || submittingFinal) return;
+    setSubmittingFinal(true);
+    setLoadError("");
+    try {
+      await gameOperationsService.submitFinal(match.match_id);
+      setMessage("Final score submitted. Admin must confirm it before the public result and bracket update.");
+      setShowFinalReview(false);
+      setBoard(null);
+      setMatch(null);
+      await loadAssignments();
+    } catch (error) {
+      setLoadError(error.response?.data?.message || "Unable to submit the final score.");
+    } finally {
+      setSubmittingFinal(false);
     }
   };
   if (loading)
@@ -257,6 +276,10 @@ const BasketballStatistician = () => {
                     </div>
                   </div>
                 </div>
+                <div className="staff-score-safety mt-3">
+                  <span><i className="bi bi-cloud-check-fill"/><b>Score synced</b><small>Admin confirmation is required before publication.</small></span>
+                  <button type="button" disabled={Number(board.score.team1_score)===Number(board.score.team2_score)||board.score.match_status==='awaiting_confirmation'} onClick={()=>setShowFinalReview(true)}><i className="bi bi-check2-square"/> Review final score</button>
+                </div>
               </div>
               <div className="card-custom p-3 mb-3">
                 <div className="d-flex justify-content-between">
@@ -343,6 +366,7 @@ const BasketballStatistician = () => {
           )}
         </div>
       </div>
+      {showFinalReview&&board&&<div className="modal show d-block game-modal" role="dialog" aria-modal="true" aria-labelledby="staff-final-title"><div className="modal-dialog modal-dialog-centered"><div className="modal-content"><header><div><span>FINAL SCORE REVIEW</span><h5 id="staff-final-title">Confirm before submitting</h5></div><button className="btn-close" onClick={()=>setShowFinalReview(false)} aria-label="Close"/></header><div className="modal-body staff-final-review"><p>Check the official team totals. After submission, only Admin can confirm and publish the result.</p><div><span><b>{board.score.team1_name}</b><strong>{board.score.team1_score}</strong></span><em>FINAL</em><span><b>{board.score.team2_name}</b><strong>{board.score.team2_score}</strong></span></div>{Number(board.score.team1_score)===Number(board.score.team2_score)&&<div className="alert alert-warning mb-0">A tied score cannot be submitted. Record overtime or correct the score first.</div>}</div><footer><button onClick={()=>setShowFinalReview(false)}>Continue scoring</button><button className="primary" disabled={submittingFinal||Number(board.score.team1_score)===Number(board.score.team2_score)} onClick={submitFinal}>{submittingFinal?'Submitting…':'Submit to Admin'}</button></footer></div></div></div>}
     </div>
   );
 };

@@ -84,6 +84,13 @@ const CoachDashboard = () => {
     return {team,checks,nearestGame,deadlineLabel,percent:Math.round(checks.filter(check=>check.done).length/checks.length*100)};
   }).sort((a,b)=>a.percent-b.percent||new Date(a.nearestGame?.scheduled_start_time||'2999')-new Date(b.nearestGame?.scheduled_start_time||'2999'));
   const visibleReadiness=showAllReadiness?readinessRows:readinessRows.slice(0,3);
+  const rosterRisks = [
+    {label:'Pending review',count:roster.filter(player=>player.eligibility_status==='pending').length,icon:'bi-hourglass-split',tone:'warning'},
+    {label:'Rejected records',count:roster.filter(player=>player.eligibility_status==='rejected').length,icon:'bi-x-octagon-fill',tone:'danger'},
+    {label:'Missing guardian',count:roster.filter(player=>!String(player.guardian_name||'').trim()||!String(player.guardian_contact||'').trim()).length,icon:'bi-person-exclamation',tone:'warning'},
+    {label:'Missing jersey',count:roster.filter(player=>player.jersey_number===null||player.jersey_number==='').length,icon:'bi-person-badge',tone:'neutral'},
+  ];
+  const riskTotal=rosterRisks.reduce((total,item)=>total+item.count,0);
   if (loading)
     return <LoadingSpinner message="Preparing your coach workspace..." />;
   return (
@@ -108,6 +115,10 @@ const CoachDashboard = () => {
       <nav className="role-quick-actions mb-4" aria-label="Coach quick actions">
         {[["Manage Roster","/teams","bi-people-fill"],["Player Eligibility","/eligibility","bi-patch-check-fill"],["Team Schedule","/schedules","bi-calendar-event-fill"],["Team Reports","/reports","bi-bar-chart-fill"]].map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
       </nav>
+      <section className={`coach-risk-panel mb-4 ${riskTotal?'has-risks':'is-clear'}`} aria-labelledby="coach-risk-title">
+        <header><div><span><i className={`bi ${riskTotal?'bi-exclamation-diamond-fill':'bi-shield-check'}`}/> ROSTER QUALITY CHECK</span><h2 id="coach-risk-title">{riskTotal?`${riskTotal} roster detail${riskTotal===1?'':'s'} need attention`:'Roster details are clear'}</h2><p>Resolve missing or rejected information before the Admin locks eligibility.</p></div><div><button type="button" onClick={()=>window.print()}><i className="bi bi-printer"/> Print handoff</button><Link to="/eligibility">Review players <i className="bi bi-arrow-up-right"/></Link></div></header>
+        <div>{rosterRisks.map(item=><Link to="/eligibility" className={`${item.tone} ${item.count?'needs-action':'is-done'}`} key={item.label}><i className={`bi ${item.count?item.icon:'bi-check-circle-fill'}`}/><span><small>{item.count?'CHECK REQUIRED':'CLEAR'}</small><b>{item.label}</b></span><strong>{item.count}</strong><i className="bi bi-chevron-right"/></Link>)}</div>
+      </section>
       <div className="row g-3 mb-4">
         {[
           ["My Teams", teams.length, "bi-shield-fill-check", "kpi-icon-red"],

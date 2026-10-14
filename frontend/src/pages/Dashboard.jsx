@@ -52,9 +52,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (role === 'player') return;
     reportService.getAnalytics().then(setAnalytics).catch(() => setAnalytics(null));
+    if (['platform_admin','admin','organization_admin','tournament_organizer','statistician'].includes(role)) {
+      gameOperationsService.assignments().then(setStaffAssignments).catch(()=>setStaffAssignments([]));
+    }
     if (['platform_admin','admin','organization_admin','tournament_organizer'].includes(role)) {
       basketballAnalyticsService.dispatchReminders().catch(()=>null);
-      gameOperationsService.assignments().then(setStaffAssignments).catch(()=>setStaffAssignments([]));
       const loadLive=()=>basketballAnalyticsService.liveGames().then(setLiveGames).catch(()=>setLiveGames([]));
       loadLive();const timer=setInterval(loadLive,5000);return()=>clearInterval(timer);
     }
@@ -147,6 +149,11 @@ const Dashboard = () => {
     { title: 'Live coverage', count: liveGames.filter(game => game.status === 'in_progress' && Number(game.officials_ready || 0) < 1).length, detail: 'live games without confirmed staff coverage', icon: 'bi-broadcast-pin', path: '/game-day', tone: 'critical' },
   ] : [];
   const attentionTotal = adminAttention.reduce((total, item) => total + item.count, 0);
+  const staffQueue = dashboardMode === 'staff' ? staffAssignments
+    .filter(item => !['completed','cancelled'].includes(String(item.match_status || item.status || '').toLowerCase()))
+    .sort((a,b)=>new Date(a.scheduled_start_time||'2999')-new Date(b.scheduled_start_time||'2999')) : [];
+  const staffPending = staffQueue.filter(item=>item.status==='pending').length;
+  const staffAccepted = staffQueue.filter(item=>item.status==='accepted').length;
 
   const sportIcon = (sport) => {
     if (sport.toLowerCase().includes('basket'))  return 'bi-dribbble';
@@ -190,6 +197,12 @@ const Dashboard = () => {
         {quickActions.map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
       </nav>
 
+      {dashboardMode === 'staff' && <section className="staff-shift-board mb-4" aria-labelledby="staff-shift-title">
+        <header><div><span><i className="bi bi-clipboard2-pulse"/> STAFF ADMIN SHIFT</span><h2 id="staff-shift-title">{staffQueue.length ? `${staffQueue.length} game assignment${staffQueue.length===1?'':'s'} on deck` : 'No active assignment yet'}</h2><p>Accept the assignment, confirm the lineup, then open the protected scoring console.</p></div><Link to="/scorekeeper">Open scoring workspace <i className="bi bi-arrow-up-right"/></Link></header>
+        <div className="staff-shift-summary"><article><i className="bi bi-hourglass-split"/><span><small>Awaiting response</small><b>{staffPending}</b></span></article><article><i className="bi bi-person-check-fill"/><span><small>Accepted</small><b>{staffAccepted}</b></span></article><article><i className="bi bi-cloud-check-fill"/><span><small>Scoring safety</small><b>Offline-ready</b></span></article><article><i className="bi bi-shield-lock-fill"/><span><small>Final result</small><b>Admin confirms</b></span></article></div>
+        <div className="staff-shift-steps">{[['1','Accept assignment','Confirm that you will cover the game.'],['2','Verify lineup','Only eligible and present players can score.'],['3','Record & review','Use +1, +2, +3 and optional advanced stats.'],['4','Submit final','Review totals before sending to Admin.']].map(([step,title,copy])=><div key={step}><strong>{step}</strong><span><b>{title}</b><small>{copy}</small></span></div>)}</div>
+      </section>}
+
       {dashboardMode === 'admin' && <section className={`admin-attention-board mb-4 ${attentionTotal ? 'has-alerts' : 'is-clear'}`} aria-labelledby="admin-attention-title">
         <header><div><span><i className={`bi ${attentionTotal ? 'bi-exclamation-diamond-fill' : 'bi-shield-check'}`}/> ADMIN PRIORITY QUEUE</span><h2 id="admin-attention-title">{attentionTotal ? `${attentionTotal} item${attentionTotal === 1 ? '' : 's'} need attention` : 'Operations are clear'}</h2><p>{attentionTotal ? 'Resolve these items before the next tip-off to keep tournament operations moving.' : 'No urgent eligibility, schedule, staffing, or live-coverage issues were detected.'}</p></div><Link to="/game-day">Open game-day control <i className="bi bi-arrow-up-right"/></Link></header>
         <div>{adminAttention.map(item=><Link to={item.path} className={`${item.tone} ${item.count ? 'needs-action' : 'is-done'}`} key={item.title}><span><i className={`bi ${item.count ? item.icon : 'bi-check2'}`}/></span><div><small>{item.count ? 'NEEDS ACTION' : 'CLEAR'}</small><b>{item.title}</b><p>{item.detail}</p></div><strong>{item.count}</strong><i className="bi bi-chevron-right"/></Link>)}</div>
@@ -204,6 +217,11 @@ const Dashboard = () => {
             <span className="admin-control-value">{item.value}<i className="bi bi-arrow-up-right"/></span>
           </Link>)}
         </div>
+      </section>}
+
+      {dashboardMode === 'admin' && <section className="admin-safety-strip mb-4" aria-label="Event safety shortcuts">
+        <div><span>EVENT SAFETY</span><b>Defense and tournament safeguards</b><small>Keep audit, backup, incident, and notification controls one click away.</small></div>
+        <nav><Link to="/settings"><i className="bi bi-database-check"/><span><b>Backup status</b><small>Verify the latest snapshot</small></span></Link><Link to="/users"><i className="bi bi-clock-history"/><span><b>Audit history</b><small>Review sensitive actions</small></span></Link><Link to="/game-day"><i className="bi bi-shield-exclamation"/><span><b>Incidents</b><small>Record and resolve issues</small></span></Link><Link to="/notifications"><i className="bi bi-bell-fill"/><span><b>Alerts</b><small>Confirm operational notices</small></span></Link></nav>
       </section>}
 
       {!hasTeamAccess && (

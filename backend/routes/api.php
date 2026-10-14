@@ -166,6 +166,7 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/matches/(\d+)/box-score$#', $path, $m) && $method === 'GET') { (new GameOperationsController())->boxScore((int)$m[1]); return; }
     if ($path === '/score-corrections' && $method === 'GET') { (new GameOperationsController())->corrections(); return; }
     if (preg_match('#^/matches/(\d+)/score-corrections$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->requestCorrection((int)$m[1]); return; }
+    if (preg_match('#^/matches/(\d+)/submit-final$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->submitFinal((int)$m[1]); return; }
     if (preg_match('#^/score-corrections/(\d+)/review$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->reviewCorrection((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/score$#', $path, $m) && $method === 'GET') { (new ScoringController())->getScore((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/score$#', $path, $m) && $method === 'POST') { (new ScoringController())->updateScore((int)$m[1]); return; }

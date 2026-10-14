@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../models/GameOperations.php';
+require_once __DIR__ . '/../models/Scorekeeper.php';
 require_once __DIR__ . '/../models/AuditLog.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../middleware/OrganizationAccess.php';
@@ -58,6 +59,18 @@ class GameOperationsController {
         Response::success('Stat event voided');
     }
     public function boxScore(int $matchId): void { $user=AuthMiddleware::authenticate(); OrganizationAccess::requireMatch($matchId,$user); Response::success('Box score retrieved',['players'=>$this->model->boxScore($matchId)]); }
+    public function submitFinal(int $matchId): void {
+        $user=$this->requireAssignedStatistician($matchId);
+        $scorekeeper=new Scorekeeper();
+        $score=$scorekeeper->getMatchScoreState($matchId);
+        if (!$score) Response::error('The scoreboard is not ready for final review.',404);
+        $home=(int)$score['team1_score'];$away=(int)$score['team2_score'];
+        if ($home===$away) Response::error('A tied score cannot be submitted as final. Record overtime or correct the score first.',422);
+        $winner=$home>$away?(int)$score['team1_id']:(int)$score['team2_id'];
+        $scorekeeper->submitMatchForConfirmation($matchId,$winner);
+        $this->audit->log((int)$user['user_id'],'SUBMIT_FINAL_SCORE','LIVE_SCORING',"Staff Admin submitted match {$matchId} for Admin confirmation at {$home}-{$away}.");
+        Response::success('Final score submitted for Admin confirmation.',['home_score'=>$home,'away_score'=>$away,'winner_team_id'=>$winner]);
+    }
     public function corrections(): void { $user=AuthMiddleware::authorizeRoles(self::MANAGERS); Response::success('Corrections retrieved',['corrections'=>$this->model->corrections((int)$user['user_id'],OrganizationAccess::isPlatform($user))]); }
     public function requestCorrection(int $matchId): void {
         $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['statistician'])); OrganizationAccess::requireMatch($matchId,$user); $in=$this->input();
