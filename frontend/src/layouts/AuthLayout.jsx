@@ -41,7 +41,7 @@ const AuthLayout = () => {
               <div className="fc-court-art" aria-hidden="true">
                 <svg viewBox="0 0 440 230" fill="none"><rect x="16" y="16" width="408" height="198" rx="6" /><path d="M220 16v198M16 65h64v100H16M424 65h-64v100h64M16 85h25v60H16M424 85h-25v60h25" /><circle cx="220" cy="115" r="40" /><path d="M80 85a30 30 0 0 1 0 60M360 85a30 30 0 0 0 0 60M16 29c157 0 157 172 0 172M424 29c-157 0-157 172 0 172" /><circle cx="49" cy="115" r="8" /><circle cx="391" cy="115" r="8" /></svg>
                 <div className="fc-court-ball"><i className="bi bi-dribbble" /></div>
-                <div className="fc-court-note"><i className="bi bi-check2-circle" /><span>Every role. One team.<small>Organize · Coach · Play</small></span></div>
+                <div className="fc-court-note"><i className="bi bi-check2-circle" /><span>Three roles. One tournament.<small>Admin · Coach · Staff Admin</small></span></div>
               </div>
             </div>
             <small className="fc-story-footer"><span>BASKETBALL, CONNECTED.</span><i className="bi bi-arrow-up-right" /></small>

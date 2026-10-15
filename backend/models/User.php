@@ -127,7 +127,7 @@ class User {
     }
 
     public function getAll(): array {
-        $stmt = $this->db->query("SELECT id, full_name, email, role, phone_number, address, birth_date, is_active, created_at FROM users ORDER BY id DESC");
+        $stmt = $this->db->query("SELECT id, full_name, email, role, phone_number, address, birth_date, is_active, created_at FROM users WHERE role IN ('platform_admin','admin','coach','statistician') ORDER BY id DESC");
         return $stmt->fetchAll();
     }
 

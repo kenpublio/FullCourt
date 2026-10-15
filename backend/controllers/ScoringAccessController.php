@@ -88,7 +88,7 @@ class ScoringAccessController {
         $this->links->updateGameClock($matchId,$period,$remaining,false);
         $operator=trim((string)($access['operator_name']??'Guest statistician'));
         $this->audit->log((int)$access['created_by'],'SUBMIT_FINAL_SCORE','LIVE_SCORING',"{$operator} submitted match {$matchId} for organizer confirmation at {$home}-{$away}.");
-        Response::success('Final score submitted for organizer confirmation. Scoring is now locked.',['match_id'=>$matchId,'team1_score'=>$home,'team2_score'=>$away,'winner_team_id'=>$winner,'status'=>'awaiting_confirmation']);
+        Response::success('Final score submitted for Admin confirmation. Scoring is now locked.',['match_id'=>$matchId,'team1_score'=>$home,'team2_score'=>$away,'winner_team_id'=>$winner,'status'=>'awaiting_confirmation']);
     }
 
     public function revoke(int $id):void{
@@ -102,7 +102,7 @@ class ScoringAccessController {
         $payload=AuthMiddleware::authenticate();if(($payload['role']??'')!=='guest_statistician'||empty($payload['scoring_link_id']))Response::forbidden('A valid scoring-link session is required.');
         $row=$this->links->findActiveById((int)$payload['scoring_link_id']);if(!$row||(int)$row['match_id']!==(int)$payload['match_id'])Response::unauthorized('This scoring session has expired or was revoked.');
         if(empty($payload['device_hash'])||empty($row['active_device_hash'])||!hash_equals((string)$row['active_device_hash'],(string)$payload['device_hash']))Response::unauthorized('This device no longer controls the scoreboard. Ask the Admin for a new access session.');
-        if(in_array($row['match_status'],['completed','cancelled','awaiting_confirmation'],true))Response::forbidden('Scoring is locked while this game awaits organizer confirmation.');
+        if(in_array($row['match_status'],['completed','cancelled','awaiting_confirmation'],true))Response::forbidden('Scoring is locked while this game awaits Admin confirmation.');
         $this->links->touch((int)$row['id']);return array_merge($payload,['created_by'=>(int)$row['created_by']]);
     }
 

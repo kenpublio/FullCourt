@@ -40,6 +40,11 @@ class AuthController {
             Response::error('Account is deactivated. Please contact the administrator.', 403);
         }
 
+        $activeRoles = ['platform_admin', 'admin', 'coach', 'statistician'];
+        if (!in_array($user['role'], $activeRoles, true)) {
+            Response::error('This legacy account type is no longer used. Ask the Administrator to assign an active FullCourt role.', 403);
+        }
+
         $isPlatformAdmin = in_array($user['role'], ['platform_admin','admin'], true);
         if ($portal === 'admin' && !$isPlatformAdmin) {
             Response::error('This portal is reserved for platform administrators.', 403);

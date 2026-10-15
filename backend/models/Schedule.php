@@ -81,13 +81,19 @@ class Schedule {
         return !in_array($d, $venueDates ?? [], true);
     }
 
-    private function teamGamesToday(int $tournamentId, int $teamId, string $day): int {
-        $stmt = $this->db->prepare("
+    private function teamGamesToday(int $tournamentId, int $teamId, string $day, ?int $excludeMatchId = null): int {
+        $sql = "
             SELECT COUNT(*) FROM matches
             WHERE tournament_id = :tournament_id AND (team1_id = :team1 OR team2_id = :team2)
               AND DATE(scheduled_start_time) = :day AND status IN ('scheduled','in_progress','completed')
-        ");
-        $stmt->execute([':tournament_id' => $tournamentId, ':team1' => $teamId, ':team2' => $teamId, ':day' => $day]);
+        ";
+        $params = [':tournament_id' => $tournamentId, ':team1' => $teamId, ':team2' => $teamId, ':day' => $day];
+        if ($excludeMatchId !== null) {
+            $sql .= ' AND id != :exclude_match_id';
+            $params[':exclude_match_id'] = $excludeMatchId;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return (int)$stmt->fetchColumn();
     }
 
@@ -374,7 +380,7 @@ class Schedule {
             if ($lastEnd && ($sTs - strtotime($lastEnd)) < (int)$c['min_rest_minutes_between_games'] * 60) {
                 $conflicts[] = ['type' => 'rest', 'team_id' => (int)$tid];
             }
-            if ($this->teamGamesToday((int)$m['tournament_id'], (int)$tid, $day) >= (int)$c['max_games_per_team_per_day']) {
+            if ($this->teamGamesToday((int)$m['tournament_id'], (int)$tid, $day, $matchId) >= (int)$c['max_games_per_team_per_day']) {
                 $conflicts[] = ['type' => 'max_games_per_day', 'team_id' => (int)$tid];
             }
         }

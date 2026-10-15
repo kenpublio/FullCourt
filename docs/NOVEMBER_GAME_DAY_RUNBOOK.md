@@ -7,6 +7,8 @@
 - Export the team list, schedule, payment ledger, and eligibility status as offline copies.
 - Assign one Staff Admin per active court and one backup Staff Admin.
 - Prepare a laptop running XAMPP as the local fallback when internet access becomes unstable.
+- In **Settings > System health & verified backup**, create a fresh verified backup and copy it to a second device.
+- Run the complete Admin -> Coach -> Staff Admin -> Public rehearsal using a disposable tournament.
 
 ## Before the first game
 
@@ -15,6 +17,8 @@
 3. Open the Staff Admin scoring screen and verify both teams and player rosters.
 4. Confirm the public score screen or broadcast overlay on a second device.
 5. Record one test basket, verify that the score updates, then void/reset the test before tip-off.
+6. Confirm that both Coaches receive a test schedule-change notification.
+7. Confirm that the Staff Admin sees only assigned/accepted games and cannot access Admin controls.
 
 ## During games
 
@@ -30,12 +34,30 @@
 - Review the points leader suggested for Player of the Game; optional stats are tie-breakers only.
 - Check that the result appears in Game Center, the bracket, and standings.
 - Photograph or retain the signed paper score sheet as an audit fallback.
+- Confirm that both Coaches receive the official-result notification after Admin approval.
 
 ## End of day
 
 - Export scores, schedules, standings, payments, and eligibility status.
 - Copy the database backup and exports to two separate storage locations.
 - Log corrections with the game, old value, new value, reason, person, and time.
+
+## Recovery procedure
+
+1. Stop scoring on all devices and keep the paper score sheet as the temporary source of truth.
+2. Record the last confirmed event, period, clock, and team totals.
+3. If only the browser lost connection, reconnect and reload the same assigned game. Do not repeatedly tap score actions while offline.
+4. If the main server failed, start the prepared XAMPP/local fallback and restore the latest verified backup according to the database administrator procedure.
+5. Admin compares the restored scoreboard with the signed paper sheet before reopening scoring.
+6. Record the incident and every correction in Game-Day Control and the audit trail.
+
+## Required notification checks
+
+- Schedule publication: affected Coaches receive the published schedule.
+- Time, venue, or court change: affected Coaches receive a schedule-change alert.
+- Thirty-minute reminder: assigned Coaches and Staff Admin receive one deduplicated reminder.
+- Eligibility review: Coach sees the current status of roster documents.
+- Final result: both Coaches receive the official score after Admin confirmation.
 
 ## Responsibility guide
 

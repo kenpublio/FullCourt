@@ -6,6 +6,7 @@ require_once __DIR__ . '/../models/AuditLog.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../utils/response.php';
 require_once __DIR__ . '/../middleware/OrganizationAccess.php';
+require_once __DIR__ . '/../utils/NotificationMailer.php';
 
 class ScoringController {
     private MatchScore $scoreModel;
@@ -26,7 +27,7 @@ class ScoringController {
     }
 
     public function updateScore(int $matchId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         OrganizationAccess::requireMatch($matchId,$user);
         $current = $this->scoreModel->getScore($matchId);
         if (!$current) Response::error('Match score not found.', 404);
@@ -46,7 +47,7 @@ class ScoringController {
     }
 
     public function finalizeMatch(int $matchId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         OrganizationAccess::requireMatch($matchId,$user);
         $input = json_decode(file_get_contents('php://input'), true);
 
@@ -67,8 +68,33 @@ class ScoringController {
         } catch (InvalidArgumentException $e) {
             Response::error($e->getMessage(), 422);
         }
+        $notice = ['notifications_created' => 0, 'recipient_ids' => [], 'message' => ''];
+        $emailsSent = 0;
+        $emailsFailed = 0;
+        try {
+            $notice = $this->scoreModel->notifyFinalResult($matchId);
+            if ((getenv('APP_ENV') ?: 'development') === 'production') {
+                $mailer = new NotificationMailer();
+                foreach ($notice['recipient_ids'] as $recipientId) {
+                    try {
+                        $mailer->sendToUser((int) $recipientId, 'Official game result', $notice['message'], '/schedules', 'View official result') ? $emailsSent++ : $emailsFailed++;
+                    } catch (Throwable) {
+                        $emailsFailed++;
+                    }
+                }
+            }
+        } catch (Throwable $notificationError) {
+            $this->auditLog->log($user['user_id'], 'FINAL_RESULT_NOTIFICATION_FAILED', 'NOTIFICATIONS', "Match {$matchId}: {$notificationError->getMessage()}");
+        }
         $this->auditLog->log($user['user_id'], 'FINALIZE_MATCH', 'LIVE_SCORING', "Finalized match ID {$matchId}. Winner: Team ID {$winnerTeamId}.");
 
-        Response::success('Final score confirmed, published to official results, and winner advanced in bracket');
+        $message = $notice['notifications_created'] > 0
+            ? 'Final score confirmed, published, coaches notified, and winner advanced in bracket'
+            : 'Final score confirmed, published, and winner advanced in bracket';
+        Response::success($message, [
+            'coaches_notified' => $notice['notifications_created'],
+            'emails_sent' => $emailsSent,
+            'emails_skipped_or_failed' => $emailsFailed,
+        ]);
     }
 }

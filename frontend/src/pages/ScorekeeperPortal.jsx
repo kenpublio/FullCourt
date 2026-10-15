@@ -197,7 +197,7 @@ const ScorekeeperPortal = () => {
         <div className="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
           {locked && (
             <span className="badge bg-secondary" style={{ fontSize: '0.7rem' }}>
-              <i className="bi bi-lock-fill me-1" /> {board.score.match_status === 'awaiting_confirmation' ? 'Final score submitted — waiting for organizer confirmation' : 'Match completed — scoreboard locked'}
+              <i className="bi bi-lock-fill me-1" /> {board.score.match_status === 'awaiting_confirmation' ? 'Final score submitted — waiting for Admin confirmation' : 'Match completed — scoreboard locked'}
             </span>
           )}
           <button className="btn btn-evsu-primary px-3" style={{ borderRadius: 10, fontSize: '0.8rem' }} {...disabled} onClick={toggleClock}>

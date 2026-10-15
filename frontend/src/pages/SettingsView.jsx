@@ -9,15 +9,12 @@ import '../styles/settings-polish.css';
 const defaults = {
   gameReminders: true,
   scheduleChanges: true,
-  teamInvitations: true,
+  rosterUpdates: true,
   scoreUpdates: true,
   announcements: true,
   reminderTime: "30",
   appearance: "system",
   reduceMotion: false,
-  publicProfile: false,
-  publicStats: true,
-  playerApplications: true,
 };
 const Toggle = ({ id, label, description, checked, onChange }) => (
   <div className="d-flex justify-content-between align-items-center gap-3 py-3 border-bottom">
@@ -80,8 +77,7 @@ const SettingsView = () => {
   };
   const resetPreferences=()=>{setSettings(defaults);setSaveError('');};
   const preferencesChanged=JSON.stringify(settings)!==savedSnapshot;
-  const isPlayer = user?.role === "player",
-    isCoach = ["coach", "coach_manager"].includes(user?.role);
+  const isCoach = user?.role === "coach";
   const savePlatform=async()=>{setPlatformSaving(true);setPlatformMessage('');try{const data=await platformSettingsService.update(platformSettings);setPlatformSettings(data);setPlatformMessage('Platform operations settings saved.');window.dispatchEvent(new CustomEvent('fullcourt-platform-settings',{detail:data}));}catch(error){setPlatformMessage(error.response?.data?.message||'Unable to save platform operations settings.');}finally{setPlatformSaving(false);}};
   const createBackup=async()=>{setBackupBusy(true);setBackupMessage('');try{const backup=await systemOperationsService.backup();setBackupMessage(`Verified backup created: ${backup.file}`);setSystemHealth(await systemOperationsService.health());}catch(error){setBackupMessage(error.response?.data?.message||'Backup could not be created.');}finally{setBackupBusy(false);}};
   const changePassword = async (e) => {
@@ -136,15 +132,11 @@ const SettingsView = () => {
               onChange={() => toggle("scheduleChanges")}
             />
             <Toggle
-              id="teamInvitations"
-              label={isCoach ? "Roster responses" : "Team invitations"}
-              description={
-                isCoach
-                  ? "Notify me when a player responds to an invitation."
-                  : "Notify me when a coach invites me to a team."
-              }
-              checked={settings.teamInvitations}
-              onChange={() => toggle("teamInvitations")}
+              id="rosterUpdates"
+              label={isCoach ? "Roster and eligibility updates" : "Roster review updates"}
+              description={isCoach ? "Notify me when Admin reviews a player document or eligibility record." : "Notify me when a Coach submits roster documents for review."}
+              checked={settings.rosterUpdates}
+              onChange={() => toggle("rosterUpdates")}
             />
             <Toggle
               id="scoreUpdates"
@@ -179,38 +171,6 @@ const SettingsView = () => {
               </select>
             </div>
           </section>
-          {isPlayer && (
-            <section className="card-custom p-4 mb-4 settings-section">
-              <div className="settings-section-heading"><span className="settings-section-icon is-blue"><i className="bi bi-eye-fill"/></span><div><h2>Player privacy preferences</h2><p>Your display choices for player profile and stats.</p></div></div>
-              <div className="settings-local-note"><i className="bi bi-info-circle-fill"/><span>Saved locally in this browser; these switches do not yet change public-profile visibility on the server.</span></div>
-              <Toggle
-                id="publicProfile"
-                label="Public player profile"
-                description="Allow visitors to see my player profile."
-                checked={settings.publicProfile}
-                onChange={() => toggle("publicProfile")}
-              />
-              <Toggle
-                id="publicStats"
-                label="Public performance statistics"
-                description="Show my tournament statistics and awards."
-                checked={settings.publicStats}
-                onChange={() => toggle("publicStats")}
-              />
-            </section>
-          )}
-          {isCoach && (
-            <section className="card-custom p-4 mb-4 settings-section">
-              <div className="settings-section-heading"><span className="settings-section-icon is-green"><i className="bi bi-people-fill"/></span><div><h2>Coach preferences</h2><p>Local notification preferences for roster activity.</p></div></div>
-              <Toggle
-                id="playerApplications"
-                label="Player application alerts"
-                description="Notify me when a player applies or accepts an invitation."
-                checked={settings.playerApplications}
-                onChange={() => toggle("playerApplications")}
-              />
-            </section>
-          )}
           <div className="settings-savebar"><span className={preferencesChanged?'is-dirty':'is-saved'}><i className={`bi ${preferencesChanged?'bi-pencil-square':'bi-check-circle-fill'}`}/>{preferencesChanged?'Unsaved preference changes':'All preferences saved'}</span><div><button className="btn btn-light border" onClick={resetPreferences} disabled={!preferencesChanged}>Reset changes</button><button className="btn btn-evsu" onClick={save} disabled={!preferencesChanged}><i className="bi bi-check2-circle me-2" />Save preferences</button></div></div>
         </div>
         <div className="col-lg-5">

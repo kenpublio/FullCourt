@@ -105,6 +105,38 @@ class MatchScore {
         }
     }
 
+    public function notifyFinalResult(int $matchId): array {
+        $stmt = $this->db->prepare("SELECT m.id,ms.team1_score,ms.team2_score,h.team_name AS home_team,a.team_name AS away_team,
+                h.coach_user_id AS home_coach,a.coach_user_id AS away_coach
+            FROM matches m JOIN match_scores ms ON ms.match_id=m.id
+            LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id
+            WHERE m.id=:match_id AND m.status='completed' LIMIT 1");
+        $stmt->execute([':match_id' => $matchId]);
+        $match = $stmt->fetch();
+        if (!$match) return ['notifications_created' => 0, 'recipient_ids' => [], 'message' => ''];
+
+        $message = sprintf('%s %d - %d %s is now an official result.',
+            $match['home_team'] ?? 'Team 1', (int)$match['team1_score'], (int)$match['team2_score'], $match['away_team'] ?? 'Team 2');
+        $recipientIds = array_values(array_unique(array_filter(array_map('intval', [
+            $match['home_coach'] ?? 0,
+            $match['away_coach'] ?? 0,
+        ]))));
+        $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $dedupe = $driver === 'mysql' ? 'ON DUPLICATE KEY UPDATE id=id' : 'ON CONFLICT (dedupe_key) DO NOTHING';
+        $insert = $this->db->prepare("INSERT INTO notifications (user_id,notification_type,title,message,action_url,dedupe_key)
+            VALUES (:user_id,'final_result','Official game result',:message,'/schedules',:dedupe_key) {$dedupe}");
+        $created = 0;
+        foreach ($recipientIds as $recipientId) {
+            $insert->execute([
+                ':user_id' => $recipientId,
+                ':message' => $message,
+                ':dedupe_key' => "final-result-{$matchId}-{$recipientId}",
+            ]);
+            $created += $insert->rowCount();
+        }
+        return ['notifications_created' => $created, 'recipient_ids' => $recipientIds, 'message' => $message];
+    }
+
     // Rebuild the standings for a tournament from every completed match that
     // has a final score. This is what populates the leaderboard, public
     // rankings, and medal tally (previously never written, so always empty).
