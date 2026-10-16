@@ -364,7 +364,7 @@ const TeamManagement = () => {
                       </span>
                     </td>
                     <td className="text-nowrap team-actions-column">
-                      {['platform_admin','admin','coach'].includes(user?.role) ? (
+                      {['platform_admin','admin','coach','statistician'].includes(user?.role) ? (
                         <div className="d-inline-flex align-items-center gap-2 team-action-group">
                           {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg me-1"/>Reject</button></>}
                           {isCoach&&tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player">

@@ -50,7 +50,7 @@ class BasketballOperationsController {
     }
 
     public function createDivision(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         OrganizationAccess::requireTournament($tournamentId,$user);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         if (empty($input['name'])) Response::error('Division name is required.', 422);

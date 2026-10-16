@@ -305,7 +305,7 @@ const TournamentManagement = () => {
     upcoming: tournaments.filter((t) => t.status === "upcoming").length,
     teams: tournaments.reduce((sum, t) => sum + Number(t.registered_teams_count || 0), 0),
   };
-  const canCreateTournaments = ["platform_admin", "admin"].includes(user?.role);
+  const canCreateTournaments = ["platform_admin", "admin", "statistician"].includes(user?.role);
   const canReviewTournaments = false;
   const canViewTournamentOperations = canCreateTournaments || canReviewTournaments;
   const selectedCourtCount = formData.court_ids.length;

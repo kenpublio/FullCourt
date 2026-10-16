@@ -43,7 +43,7 @@ class TournamentController {
     }
 
     public function store(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['name']) || empty($input['start_date']) || empty($input['end_date'])) {
@@ -93,7 +93,7 @@ class TournamentController {
     }
 
     public function update(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         OrganizationAccess::requireTournament($id,$user);
         $input = json_decode(file_get_contents('php://input'), true);
 
@@ -109,7 +109,7 @@ class TournamentController {
     }
 
     public function destroy(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         OrganizationAccess::requireTournament($id,$user);
         $existing = $this->tournamentModel->getById($id);
         if (!$existing) {
@@ -123,7 +123,7 @@ class TournamentController {
     }
 
     public function rosterLock(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         OrganizationAccess::requireTournament($id, $user);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         if (!array_key_exists('locked', $input)) Response::error('Locked state is required.', 422);
@@ -134,7 +134,7 @@ class TournamentController {
     }
 
     public function archiveTournament(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         OrganizationAccess::requireTournament($id, $user);
         $existing = $this->tournamentModel->getById($id);
         if (!$existing) Response::error('Tournament not found.', 404);

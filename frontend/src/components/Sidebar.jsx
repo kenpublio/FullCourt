@@ -8,10 +8,10 @@ const menuItems = [
   ]},
   { section: 'Management', items: [
     { title: 'User & Role Ops', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin'] },
-    { title: 'Tournaments', path: '/tournaments', icon: 'bi-trophy-fill', roles: ['platform_admin','admin','coach'] },
-    { title: 'Teams & Players', path: '/teams', icon: 'bi-people-fill', roles: ['platform_admin','admin','coach'] },
+    { title: 'Tournaments', path: '/tournaments', icon: 'bi-trophy-fill', roles: ['platform_admin','admin','coach','statistician'] },
+    { title: 'Teams & Players', path: '/teams', icon: 'bi-people-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Eligibility', path: '/eligibility', icon: 'bi-patch-check-fill', roles: ['platform_admin','admin','coach'] },
-    { title: 'Brackets', path: '/brackets', icon: 'bi-diagram-3-fill', roles: ['platform_admin','admin'] },
+    { title: 'Brackets', path: '/brackets', icon: 'bi-diagram-3-fill', roles: ['platform_admin','admin','statistician'] },
   ]},
   { section: 'Live Ops', items: [
     { title: 'Staff Assignments', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin','statistician'] },

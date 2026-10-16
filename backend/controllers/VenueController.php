@@ -41,7 +41,7 @@ class VenueController {
     }
 
     public function storeVenue(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         $input = json_decode(file_get_contents('php://input'), true);
         $name = trim($input['name'] ?? '');
         $location = trim($input['location'] ?? '');
@@ -52,8 +52,9 @@ class VenueController {
     }
 
     public function updateVenue(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         if (!$this->venueModel->getById($id)) Response::error('Venue not found.', 404);
+        if ($user['role']==='statistician' && !$this->venueModel->canManage($id,(int)$user['user_id'])) Response::forbidden('You can only edit venues you created.');
         $input = json_decode(file_get_contents('php://input'), true);
         $name = trim($input['name'] ?? '');
         $location = trim($input['location'] ?? '');
@@ -64,19 +65,21 @@ class VenueController {
     }
 
     public function destroyVenue(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         if (!$this->venueModel->getById($id)) Response::error('Venue not found.', 404);
+        if ($user['role']==='statistician' && !$this->venueModel->canManage($id,(int)$user['user_id'])) Response::forbidden('You can only delete venues you created.');
         $this->venueModel->deleteVenue($id);
         $this->auditLog->log($user['user_id'], 'DELETE_VENUE', 'VENUE_MGMT', "Deleted venue ID {$id}.");
         Response::success('Venue deleted successfully');
     }
 
     public function storeCourt(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         $input = json_decode(file_get_contents('php://input'), true);
         $venueId = (int) ($input['venue_id'] ?? 0);
         $courtName = trim($input['court_name'] ?? '');
         if (!$venueId || !$this->venueModel->getById($venueId)) Response::error('A valid venue is required.', 400);
+        if ($user['role']==='statistician' && !$this->venueModel->canManage($venueId,(int)$user['user_id'])) Response::forbidden('You can only add courts to venues you created.');
         if ($courtName === '') Response::error('Court name is required.', 400);
         $sportId = empty($input['sport_id']) ? null : (int) $input['sport_id'];
         $id = $this->venueModel->createCourt($venueId, $courtName, $sportId, (bool)($input['is_available'] ?? true));

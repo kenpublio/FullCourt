@@ -85,10 +85,10 @@ const AppRoutes = () => {
         <Route path="/statistician" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BasketballStatistician /></ProtectedRoute>} />
         <Route path="/games/:gameId/live" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><LiveScoringView /></ProtectedRoute>} />
         
-        <Route path="/tournaments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><TournamentManagement /></ProtectedRoute>} />
-        <Route path="/teams" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><TeamManagement /></ProtectedRoute>} />
+        <Route path="/tournaments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><TournamentManagement /></ProtectedRoute>} />
+        <Route path="/teams" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><TeamManagement /></ProtectedRoute>} />
         <Route path="/eligibility" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><EligibilityVerification /></ProtectedRoute>} />
-        <Route path="/brackets" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><BracketEngineView /></ProtectedRoute>} />
+        <Route path="/brackets" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BracketEngineView /></ProtectedRoute>} />
         <Route path="/schedules" element={<ScheduleOptimizerView />} />
         <Route path="/venues" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><VenueManagement /></ProtectedRoute>} />
         <Route path="/live-scoring" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><LiveScoringView /></ProtectedRoute>} />

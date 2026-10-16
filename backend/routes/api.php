@@ -91,6 +91,7 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/tournaments/(\d+)/divisions$#', $path, $m) && $method === 'GET') { (new BasketballOperationsController())->divisions((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/divisions$#', $path, $m) && $method === 'POST') { (new BasketballOperationsController())->createDivision((int)$m[1]); return; }
     if ($path === '/users' && $method === 'GET') { (new UserController())->index(); return; }
+    if ($path === '/users' && $method === 'POST') { (new UserController())->store(); return; }
     if ($path === '/users/audit-logs' && $method === 'GET') { (new UserController())->getAuditLogs(); return; }
     if ($path === '/users/profile' && $method === 'PUT') { (new UserController())->updateProfile(); return; }
     if ($path === '/users/profile/photo' && $method === 'POST') { (new UserController())->uploadPhoto(); return; }

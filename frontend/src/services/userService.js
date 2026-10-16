@@ -6,6 +6,11 @@ export const userService = {
     return response.data?.data?.users || [];
   },
 
+  async createStaffAdmin(data) {
+    const response = await api.post('/users', data);
+    return response.data;
+  },
+
   async updateUserRole(userId, role) {
     const response = await api.put(`/users/${userId}/role`, { role });
     return response.data;

@@ -33,7 +33,7 @@ class Venue {
     }
 
     public function canManage(int $venueId,int $userId):bool {
-        $stmt=$this->db->prepare("SELECT v.id FROM venues v JOIN organization_members om ON om.organization_id=v.organization_id AND om.user_id=:user_id AND om.status='active' WHERE v.id=:venue_id LIMIT 1");$stmt->execute([':venue_id'=>$venueId,':user_id'=>$userId]);return(bool)$stmt->fetchColumn();
+        $stmt=$this->db->prepare("SELECT v.id FROM venues v LEFT JOIN organization_members om ON om.organization_id=v.organization_id AND om.user_id=:user_id AND om.status='active' WHERE v.id=:venue_id AND (v.submitted_by=:submitter_id OR om.id IS NOT NULL) LIMIT 1");$stmt->execute([':venue_id'=>$venueId,':user_id'=>$userId,':submitter_id'=>$userId]);return(bool)$stmt->fetchColumn();
     }
 
     public function courtVenueId(int $courtId):?int {$stmt=$this->db->prepare('SELECT venue_id FROM courts WHERE id=:id');$stmt->execute([':id'=>$courtId]);$id=$stmt->fetchColumn();return$id===false?null:(int)$id;}

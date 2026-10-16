@@ -23,6 +23,8 @@ class TeamController {
         $user = AuthMiddleware::authenticate();
         if ($user['role'] === 'coach') {
             $teams = $this->teamModel->getForCoach((int) $user['user_id']);
+        } elseif ($user['role'] === 'statistician') {
+            $teams = $this->teamModel->getForTournamentManager((int)$user['user_id']);
         } elseif (OrganizationAccess::isPlatform($user)) {
             $teams = $this->teamModel->getAll();
         } else {
@@ -63,7 +65,7 @@ class TeamController {
     }
 
     public function reviewApplication(int $id): void {
-        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         $team=$this->teamModel->getById($id);
         if (!$team) Response::error('Team application not found.',404);
         OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
@@ -128,7 +130,7 @@ class TeamController {
     }
 
     public function destroy(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         $team = $this->teamModel->getById($id);
         if (!$team) {
             Response::error('Team not found.', 404);

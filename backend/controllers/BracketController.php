@@ -23,7 +23,8 @@ class BracketController {
     }
 
     public function generate(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
+        OrganizationAccess::requireTournament($tournamentId, $user);
 
         $tournament = $this->tournamentModel->getById($tournamentId);
         if (!$tournament) Response::error('Tournament not found.', 404);

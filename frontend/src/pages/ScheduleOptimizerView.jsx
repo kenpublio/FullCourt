@@ -12,7 +12,7 @@ const ScheduleOptimizerView = () => {
   const { user } = useAuth();
   const isPlayer = user?.role === 'player';
   const isCoach = ['coach','coach_manager'].includes(user?.role);
-  const canOptimize = ['platform_admin','admin','organization_admin','tournament_organizer'].includes(user?.role);
+  const canOptimize = ['platform_admin','admin','statistician'].includes(user?.role);
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [schedule, setSchedule] = useState([]);

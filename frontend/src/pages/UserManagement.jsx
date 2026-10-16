@@ -14,6 +14,9 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
+  const [creatingStaff, setCreatingStaff] = useState(false);
+  const [staffForm, setStaffForm] = useState({ full_name: '', email: '', phone_number: '', address: '', password: '' });
+  const [staffSaving, setStaffSaving] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '', email: '', phone_number: '', address: '', role: '' });
   const [actionMessage, setActionMessage] = useState({ type: '', text: '' });
 
@@ -85,6 +88,23 @@ const UserManagement = () => {
       fetchAuditLogs();
     } catch (err) {
       setActionMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to remove user account.' });
+    }
+  };
+
+  const handleCreateStaff = async (event) => {
+    event.preventDefault();
+    setStaffSaving(true);
+    try {
+      const res = await userService.createStaffAdmin(staffForm);
+      setActionMessage({ type: 'success', text: res.message || 'Staff Admin account created successfully.' });
+      setCreatingStaff(false);
+      setStaffForm({ full_name: '', email: '', phone_number: '', address: '', password: '' });
+      await fetchUsers();
+      fetchAuditLogs();
+    } catch (err) {
+      setActionMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to create the Staff Admin account.' });
+    } finally {
+      setStaffSaving(false);
     }
   };
 
@@ -162,7 +182,7 @@ const UserManagement = () => {
       {activeTab === 'users' ? (
         <div className="card-custom p-4 user-directory-panel">
           {/* Filters Bar */}
-          <div className="user-directory-heading"><div><span className="user-management-eyebrow">ACCOUNT DIRECTORY</span><h2>Platform accounts</h2><p>Search users and review their assigned access.</p></div><span className="user-results-count"><i className="bi bi-funnel-fill"/>{filteredUsers.length} shown</span></div>
+          <div className="user-directory-heading"><div><span className="user-management-eyebrow">ACCOUNT DIRECTORY</span><h2>Platform accounts</h2><p>Search users and review their assigned access.</p></div><div className="user-directory-heading-actions"><span className="user-results-count"><i className="bi bi-funnel-fill"/>{filteredUsers.length} shown</span><button type="button" className="btn btn-evsu btn-sm" onClick={()=>setCreatingStaff(true)}><i className="bi bi-person-plus-fill me-1"/>Create Staff Admin</button></div></div>
           <div className="row g-3 mb-4">
             <div className="col-md-6 col-lg-4">
               <div className="input-group input-group-sm">
@@ -333,6 +353,22 @@ const UserManagement = () => {
           </div>
         </div>
       )}
+
+      {creatingStaff && <div className="modal show d-block" style={{ backgroundColor:'rgba(0,0,0,.68)' }} role="dialog" aria-modal="true" aria-labelledby="create-staff-title">
+        <div className="modal-dialog modal-dialog-centered"><div className="modal-content card-custom border-0">
+          <div className="modal-header border-bottom"><div><span className="user-management-eyebrow mb-1">ADMIN-CREATED ACCESS</span><h5 id="create-staff-title" className="fw-bold mb-0">Create Staff Admin</h5></div><button type="button" className="btn-close" aria-label="Close" onClick={()=>setCreatingStaff(false)}/></div>
+          <form onSubmit={handleCreateStaff}>
+            <div className="modal-body"><div className="staff-admin-access-note"><i className="bi bi-trophy-fill"/><span><b>Tournament manager access</b><small>This account can create and manage its own tournaments, brackets, schedules, venues, and live scoring.</small></span></div><div className="row g-3">
+              <div className="col-12"><label className="form-label small fw-semibold">Full name</label><input className="form-control" value={staffForm.full_name} onChange={e=>setStaffForm({...staffForm,full_name:e.target.value})} required autoFocus/></div>
+              <div className="col-md-6"><label className="form-label small fw-semibold">Email / login</label><input type="email" className="form-control" value={staffForm.email} onChange={e=>setStaffForm({...staffForm,email:e.target.value})} required/></div>
+              <div className="col-md-6"><label className="form-label small fw-semibold">Mobile number</label><input className="form-control" placeholder="09XXXXXXXXX" value={staffForm.phone_number} onChange={e=>setStaffForm({...staffForm,phone_number:e.target.value})}/></div>
+              <div className="col-12"><label className="form-label small fw-semibold">Complete address</label><textarea className="form-control" rows="2" value={staffForm.address} onChange={e=>setStaffForm({...staffForm,address:e.target.value})}/></div>
+              <div className="col-12"><label className="form-label small fw-semibold">Temporary password</label><input type="password" minLength="8" className="form-control" value={staffForm.password} onChange={e=>setStaffForm({...staffForm,password:e.target.value})} required/><div className="form-text">At least 8 characters. Give this securely to the Staff Admin.</div></div>
+            </div></div>
+            <div className="modal-footer border-top"><button type="button" className="btn btn-light" onClick={()=>setCreatingStaff(false)}>Cancel</button><button type="submit" className="btn btn-evsu" disabled={staffSaving}><i className="bi bi-person-check-fill me-1"/>{staffSaving?'Creating account…':'Create account'}</button></div>
+          </form>
+        </div></div>
+      </div>}
 
       {viewingUser && <div className="modal show d-block user-view-modal" style={{ backgroundColor:'rgba(0,0,0,.68)' }} role="dialog" aria-modal="true" aria-labelledby="user-view-title">
         <div className="modal-dialog modal-dialog-centered"><div className="modal-content card-custom border-0 overflow-hidden">

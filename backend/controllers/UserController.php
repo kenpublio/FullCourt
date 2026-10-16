@@ -22,6 +22,29 @@ class UserController {
         Response::success('Users retrieved successfully', ['users' => $users]);
     }
 
+    public function store(): void {
+        $currentUser = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $fullName = trim((string)($input['full_name'] ?? ''));
+        $email = strtolower(trim((string)($input['email'] ?? '')));
+        $password = (string)($input['password'] ?? '');
+        $phone = preg_replace('/[\s-]+/', '', trim((string)($input['phone_number'] ?? '')));
+        if ($fullName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) Response::error('Enter the Staff Admin full name and a valid email address.', 422);
+        if (strlen($password) < 8) Response::error('Temporary password must contain at least 8 characters.', 422);
+        if ($phone !== '' && !preg_match('/^(09\d{9}|\+639\d{9})$/', $phone)) Response::error('Enter a valid Philippine mobile number.', 422);
+        if ($this->userModel->findByEmail($email)) Response::error('An account already uses this email address.', 409);
+        if ($phone !== '' && $this->userModel->findByPhone($phone)) Response::error('An account already uses this mobile number.', 409);
+        $id = $this->userModel->create([
+            'full_name'=>$fullName, 'email'=>$email, 'password'=>$password,
+            'role'=>'statistician', 'phone_number'=>$phone ?: null,
+            'address'=>trim((string)($input['address'] ?? '')),
+            'student_faculty_id'=>null, 'age'=>null, 'birth_date'=>null,
+            'department_course'=>null, 'year_level'=>null,
+        ]);
+        $this->auditLogModel->log((int)$currentUser['user_id'], 'CREATE_STAFF_ADMIN', 'USER_MANAGEMENT', "Created Staff Admin account for {$fullName} ({$email}).");
+        Response::success('Staff Admin account created successfully.', ['user'=>$this->userModel->findById($id)], 201);
+    }
+
     public function updateProfile(): void {
         $currentUser = AuthMiddleware::authenticate();
         $input = json_decode(file_get_contents('php://input'), true);

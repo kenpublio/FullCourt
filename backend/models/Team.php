@@ -59,6 +59,18 @@ class Team {
         return $stmt->fetchAll();
     }
 
+    public function getForTournamentManager(int $userId): array {
+        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name, 15 AS max_roster_size,
+                       (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified') AS total_players,
+                       (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
+                       (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
+                       (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed' AND (m.winner_team_id IS NULL OR m.winner_team_id<>tm.id)) AS losses
+                FROM teams tm JOIN users u ON u.id=tm.coach_user_id JOIN tournaments t ON t.id=tm.tournament_id
+                JOIN sports s ON s.id=t.sport_id LEFT JOIN divisions d ON d.id=tm.division_id
+                WHERE t.created_by=:user_id ORDER BY tm.id DESC";
+        $stmt=$this->db->prepare($sql);$stmt->execute([':user_id'=>$userId]);return$stmt->fetchAll();
+    }
+
     public function getForOrganizationUser(int $userId): array {
         $sql = "SELECT DISTINCT tm.*, coach.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name,
                        (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players

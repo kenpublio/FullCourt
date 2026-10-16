@@ -18,7 +18,8 @@ class ScheduleController {
     }
 
     public function autoSchedule(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
+        OrganizationAccess::requireTournament($tournamentId, $user);
         $input = json_decode(file_get_contents('php://input'), true);
 
         $startDate = $input['start_date'] ?? date('Y-m-d');
@@ -55,7 +56,8 @@ class ScheduleController {
 
     // PUT /matches/{id}/slot  { scheduled_start_time, court_id }
     public function updateSlot(int $matchId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
+        OrganizationAccess::requireMatch($matchId, $user);
         $input = json_decode(file_get_contents('php://input'), true);
         $start = $input['scheduled_start_time'] ?? null;
         $courtId = isset($input['court_id']) ? (int)$input['court_id'] : null;
@@ -83,7 +85,8 @@ class ScheduleController {
 
     // POST /tournaments/{id}/schedule/constraints  { max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes }
     public function saveConstraints(int $tournamentId): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
+        OrganizationAccess::requireTournament($tournamentId, $user);
         $input = json_decode(file_get_contents('php://input'), true);
         $c = [
             'max_games_per_team_per_day' => $input['max_games_per_team_per_day'] ?? 2,
@@ -101,7 +104,8 @@ class ScheduleController {
     }
 
     public function publish(int $tournamentId): void {
-        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
+        OrganizationAccess::requireTournament($tournamentId, $user);
         $conflicts=$this->scheduleModel->detectConflicts($tournamentId);
         $total=count($conflicts['court_clashes']??[])+count($conflicts['team_clashes']??[])+count($conflicts['venue_violations']??[]);
         if($total>0)Response::error('Resolve all schedule conflicts before publication.',409,$conflicts);
