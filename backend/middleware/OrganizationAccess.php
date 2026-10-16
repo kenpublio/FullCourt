@@ -12,8 +12,8 @@ class OrganizationAccess {
             LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id AND coach_team.status='registered' AND (coach_team.coach_user_id=:coach_user OR coach_team.manager_user_id=:manager_user)
             LEFT JOIN teams player_team ON player_team.tournament_id=t.id AND player_team.status='registered' LEFT JOIN team_players tp ON tp.team_id=player_team.id AND tp.user_id=:player_user AND tp.eligibility_status='verified'
             LEFT JOIN matches m ON m.tournament_id=t.id LEFT JOIN game_assignments ga ON ga.match_id=m.id AND ga.user_id=:official_user
-            WHERE t.id=:tournament_id AND (om.id IS NOT NULL OR coach_team.id IS NOT NULL OR tp.id IS NOT NULL OR ga.id IS NOT NULL OR t.created_by=:creator_user) LIMIT 1");
-        $uid=(int)$user['user_id'];$stmt->execute([':member_user'=>$uid,':coach_user'=>$uid,':manager_user'=>$uid,':player_user'=>$uid,':official_user'=>$uid,':tournament_id'=>$tournamentId,':creator_user'=>$uid]);return(bool)$stmt->fetch();
+            WHERE t.id=:tournament_id AND (om.id IS NOT NULL OR coach_team.id IS NOT NULL OR tp.id IS NOT NULL OR ga.id IS NOT NULL OR t.created_by=:creator_user OR EXISTS (SELECT 1 FROM tournament_staff_assignments tsa WHERE tsa.tournament_id=t.id AND tsa.user_id=:staff_user)) LIMIT 1");
+        $uid=(int)$user['user_id'];$stmt->execute([':member_user'=>$uid,':coach_user'=>$uid,':manager_user'=>$uid,':player_user'=>$uid,':official_user'=>$uid,':tournament_id'=>$tournamentId,':creator_user'=>$uid,':staff_user'=>$uid]);return(bool)$stmt->fetch();
     }
     public static function requireTournament(int $tournamentId,array $user):void{if(!self::canAccessTournament($tournamentId,$user))Response::forbidden('This tournament belongs to another organization.');}
     public static function requireMatch(int $matchId,array $user):void{$stmt=self::db()->prepare("SELECT tournament_id FROM matches WHERE id=:id");$stmt->execute([':id'=>$matchId]);$tid=$stmt->fetchColumn();if(!$tid)Response::error('Match not found.',404);self::requireTournament((int)$tid,$user);}

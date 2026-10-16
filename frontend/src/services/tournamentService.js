@@ -27,6 +27,15 @@ export const tournamentService = {
 
   async archiveTournament(id) {
     return (await api.post(`/tournaments/${id}/archive`)).data;
+  },
+
+  async assignStaff(id, staffUserId) {
+    return (await api.put(`/tournaments/${id}/staff`, { staff_user_id: staffUserId || null })).data;
+  },
+
+  async getReadiness(id) {
+    const res = await api.get(`/tournaments/${id}/readiness`);
+    return res.data?.data?.readiness;
   }
 };
 

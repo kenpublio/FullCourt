@@ -8,6 +8,7 @@ import scheduleService from "../services/scheduleService";
 import venueService from "../services/venueService";
 import LocationMapPicker from "../components/LocationMapPicker";
 import { Link } from "react-router-dom";
+import userService from "../services/userService";
 
 const divisionPresets = {
   custom: { name: "", min_age: "", max_age: "" },
@@ -49,6 +50,7 @@ const photonAddress = (properties = {}) => {
 const TournamentManagement = () => {
   const { user } = useAuth();
   const [tournaments, setTournaments] = useState([]);
+  const [staffAdmins, setStaffAdmins] = useState([]);
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -132,6 +134,24 @@ const TournamentManagement = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!['platform_admin','admin'].includes(user?.role)) return;
+    userService.getUsers().then((rows)=>setStaffAdmins(rows.filter((account)=>account.role==='statistician'&&account.is_active))).catch(()=>setStaffAdmins([]));
+  }, [user?.role]);
+
+  const assignTournamentStaff = async (tournament, staffUserId) => {
+    try {
+      setReviewingId(tournament.id);
+      const response=await tournamentService.assignStaff(tournament.id,staffUserId);
+      setMsg(response.message||'Tournament Staff Admin updated.');
+      await loadData();
+    } catch (error) {
+      setMsg(error.response?.data?.message||'Unable to assign the Staff Admin.');
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   useEffect(() => {
     const query = venueSearch.trim();
@@ -534,6 +554,10 @@ const TournamentManagement = () => {
                     <div><span><i className="bi bi-cash-stack" /> Entry fee</span><b className="fee">₱{Number(t.registration_fee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</b></div>
                     <div><span><i className="bi bi-people" /> Teams</span><b>{Number(t.registered_teams_count || 0)} registered</b></div>
                   </div>
+                  <div className={`tournament-readiness-mini ${Number(t.readiness_courts)===1&&Number(t.readiness_matches)>0&&Number(t.readiness_unscheduled)===0?'is-ready':'needs-work'}`}>
+                    <span><i className={`bi ${Number(t.readiness_courts)===1&&Number(t.readiness_matches)>0&&Number(t.readiness_unscheduled)===0?'bi-shield-check':'bi-clipboard2-check'}`}/></span><div><small>TOURNAMENT READINESS</small><b>{Number(t.readiness_courts)===1&&Number(t.readiness_matches)>0&&Number(t.readiness_unscheduled)===0?'Core setup ready':'Setup still in progress'}</b><em>{Number(t.readiness_courts)||0} court · {Number(t.readiness_matches)||0} games · {Number(t.readiness_unscheduled)||0} unscheduled</em></div>
+                  </div>
+                  {['platform_admin','admin'].includes(user?.role)&&<label className="tournament-staff-assignment"><span><i className="bi bi-person-badge-fill"/> Primary Staff Admin</span><select className="form-select form-select-sm" value={t.assigned_staff_id||''} disabled={reviewingId===t.id} onChange={event=>assignTournamentStaff(t,event.target.value)}><option value="">Unassigned</option>{staffAdmins.map(account=><option value={account.id} key={account.id}>{account.full_name}</option>)}</select><small>{t.assigned_staff_name?`${t.assigned_staff_name} can manage this tournament.`:'Assign a handler for schedule and game-day operations.'}</small></label>}
                 </div>
 
                 {canViewTournamentOperations && (

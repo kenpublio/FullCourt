@@ -2,6 +2,7 @@
 // backend/controllers/ScheduleController.php
 
 require_once __DIR__ . '/../models/Schedule.php';
+require_once __DIR__ . '/../models/Tournament.php';
 require_once __DIR__ . '/../models/AuditLog.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../utils/response.php';
@@ -106,6 +107,9 @@ class ScheduleController {
     public function publish(int $tournamentId): void {
         $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         OrganizationAccess::requireTournament($tournamentId, $user);
+        $readiness=(new Tournament())->readiness($tournamentId);
+        $critical=array_values(array_filter($readiness['checks'],static fn(array $check):bool=>in_array($check['key'],['court','teams','bracket','schedule'],true)&&!$check['ready']));
+        if($critical)Response::error('Tournament is not ready to publish. Complete the court, teams, bracket, and schedule checks first.',409,['readiness'=>$readiness]);
         $conflicts=$this->scheduleModel->detectConflicts($tournamentId);
         $total=count($conflicts['court_clashes']??[])+count($conflicts['team_clashes']??[])+count($conflicts['venue_violations']??[]);
         if($total>0)Response::error('Resolve all schedule conflicts before publication.',409,$conflicts);

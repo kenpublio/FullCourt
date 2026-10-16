@@ -13,19 +13,24 @@ class Tournament {
 
     public function getAll(?int $userId = null, bool $platform = false): array {
         $sql = "SELECT t.*, s.name as sport_name, s.category as sport_category, u.full_name as organizer_name,
-                (SELECT COUNT(*) FROM teams WHERE tournament_id = t.id AND status = 'registered') as registered_teams_count
+                (SELECT COUNT(*) FROM teams WHERE tournament_id = t.id AND status = 'registered') as registered_teams_count,
+                (SELECT tsa.user_id FROM tournament_staff_assignments tsa WHERE tsa.tournament_id=t.id ORDER BY CASE WHEN tsa.assignment_role='primary' THEN 0 ELSE 1 END,tsa.created_at LIMIT 1) AS assigned_staff_id,
+                (SELECT su.full_name FROM tournament_staff_assignments tsa JOIN users su ON su.id=tsa.user_id WHERE tsa.tournament_id=t.id ORDER BY CASE WHEN tsa.assignment_role='primary' THEN 0 ELSE 1 END,tsa.created_at LIMIT 1) AS assigned_staff_name,
+                (SELECT COUNT(*) FROM tournament_courts tc WHERE tc.tournament_id=t.id) AS readiness_courts,
+                (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id) AS readiness_matches,
+                (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id AND (rm.scheduled_start_time IS NULL OR rm.court_id IS NULL)) AS readiness_unscheduled
                 FROM tournaments t
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON t.created_by = u.id
                 WHERE LOWER(s.name) = 'basketball' AND t.archived_at IS NULL";
         if (!$platform && $userId !== null) {
             $sql .= " AND (t.approval_status='approved' OR t.created_by=:creator_id)";
-            $sql .= " AND (t.created_by=:user_id OR EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:member_id AND om.status='active') OR EXISTS (SELECT 1 FROM teams own_tm LEFT JOIN team_players own_tp ON own_tp.team_id=own_tm.id WHERE own_tm.tournament_id=t.id AND (own_tm.coach_user_id=:coach_id OR own_tm.manager_user_id=:manager_id OR own_tp.user_id=:player_id)))";
+            $sql .= " AND (t.created_by=:user_id OR EXISTS (SELECT 1 FROM tournament_staff_assignments tsa_access WHERE tsa_access.tournament_id=t.id AND tsa_access.user_id=:staff_id) OR EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:member_id AND om.status='active') OR EXISTS (SELECT 1 FROM teams own_tm LEFT JOIN team_players own_tp ON own_tp.team_id=own_tm.id WHERE own_tm.tournament_id=t.id AND (own_tm.coach_user_id=:coach_id OR own_tm.manager_user_id=:manager_id OR own_tp.user_id=:player_id)))";
         }
         $sql .= "
                 ORDER BY t.created_at DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(!$platform && $userId !== null ? [':creator_id'=>$userId,':user_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
+        $stmt->execute(!$platform && $userId !== null ? [':creator_id'=>$userId,':user_id'=>$userId,':staff_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
         return $stmt->fetchAll();
     }
 
@@ -184,5 +189,41 @@ class Tournament {
         $stmt = $this->db->query("SELECT id FROM sports WHERE LOWER(name) = 'basketball' LIMIT 1");
         $id = $stmt->fetchColumn();
         return $id === false ? null : (int) $id;
+    }
+
+    public function assignStaff(int $tournamentId, ?int $staffUserId, int $assignedBy): void {
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare("DELETE FROM tournament_staff_assignments WHERE tournament_id=:tournament_id AND assignment_role='primary'")->execute([':tournament_id'=>$tournamentId]);
+            if ($staffUserId) {
+                $stmt=$this->db->prepare("INSERT INTO tournament_staff_assignments (tournament_id,user_id,assignment_role,assigned_by) VALUES (:tournament_id,:user_id,'primary',:assigned_by)");
+                $stmt->execute([':tournament_id'=>$tournamentId,':user_id'=>$staffUserId,':assigned_by'=>$assignedBy]);
+            }
+            $this->db->commit();
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $error;
+        }
+    }
+
+    public function readiness(int $tournamentId): array {
+        $stmt=$this->db->prepare("SELECT
+            (SELECT COUNT(*) FROM tournament_courts WHERE tournament_id=:t1) courts,
+            (SELECT COUNT(*) FROM teams WHERE tournament_id=:t2 AND status='registered') teams,
+            (SELECT COUNT(*) FROM matches WHERE tournament_id=:t3) matches,
+            (SELECT COUNT(*) FROM matches WHERE tournament_id=:t4 AND (scheduled_start_time IS NULL OR court_id IS NULL)) unscheduled,
+            (SELECT COUNT(*) FROM tournament_staff_assignments WHERE tournament_id=:t5) assigned_staff,
+            (SELECT COUNT(*) FROM team_players tp JOIN teams tm ON tm.id=tp.team_id WHERE tm.tournament_id=:t6 AND tp.eligibility_status='verified') verified_players");
+        $stmt->execute([':t1'=>$tournamentId,':t2'=>$tournamentId,':t3'=>$tournamentId,':t4'=>$tournamentId,':t5'=>$tournamentId,':t6'=>$tournamentId]);
+        $row=$stmt->fetch() ?: [];
+        $checks=[
+            ['key'=>'court','label'=>'Main Court attached','ready'=>(int)($row['courts']??0)===1],
+            ['key'=>'teams','label'=>'At least two approved teams','ready'=>(int)($row['teams']??0)>=2],
+            ['key'=>'bracket','label'=>'Bracket generated','ready'=>(int)($row['matches']??0)>0],
+            ['key'=>'schedule','label'=>'All games have time and court','ready'=>(int)($row['matches']??0)>0 && (int)($row['unscheduled']??0)===0],
+            ['key'=>'players','label'=>'Eligible players recorded','ready'=>(int)($row['verified_players']??0)>0],
+        ];
+        $ready=count(array_filter($checks,fn($check)=>$check['ready']));
+        return ['checks'=>$checks,'ready_count'=>$ready,'total_count'=>count($checks),'publish_ready'=>$ready===count($checks),'counts'=>$row];
     }
 }

@@ -2,6 +2,7 @@
 // backend/controllers/TournamentController.php
 
 require_once __DIR__ . '/../models/Tournament.php';
+require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/AuditLog.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../utils/response.php';
@@ -164,5 +165,25 @@ class TournamentController {
         $decision = $status === 'approved' ? 'approved' : 'rejected';
         $this->auditLog->log((int)$user['user_id'], strtoupper($decision).'_TOURNAMENT', 'TOURNAMENT_MGMT', "{$decision} tournament '{$tournament['name']}' (ID: {$id}).");
         Response::success($status === 'approved' ? 'Tournament approved and published.' : 'Tournament application rejected.');
+    }
+
+    public function assignStaff(int $id): void {
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $tournament=$this->tournamentModel->getById($id);
+        if(!$tournament)Response::error('Tournament not found.',404);
+        $input=json_decode(file_get_contents('php://input'),true)?:[];
+        $staffId=empty($input['staff_user_id'])?null:(int)$input['staff_user_id'];
+        if($staffId){
+            $staff=(new User())->findById($staffId);
+            if(!$staff || $staff['role']!=='statistician' || !$staff['is_active'])Response::error('Select an active Staff Admin account.',422);
+        }
+        $this->tournamentModel->assignStaff($id,$staffId,(int)$user['user_id']);
+        $this->auditLog->log((int)$user['user_id'],'ASSIGN_TOURNAMENT_STAFF','TOURNAMENT_MGMT',$staffId?"Assigned Staff Admin {$staffId} to tournament {$id}.":"Removed the primary Staff Admin from tournament {$id}.");
+        Response::success($staffId?'Staff Admin assigned to the tournament.':'Staff Admin assignment removed.');
+    }
+
+    public function readiness(int $id): void {
+        $user=AuthMiddleware::authenticate();OrganizationAccess::requireTournament($id,$user);
+        Response::success('Tournament readiness retrieved',['readiness'=>$this->tournamentModel->readiness($id)]);
     }
 }

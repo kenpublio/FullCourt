@@ -27,7 +27,7 @@ const Dashboard = () => {
   const quickActions = dashboardMode === 'admin' ? [
     ['Tournaments','/tournaments','bi-trophy-fill'],['Users & Roles','/users','bi-shield-lock-fill'],['Eligibility','/eligibility','bi-patch-check-fill'],['System Reports','/reports','bi-file-earmark-bar-graph-fill'],
   ] : dashboardMode === 'staff' ? [
-    ['Assigned Games','/scorekeeper','bi-clipboard-data-fill'],['Live Scores','/live-scoring','bi-broadcast-pin'],['Schedule','/schedules','bi-calendar-event-fill'],['Standings','/standings','bi-list-ol'],
+    ['My Tournaments','/tournaments','bi-trophy-fill'],['Team Applications','/teams','bi-people-fill'],['Build Bracket','/brackets','bi-diagram-3-fill'],['Live Scores','/scorekeeper','bi-broadcast-pin'],
   ] : [
     ['My Team','/teams','bi-people-fill'],['Upcoming Tournaments','/tournaments','bi-trophy-fill'],['My Schedule','/schedules','bi-calendar2-event-fill'],['Notifications','/notifications','bi-bell-fill'],
   ];

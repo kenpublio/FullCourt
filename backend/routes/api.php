@@ -104,6 +104,8 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/tournaments' && $method === 'GET') { (new TournamentController())->index(); return; }
     if ($path === '/tournaments' && $method === 'POST') { (new TournamentController())->store(); return; }
     if (preg_match('#^/tournaments/(\d+)/review$#', $path, $m) && $method === 'PUT') { (new TournamentController())->review((int)$m[1]); return; }
+    if (preg_match('#^/tournaments/(\d+)/staff$#', $path, $m) && $method === 'PUT') { (new TournamentController())->assignStaff((int)$m[1]); return; }
+    if (preg_match('#^/tournaments/(\d+)/readiness$#', $path, $m) && $method === 'GET') { (new TournamentController())->readiness((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/roster-lock$#', $path, $m) && $method === 'PUT') { (new TournamentController())->rosterLock((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/archive$#', $path, $m) && $method === 'POST') { (new TournamentController())->archiveTournament((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)$#', $path, $m) && $method === 'GET') { (new TournamentController())->show((int)$m[1]); return; }

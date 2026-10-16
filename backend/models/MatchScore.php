@@ -73,6 +73,18 @@ class MatchScore {
                 throw new InvalidArgumentException('The live score changed after you opened the review. Refresh this game and confirm the updated score.');
             }
 
+            $pointsStmt=$this->db->prepare("SELECT team_id,COUNT(*) AS scoring_events,COALESCE(SUM(CASE event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END),0) AS player_points FROM basketball_stat_events WHERE match_id=:match_id AND is_void=0 AND event_type IN ('2pt_made','3pt_made','ft_made') GROUP BY team_id");
+            $pointsStmt->execute([':match_id'=>$matchId]);
+            $playerTotals=[];$eventCount=0;
+            foreach($pointsStmt->fetchAll() as $pointsRow){$playerTotals[(int)$pointsRow['team_id']]=(int)$pointsRow['player_points'];$eventCount+=(int)$pointsRow['scoring_events'];}
+            if($eventCount>0){
+                $team1PlayerPoints=$playerTotals[(int)$match['team1_id']]??0;
+                $team2PlayerPoints=$playerTotals[(int)$match['team2_id']]??0;
+                if($team1PlayerPoints!==$team1Score || $team2PlayerPoints!==$team2Score){
+                    throw new InvalidArgumentException("Player point totals do not match the scoreboard (players: {$team1PlayerPoints}-{$team2PlayerPoints}; scoreboard: {$team1Score}-{$team2Score}). Correct the player scoring events before confirming the official result.");
+                }
+            }
+
             $scoreStmt = $this->db->prepare("UPDATE match_scores SET team1_score=:s1,team2_score=:s2,current_period=:period,timer_seconds=:seconds,is_timer_running=0 WHERE match_id=:mid");
             $scoreStmt->execute([':s1'=>$team1Score,':s2'=>$team2Score,':period'=>$currentPeriod,':seconds'=>$timerSeconds,':mid'=>$matchId]);
 
