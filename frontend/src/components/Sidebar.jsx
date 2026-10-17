@@ -7,18 +7,18 @@ const menuItems = [
     { title: 'Dashboard', path: '/dashboard', icon: 'bi-grid-1x2-fill', roles: ['platform_admin','admin','coach','statistician'] },
   ]},
   { section: 'Management', items: [
-    { title: 'User & Role Ops', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin'] },
+    { title: 'Accounts & Staff', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin'] },
     { title: 'Tournaments', path: '/tournaments', icon: 'bi-trophy-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Teams & Players', path: '/teams', icon: 'bi-people-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Eligibility', path: '/eligibility', icon: 'bi-patch-check-fill', roles: ['platform_admin','admin','coach'] },
     { title: 'Brackets', path: '/brackets', icon: 'bi-diagram-3-fill', roles: ['platform_admin','admin','statistician'] },
   ]},
   { section: 'Live Ops', items: [
-    { title: 'Staff Assignments', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin','statistician'] },
+    { title: 'Staff Assignments', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin'] },
     { title: 'Schedules & Venues', path: '/schedules', icon: 'bi-calendar-event-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Venues & Courts', path: '/venues', icon: 'bi-geo-alt-fill', roles: ['platform_admin','admin'] },
-    { title: 'Live Scoring', path: '/live-scoring', icon: 'bi-broadcast-pin', roles: ['platform_admin','admin','statistician'] },
-    { title: 'Staff Scoring Console', path: '/scorekeeper', icon: 'bi-clipboard-data-fill', roles: ['platform_admin','admin','statistician'] },
+    { title: 'Score Review', path: '/live-scoring', icon: 'bi-broadcast-pin', roles: ['platform_admin','admin'] },
+    { title: 'Scoring Console', path: '/scorekeeper', icon: 'bi-clipboard-data-fill', roles: ['statistician'] },
     { title: 'Standings', path: '/standings', icon: 'bi-list-ol', roles: ['platform_admin','admin','coach','statistician'] },
   ]},
   { section: 'Insights', items: [

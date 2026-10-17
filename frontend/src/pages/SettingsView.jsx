@@ -148,7 +148,7 @@ const SettingsView = () => {
             <Toggle
               id="announcements"
               label="Tournament announcements"
-              description="Receive important organizer announcements."
+              description="Receive important tournament announcements."
               checked={settings.announcements}
               onChange={() => toggle("announcements")}
             />

@@ -3,7 +3,7 @@ const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const base = 'http://127.0.0.1:5180';
+const base = process.env.APP_URL || 'http://127.0.0.1:5173';
 const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd: root, encoding: 'utf8' }));
 const manager = sessions.find(({ user }) => ['organization_admin', 'tournament_organizer'].includes(user.role));
 if (!manager) throw new Error('No active organizer demo account is available for this browser check.');
@@ -34,7 +34,7 @@ if (!manager) throw new Error('No active organizer demo account is available for
     await page.getByRole('button', { name: /Copy invitation/ }).click();
     await page.getByRole('status').filter({ hasText: /copied/i }).waitFor();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
-    for (const expected of ['http://127.0.0.1:5180/score/', 'PIN: 123456', 'Clipboard Test Scorer']) {
+    for (const expected of [`${base}/score/`, 'PIN: 123456', 'Clipboard Test Scorer']) {
       if (!copied.includes(expected)) throw new Error(`Clipboard text is missing expected content: ${expected}`);
     }
     console.log('PASS: copy-invitation button copied the private link, PIN, and scorer label.');

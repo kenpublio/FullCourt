@@ -248,7 +248,7 @@ const UserManagement = () => {
                     filteredUsers.map((u) => (
                       <tr key={u.id}>
                         <td>
-                          <div className="fw-semibold text-dark">{u.full_name}</div>
+                          <div className="fw-semibold">{u.full_name}</div>
                           <small className="text-muted" style={{ fontSize: '0.75rem' }}>User #{u.id}</small>
                         </td>
                         <td className="text-nowrap">
@@ -340,7 +340,7 @@ const UserManagement = () => {
                       <td>
                         <span className="badge bg-secondary">{log.module}</span>
                       </td>
-                      <td className="fw-semibold text-dark">
+                      <td className="fw-semibold">
                         {log.full_name ? `${log.full_name} (${log.role})` : 'System / Guest'}
                       </td>
                       <td className="text-wrap">{log.details}</td>

@@ -1,7 +1,7 @@
 const { chromium } = require('C:/Users/ACER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
-const root=path.resolve(__dirname,'..'),base='http://127.0.0.1:5180';
+const root=path.resolve(__dirname,'..'),base=process.env.APP_URL||'http://127.0.0.1:5173';
 const sessions=JSON.parse(execFileSync('php',[path.join(__dirname,'BrowserAuditSession.php')],{cwd:root,encoding:'utf8'}));
 const results=[];
 async function open(page,route){await page.goto(base+route);await page.locator('.sidebar-menu').waitFor({timeout:15000});await page.waitForLoadState('networkidle',{timeout:1500}).catch(()=>{});await page.waitForTimeout(500);}

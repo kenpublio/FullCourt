@@ -195,3 +195,9 @@
 .court-directory-mark{display:flex;align-items:center;gap:.9rem;align-self:end;padding:1rem 1.2rem;border:1px solid #e2d9d3;border-radius:13px;background:#fff9f4;color:#762417}.court-directory-mark i{display:grid;width:42px;height:42px;place-items:center;border-radius:10px;background:#d92f1f;color:#fff}.court-directory-mark span{display:grid;color:#766b69;font-size:.7rem;text-transform:uppercase}.court-directory-mark b{color:#1d1b20;font-size:1.05rem}.court-results-line{display:flex;justify-content:space-between;align-items:center;margin:.9rem 0 1.1rem;color:#73717a;font-size:.78rem}.court-results-line b{color:#1b1a20}.court-results-line button{border:0;background:transparent;color:#bd2b1b;font-weight:800}
 @media(max-width:900px){.court-game-center .court-center-title{grid-template-columns:1fr;gap:2rem}.court-center-scoreboard{max-width:620px}.court-directory-mark{display:none}}
 @media(max-width:600px){.court-game-center .court-center-header{padding:3rem 0}.court-center-copy h1{font-size:3.55rem}.court-center-copy>p{font-size:.96rem}.court-center-actions{align-items:flex-start;flex-direction:column}.court-center-scoreboard{border-radius:15px}.court-game-center .court-center-count b{font-size:1.65rem}.court-game-center .court-center-count span{font-size:.57rem}.court-section-heading h2 br{display:none}.court-results-line{margin-top:.5rem}}
+
+/* Accessibility contrast polish for public result and player surfaces. */
+.court-home-top .court-section-heading p{color:#b8b8c1}
+.court-home-dark .court-section-heading p{color:#b8b8c1}
+.court-player-grid article,.court-player-grid h3{color:#131316}
+.court-results-line{color:#6b6972}

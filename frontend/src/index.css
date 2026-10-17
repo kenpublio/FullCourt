@@ -118,7 +118,7 @@
 :root[data-fullcourt-theme="dark"] .app-footer strong { color: #ffffff; }
 :root[data-fullcourt-theme="dark"] .app-footer-badge {
   background: rgba(205,45,23,.14);
-  color: #d4a72c;
+  color: #ffd166;
   border: 1px solid rgba(205,45,23,.22);
 }
 :root[data-fullcourt-theme="dark"] .navbar-brand-name,
@@ -1168,7 +1168,7 @@ body {
   align-items: center;
   gap: 5px;
   background: var(--evsu-primary-soft);
-  color: var(--evsu-primary);
+  color: #7f1d0d;
   border-radius: 99px;
   padding: 0.2em 0.7em;
   font-weight: 700;

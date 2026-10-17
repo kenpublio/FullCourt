@@ -279,11 +279,11 @@ const GuestScoringConsole = () => {
         <div className="score-access-icon"><i className="bi bi-shield-lock-fill"/></div>
         <span className="score-kicker">INVITED GAME STATISTICIAN</span>
         <h1>Every point.<br/><em>On the record.</em></h1>
-        <p>Use the name and private PIN provided by the competition organizer to open scoring for this game.</p>
+        <p>Use the name and private PIN provided by the Admin or Staff Admin to open scoring for this game.</p>
         <div className="score-access-promises"><span><i className="bi bi-lock-fill"/> One-game access</span><span><i className="bi bi-clock-history"/> Time-limited</span><span><i className="bi bi-journal-check"/> Activity recorded</span></div>
       </div>
       <div className="score-access-form-panel">
-        <div className="score-form-heading"><span>COURTSIDE SIGN-IN</span><h2>Open your console</h2><p>Enter the access details sent by your organizer.</p></div>
+        <div className="score-form-heading"><span>COURTSIDE SIGN-IN</span><h2>Open your console</h2><p>Enter the access details sent by the tournament staff.</p></div>
         {error && <div className="score-error" role="alert">{error}</div>}
         <form onSubmit={activate}>
           <label>Your name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Name of scorer / statistician" autoComplete="name" required/></label>
@@ -292,7 +292,7 @@ const GuestScoringConsole = () => {
         </form>
         <Link className="score-access-home" to="/"><i className="bi bi-arrow-left"/> Return to FullCourt</Link>
       </div>
-      <footer className="score-access-footer"><i className="bi bi-shield-check"/><span>Protected game access</span><b>Only your organizer can issue or revoke this link.</b></footer>
+      <footer className="score-access-footer"><i className="bi bi-shield-check"/><span>Protected game access</span><b>Only an Admin can issue or revoke this link.</b></footer>
     </section></main>;
   }
 

@@ -69,6 +69,7 @@ html[data-bs-theme=dark] .user-management-hero,html[data-bs-theme=dark] .user-ma
 .admin-console-dark .user-management-toolbar { background: #191a1d; }
 .admin-console-dark .user-directory-panel { background: #191a1d; }
 .admin-console-dark .user-audit-panel thead th { color: #f4f4f5; background: #242428; }
+.admin-console-dark .user-directory-panel{background:#191a1d!important;color:#f4f4f5}.admin-console-dark .user-directory-heading h2,.admin-console-dark .user-directory-table tbody td,.admin-console-dark .user-directory-table tbody .text-dark{color:#f4f4f5!important}.admin-console-dark :is(.user-management-context,.user-directory-heading p,.user-results-count,.user-directory-table thead th){color:#d1d5db!important}.admin-console-dark .user-directory-heading .user-management-eyebrow{color:#ff9f80!important}.admin-console-dark .user-directory-table thead th{background:#292a2f!important}.admin-console-dark .user-directory-table tbody td{background:#191c22!important}
 @media(max-width:640px) {
   .user-management-hero { min-height: 0; padding: 19px; }
   .user-management-hero-stats > div { min-height: 57px; }

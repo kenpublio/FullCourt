@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'output', 'browser-audit', 'accessibility-results.json');
-const base = 'http://127.0.0.1:5180';
+const base = process.env.APP_URL || 'http://127.0.0.1:5173';
 const axeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.3/axe.min.js';
 
 (async () => {

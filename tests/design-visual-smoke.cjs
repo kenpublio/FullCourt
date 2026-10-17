@@ -22,7 +22,7 @@ const fs = require('node:fs');
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(`http://127.0.0.1:5180${routes[role]}`, { waitUntil:'networkidle' });
+    await page.goto(`${process.env.APP_URL || 'http://127.0.0.1:5173'}${routes[role]}`, { waitUntil:'networkidle' });
     await page.screenshot({ path:path.join(out, `${role}.png`), fullPage:true });
     const desktopOverflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2);
     await page.setViewportSize({ width:390, height:844 });

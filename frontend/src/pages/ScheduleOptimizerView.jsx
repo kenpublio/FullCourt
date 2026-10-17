@@ -171,7 +171,7 @@ const ScheduleOptimizerView = () => {
       {loadError && <div className="alert alert-danger d-flex align-items-center justify-content-between gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={fetchSchedule}>Try again</button></div>}
 
       {!selectedTournament && !loadError ? (
-        <section className="schedule-table-panel text-center py-5"><div className="team-selection-empty"><i className="bi bi-calendar2-x"/><h4>{isPlayer || isCoach ? 'No team tournament yet' : 'No tournaments available'}</h4><p>{isPlayer || isCoach ? 'Your team schedule will show here after your coach joins a tournament and the organizer publishes games.' : 'Create or select a tournament before building its schedule.'}</p>{canOptimize && <a className="btn btn-evsu btn-sm" href="/tournaments"><i className="bi bi-trophy me-1"/>Open tournaments</a>}</div></section>
+        <section className="schedule-table-panel text-center py-5"><div className="team-selection-empty"><i className="bi bi-calendar2-x"/><h4>{isPlayer || isCoach ? 'No team tournament yet' : 'No tournaments available'}</h4><p>{isPlayer || isCoach ? 'Your team schedule will show here after your team joins and the Admin publishes the games.' : 'Create or select a tournament before building its schedule.'}</p>{canOptimize && <a className="btn btn-evsu btn-sm" href="/tournaments"><i className="bi bi-trophy me-1"/>Open tournaments</a>}</div></section>
       ) : loading ? (
         <LoadingSpinner message={canOptimize ? 'Optimizing match timetable...' : 'Refreshing match schedule...'} />
       ) : (
@@ -190,7 +190,7 @@ const ScheduleOptimizerView = () => {
               </thead>
               <tbody>
                 {schedule.length === 0 ? (
-                  <tr><td colSpan={canOptimize ? 6 : 5} className="text-center py-4"><div className="team-selection-empty"><i className="bi bi-calendar2-week"/><h5>{canOptimize ? 'No games scheduled yet' : 'The schedule is not published yet'}</h5><p className="mb-0">{canOptimize ? 'Generate the bracket first, then run the schedule optimizer to create game times and court assignments.' : 'The organizer has not published games for this tournament. Check back later or refresh the schedule.'}</p></div></td></tr>
+                  <tr><td colSpan={canOptimize ? 6 : 5} className="text-center py-4"><div className="team-selection-empty"><i className="bi bi-calendar2-week"/><h5>{canOptimize ? 'No games scheduled yet' : 'The schedule is not published yet'}</h5><p className="mb-0">{canOptimize ? 'Generate the bracket first, then run the schedule optimizer to create game times and court assignments.' : 'The Admin has not published games for this tournament. Check back later or refresh the schedule.'}</p></div></td></tr>
                 ) : schedule.map(s => {
                   const locked = s.status === 'completed' || s.status === 'cancelled';
                   const hasConflict = (conflicts.court_clashes || []).some(c => c.match_ids.includes(s.id))

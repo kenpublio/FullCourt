@@ -69,7 +69,8 @@
 .admin-console-dark .schedule-matchup span,
 .admin-console-dark .schedule-status.in_progress,
 .admin-console-dark .game-day-page .game-ready-pill.pending { color: #ffad91 !important; }
-.admin-console-dark .app-footer-badge { color: #f1c75b !important; }
+.admin-console-dark .app-footer-badge { color: #5d4000 !important; background:#fff2c7 !important; }
+.admin-console-dark .user-directory-table tbody .text-dark { color:#f4f4f5 !important; }
 .app-footer-badge { color: #8f210e; }
 .bg-success-subtle.text-success { color: #146c43 !important; }
 .court-site .hub-team-top > span:first-child { color: #666672; }
