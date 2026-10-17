@@ -50,6 +50,10 @@ class TournamentController {
         if (empty($input['name']) || empty($input['start_date']) || empty($input['end_date'])) {
             Response::error('Name, Start Date, and End Date are required.', 400);
         }
+        $registrationDeadline=trim((string)($input['registration_deadline']??$input['start_date']));
+        if(!DateTimeImmutable::createFromFormat('Y-m-d',$registrationDeadline))Response::error('Roster registration deadline must be a valid date.',422);
+        if(strtotime($registrationDeadline)>strtotime((string)$input['start_date']))Response::error('Roster registration deadline cannot be after the tournament starts.',422);
+        $input['registration_deadline']=$registrationDeadline;
 
         $basketballSportId = $this->tournamentModel->getBasketballSportId();
         if ($basketballSportId === null) {

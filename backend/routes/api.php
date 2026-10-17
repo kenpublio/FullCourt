@@ -143,6 +143,7 @@ function routeRequest(string $uri, string $method) {
     // 7. Schedule Routes
     if (preg_match('#^/tournaments/(\d+)/schedule/auto$#', $path, $m) && $method === 'POST') { (new ScheduleController())->autoSchedule((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/schedule$#', $path, $m) && $method === 'GET') { (new ScheduleController())->show((int)$m[1]); return; }
+    if (preg_match('#^/tournaments/(\d+)/schedule/history$#', $path, $m) && $method === 'GET') { (new ScheduleController())->history((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/schedule/conflicts$#', $path, $m) && $method === 'POST') { (new ScheduleController())->conflicts((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/schedule/constraints$#', $path, $m) && $method === 'POST') { (new ScheduleController())->saveConstraints((int)$m[1]); return; }
     if (preg_match('#^/tournaments/(\d+)/schedule/publish$#', $path, $m) && $method === 'POST') { (new ScheduleController())->publish((int)$m[1]); return; }

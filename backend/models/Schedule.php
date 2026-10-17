@@ -402,7 +402,7 @@ class Schedule {
         ];
     }
 
-    public function notifyScheduleChange(int $matchId, array $change): int {
+    public function notifyScheduleChange(int $matchId, array $change, string $reason=''): int {
         $stmt = $this->db->prepare("SELECT m.tournament_id,m.scheduled_start_time,m.court_id,
                 t.name AS tournament_name,h.team_name AS home_team,a.team_name AS away_team,
                 c.court_name,v.name AS venue_name
@@ -426,15 +426,26 @@ class Schedule {
 
         $date = date('M j, Y g:i A', strtotime((string)$match['scheduled_start_time']));
         $place = trim(($match['venue_name'] ?? '') . (($match['court_name'] ?? '') ? ' · ' . $match['court_name'] : ''));
-        $message = sprintf('%s vs %s in %s was rescheduled to %s%s.',
+        $message = sprintf('%s vs %s in %s was rescheduled to %s%s.%s',
             $match['home_team'] ?? 'Team TBA', $match['away_team'] ?? 'Team TBA',
-            $match['tournament_name'], $date, $place !== '' ? ' at ' . $place : '');
+            $match['tournament_name'], $date, $place !== '' ? ' at ' . $place : '', $reason!==''?' Reason: '.$reason:'');
         $insert = $this->db->prepare("INSERT INTO notifications (user_id,notification_type,title,message,action_url)
             VALUES (:user_id,'schedule_change','Game schedule changed',:message,'/schedules')");
         foreach ($users as $userId) {
             $insert->execute([':user_id' => (int)$userId, ':message' => $message]);
         }
         return count($users);
+    }
+
+    public function recordScheduleChange(int $matchId,array $change,string $reason,int $changedBy,int $notified):int {
+        $stmt=$this->db->prepare("INSERT INTO schedule_change_history (match_id,previous_start,new_start,previous_court_id,new_court_id,reason,changed_by,coaches_notified) VALUES (:match_id,:previous_start,:new_start,:previous_court,:new_court,:reason,:changed_by,:notified)");
+        $stmt->execute([':match_id'=>$matchId,':previous_start'=>$change['previous_start']?:null,':new_start'=>$change['start'],':previous_court'=>$change['previous_court_id']?:null,':new_court'=>$change['court_id']?:null,':reason'=>$reason,':changed_by'=>$changedBy,':notified'=>$notified]);
+        return(int)$this->db->lastInsertId();
+    }
+
+    public function scheduleHistory(int $tournamentId):array {
+        $stmt=$this->db->prepare("SELECT sch.*,u.full_name changed_by_name,h.team_name home_team,a.team_name away_team,oldc.court_name previous_court,newc.court_name new_court FROM schedule_change_history sch JOIN matches m ON m.id=sch.match_id JOIN users u ON u.id=sch.changed_by LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id LEFT JOIN courts oldc ON oldc.id=sch.previous_court_id LEFT JOIN courts newc ON newc.id=sch.new_court_id WHERE m.tournament_id=:tournament_id ORDER BY sch.created_at DESC LIMIT 100");
+        $stmt->execute([':tournament_id'=>$tournamentId]);return$stmt->fetchAll();
     }
 
     public function saveConstraints(int $tournamentId, array $c): bool {

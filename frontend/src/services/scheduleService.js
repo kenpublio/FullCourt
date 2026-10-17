@@ -26,9 +26,13 @@ export const scheduleService = {
     return res.data;
   },
 
-  async updateSlot(matchId, start, courtId) {
-    const res = await api.put(`/matches/${matchId}/slot`, { scheduled_start_time: start, court_id: courtId });
+  async updateSlot(matchId, start, courtId, reason) {
+    const res = await api.put(`/matches/${matchId}/slot`, { scheduled_start_time: start, court_id: courtId, reason });
     return res.data;
+  }
+  ,async getHistory(tournamentId) {
+    const res = await api.get(`/tournaments/${tournamentId}/schedule/history`);
+    return res.data?.data?.history || [];
   }
   ,async publish(tournamentId) {
     const res = await api.post(`/tournaments/${tournamentId}/schedule/publish`);

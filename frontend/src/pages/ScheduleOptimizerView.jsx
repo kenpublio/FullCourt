@@ -123,9 +123,12 @@ const ScheduleOptimizerView = () => {
   };
 
   const saveSlot = async (m) => {
-    if (!window.confirm('Reschedule this match? This checks for conflicts.')) return;
+    const reason=window.prompt('Why is this game being rescheduled? Coaches will see this reason.');
+    if(reason===null)return;
+    if(reason.trim().length<5){alert('Add a short reason before saving the schedule change.');return;}
+    if (!window.confirm('Reschedule this match? This checks for conflicts and notifies affected Coaches.')) return;
     try {
-      const res = await scheduleService.updateSlot(m.id, draft.start, draft.court_id ? Number(draft.court_id) : null);
+      const res = await scheduleService.updateSlot(m.id, draft.start, draft.court_id ? Number(draft.court_id) : null,reason.trim());
       const conflicts = res?.data?.conflicts || res?.conflicts || [];
       if (conflicts.length || res?.data?.scheduled === false) {
         alert('Reschedule blocked by conflicts:\n' + JSON.stringify(conflicts, null, 2));

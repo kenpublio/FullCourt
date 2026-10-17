@@ -75,8 +75,8 @@ class Tournament {
     }
 
     public function create(array $data): int {
-        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_fee, status, approval_status, is_published, created_by)
-                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_fee, 'upcoming', :approval_status, :is_published, :created_by)";
+        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_deadline, registration_fee, status, approval_status, is_published, created_by)
+                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_deadline, :registration_fee, 'upcoming', :approval_status, :is_published, :created_by)";
         $this->db->beginTransaction();
         try {
           $stmt = $this->db->prepare($sql);
@@ -89,6 +89,7 @@ class Tournament {
             ':description' => $data['description'] ?? null,
             ':start_date' => $data['start_date'],
             ':end_date' => $data['end_date'],
+            ':registration_deadline' => $data['registration_deadline'] ?? $data['start_date'],
             ':registration_fee' => $data['registration_fee'] ?? 0.00,
             ':approval_status' => $data['approval_status'] ?? 'approved',
             ':is_published' => !empty($data['is_published']) ? 1 : 0,

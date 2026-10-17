@@ -73,7 +73,7 @@ const TournamentManagement = () => {
   const [msg, setMsg] = useState("");
   const [divisionTournament, setDivisionTournament] = useState(null);
   const [detailTournament, setDetailTournament] = useState(null);
-  const [detailData, setDetailData] = useState({ divisions: [], teams: [], matches: [] });
+  const [detailData, setDetailData] = useState({ divisions: [], teams: [], matches: [], readiness: null, history: [] });
   const [detailLoading, setDetailLoading] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
   const [divisions, setDivisions] = useState([]);
@@ -95,6 +95,7 @@ const TournamentManagement = () => {
     format: "single_elimination",
     start_date: "",
     end_date: "",
+    registration_deadline: "",
     registration_fee: 0,
     rules: "",
     description: "",
@@ -293,12 +294,14 @@ const TournamentManagement = () => {
     setDetailTournament(tournament);
     setDetailLoading(true);
     try {
-      const [divisionRows, teamRows, matchRows] = await Promise.all([
+      const [divisionRows, teamRows, matchRows, readiness, history] = await Promise.all([
         operationsService.divisions(tournament.id).catch(()=>[]),
         teamService.getTeams().catch(()=>[]),
         scheduleService.getSchedule(tournament.id).catch(()=>[]),
+        tournamentService.getReadiness(tournament.id).catch(()=>null),
+        scheduleService.getHistory(tournament.id).catch(()=>[]),
       ]);
-      setDetailData({ divisions: divisionRows, teams: teamRows.filter(team=>Number(team.tournament_id)===Number(tournament.id)), matches: matchRows });
+      setDetailData({ divisions: divisionRows, teams: teamRows.filter(team=>Number(team.tournament_id)===Number(tournament.id)), matches: matchRows, readiness, history });
     } finally { setDetailLoading(false); }
   };
   const createDivision = async (event) => {
@@ -632,6 +635,8 @@ const TournamentManagement = () => {
           <div className="modal-body tournament-detail-body">
             {detailLoading?<LoadingSpinner message="Loading tournament contents..."/>:<>
               <div className="tournament-detail-stats"><div><i className="bi bi-people-fill"/><strong>{detailData.teams.length}</strong><span>Registered teams</span></div><div><i className="bi bi-layers-fill"/><strong>{detailData.divisions.length}</strong><span>Divisions</span></div><div><i className="bi bi-calendar2-event-fill"/><strong>{detailData.matches.length}</strong><span>Scheduled games</span></div><div><i className="bi bi-cash-stack"/><strong>₱{Number(detailTournament.registration_fee||0).toLocaleString()}</strong><span>Registration fee</span></div></div>
+              {detailData.readiness&&<section className="tournament-command-center"><header><div><small>TOURNAMENT COMMAND CENTER</small><h5>{detailData.readiness.ready_count}/{detailData.readiness.total_count} readiness checks complete</h5></div><strong className={detailData.readiness.publish_ready?'is-ready':'needs-work'}>{detailData.readiness.publish_ready?'READY':'SETUP'}</strong></header><div>{detailData.readiness.checks.map(check=><article className={check.ready?'is-ready':''} key={check.key}><i className={`bi ${check.ready?'bi-check-circle-fill':'bi-circle'}`}/><span><b>{check.label}</b><small>{check.ready?'Complete':'Needs attention'}</small></span></article>)}</div><footer><span><i className="bi bi-person-badge"/> {detailTournament.assigned_staff_name||'No primary Staff Admin assigned'}</span><span><i className="bi bi-calendar-lock"/> Roster deadline: {detailTournament.registration_deadline||'Not set'}</span><span><i className="bi bi-clock-history"/> {detailData.history.length} schedule changes recorded</span></footer></section>}
+              <section className="tournament-change-timeline"><header><div><small>SCHEDULE AUDIT</small><h5>Recent schedule changes</h5></div><Link to="/schedules">Manage schedule <i className="bi bi-arrow-up-right"/></Link></header>{detailData.history.length?<div>{detailData.history.slice(0,5).map(change=><article key={change.id}><span><i className="bi bi-arrow-left-right"/></span><div><b>{change.home_team||'TBD'} vs {change.away_team||'TBD'}</b><p>{change.previous_start?new Date(change.previous_start).toLocaleString():'Unscheduled'} <i className="bi bi-arrow-right"/> {new Date(change.new_start).toLocaleString()}</p><small>{change.reason} · Changed by {change.changed_by_name} · {change.coaches_notified} Coach notification{Number(change.coaches_notified)===1?'':'s'}</small></div></article>)}</div>:<div className="tournament-change-empty"><i className="bi bi-clock-history"/><span><b>No manual schedule changes</b><small>Rescheduling history and Coach notifications will appear here.</small></span></div>}</section>
               <div className="row g-4 mt-1"><div className="col-lg-7"><section className="tournament-content-panel"><header><div><small>PARTICIPANTS</small><h5>Registered Teams</h5></div><Link to="/teams">Manage teams <i className="bi bi-arrow-up-right"/></Link></header><div className="tournament-team-grid">{detailData.teams.map(team=><article key={team.id}><span style={{background:team.primary_color||'#cd2d17'}}>{team.logo_url?<img src={team.logo_url} alt=""/>:team.team_name.slice(0,2).toUpperCase()}</span><div><b>{team.team_name}</b><small>{team.division_name||'Open division'} · {team.status}</small></div></article>)}{!detailData.teams.length&&<p className="tournament-detail-empty">No registered teams yet.</p>}</div></section></div><div className="col-lg-5"><section className="tournament-content-panel"><header><div><small>COMPETITION STRUCTURE</small><h5>Divisions</h5></div></header><div className="tournament-division-list">{detailData.divisions.map(division=><div key={division.id}><span><i className="bi bi-layers"/></span><div><b>{division.name}</b><small>{division.age_group||'Open age'} · {division.gender_category} · {division.team_count} teams</small></div></div>)}{!detailData.divisions.length&&<p className="tournament-detail-empty">No divisions created yet.</p>}</div></section></div></div>
             </>}
           </div>
@@ -708,10 +713,12 @@ const TournamentManagement = () => {
                             ...formData,
                             start_date: e.target.value,
                             end_date: e.target.value,
+                            registration_deadline: formData.registration_deadline || e.target.value,
                           })
                         }
                       />
                   </div>
+                  <div className="mb-3"><label className="form-label small fw-semibold">Roster Registration Deadline</label><input type="date" className="form-control" required max={formData.start_date||undefined} value={formData.registration_deadline} onChange={e=>setFormData({...formData,registration_deadline:e.target.value})}/><div className="form-text">Coach player additions automatically close after this date.</div></div>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">
                       Registration Fee (₱)

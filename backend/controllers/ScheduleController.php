@@ -62,7 +62,9 @@ class ScheduleController {
         $input = json_decode(file_get_contents('php://input'), true);
         $start = $input['scheduled_start_time'] ?? null;
         $courtId = isset($input['court_id']) ? (int)$input['court_id'] : null;
+        $reason=trim((string)($input['reason']??''));
         if (!$start) Response::error('scheduled_start_time is required.', 400);
+        if(strlen($reason)<5)Response::error('Add a short reason for this schedule change.',422);
         try {
             $result = $this->scheduleModel->updateMatchSlot($matchId, $start, $courtId);
             if (empty($result['scheduled'])) {
@@ -72,17 +74,23 @@ class ScheduleController {
             $changed = strtotime((string)($result['previous_start'] ?? '')) !== strtotime((string)$result['start'])
                 || (int)($result['previous_court_id'] ?? 0) !== (int)($courtId ?? 0);
             $notified = $changed && !empty($result['was_published'])
-                ? $this->scheduleModel->notifyScheduleChange($matchId, $result)
+                ? $this->scheduleModel->notifyScheduleChange($matchId, $result, $reason)
                 : 0;
+            $result['court_id']=$courtId;
+            if ($changed) {
+                $this->scheduleModel->recordScheduleChange($matchId,$result,$reason,(int)$user['user_id'],$notified);
+            }
             $oldSlot = $result['previous_start'] ? date('Y-m-d H:i', strtotime($result['previous_start'])) : 'unscheduled';
             $this->auditLog->log((int)$user['user_id'], 'UPDATE_MATCH_SLOT', 'SCHEDULING',
-                "Match {$matchId}: {$oldSlot} -> {$result['start']}; court ID " . ($result['previous_court_id'] ?? 'none') . " -> " . ($courtId ?? 'none') . ". Participants notified: {$notified}.");
+                "Match {$matchId}: {$oldSlot} -> {$result['start']}; court ID " . ($result['previous_court_id'] ?? 'none') . " -> " . ($courtId ?? 'none') . ". Reason: {$reason}. Participants notified: {$notified}.");
             Response::success($notified > 0 ? 'Published schedule changed and affected participants notified' : 'Match slot saved; no participant alert was needed',
                 array_merge($result, ['participants_notified' => $notified]));
         } catch (Exception $e) {
             Response::error($e->getMessage(), 400);
         }
     }
+
+    public function history(int $tournamentId):void{$user=AuthMiddleware::authenticate();OrganizationAccess::requireTournament($tournamentId,$user);Response::success('Schedule change history retrieved',['history'=>$this->scheduleModel->scheduleHistory($tournamentId)]);}
 
     // POST /tournaments/{id}/schedule/constraints  { max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes }
     public function saveConstraints(int $tournamentId): void {
