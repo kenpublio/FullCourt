@@ -158,6 +158,17 @@ const Dashboard = () => {
     .sort((a,b)=>new Date(a.scheduled_start_time||'2999')-new Date(b.scheduled_start_time||'2999')) : [];
   const staffPending = staffQueue.filter(item=>item.status==='pending').length;
   const staffAccepted = staffQueue.filter(item=>item.status==='accepted').length;
+  const nextAction = dashboardMode === 'admin'
+    ? (adminAttention.find(item=>item.count>0) || { title:'Review tournament readiness', detail:'Open the tournament command center and verify the next competition.', path:'/tournaments', icon:'bi-clipboard2-check-fill', tone:'clear' })
+    : dashboardMode === 'staff'
+      ? (staffPending>0
+          ? { title:'Accept your game assignment', detail:`${staffPending} assignment${staffPending===1?' is':'s are'} waiting for your response.`, path:'/scorekeeper', icon:'bi-person-check-fill', tone:'warning' }
+          : staffAccepted>0
+            ? { title:'Prepare the scoring console', detail:`${staffAccepted} accepted game${staffAccepted===1?' is':'s are'} ready for lineup and score entry.`, path:'/scorekeeper', icon:'bi-clipboard-data-fill', tone:'clear' }
+            : { title:'Review your tournaments', detail:'Check tournament setup, brackets, and upcoming game assignments.', path:'/tournaments', icon:'bi-trophy-fill', tone:'clear' })
+      : Number(analytics?.metrics?.pending_eligibility||0)>0
+        ? { title:'Complete player requirements', detail:`${Number(analytics.metrics.pending_eligibility)} player record${Number(analytics.metrics.pending_eligibility)===1?' needs':'s need'} documents or review.`, path:'/eligibility', icon:'bi-person-vcard-fill', tone:'warning' }
+        : { title:'Review your team roster', detail:'Keep player details, documents, jersey numbers, and availability ready.', path:'/teams', icon:'bi-people-fill', tone:'clear' };
 
   const sportIcon = (sport) => {
     if (sport.toLowerCase().includes('basket'))  return 'bi-dribbble';
@@ -201,6 +212,12 @@ const Dashboard = () => {
         {quickActions.map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
       </nav>
 
+      <section className={`role-next-action mb-4 is-${nextAction.tone}`} aria-label="Recommended next action">
+        <span><i className={`bi ${nextAction.icon}`}/></span>
+        <div><small>RECOMMENDED NEXT ACTION</small><h2>{nextAction.title}</h2><p>{nextAction.detail}</p></div>
+        <Link to={nextAction.path}>Open task <i className="bi bi-arrow-right"/></Link>
+      </section>
+
       {dashboardMode === 'staff' && <section className="staff-shift-board mb-4" aria-labelledby="staff-shift-title">
         <header><div><span><i className="bi bi-clipboard2-pulse"/> STAFF ADMIN SHIFT</span><h2 id="staff-shift-title">{staffQueue.length ? `${staffQueue.length} game assignment${staffQueue.length===1?'':'s'} on deck` : 'No active assignment yet'}</h2><p>Accept the assignment, confirm the lineup, then open the protected scoring console.</p></div><Link to="/scorekeeper">Open scoring workspace <i className="bi bi-arrow-up-right"/></Link></header>
         <div className="staff-shift-summary"><article><i className="bi bi-hourglass-split"/><span><small>Awaiting response</small><b>{staffPending}</b></span></article><article><i className="bi bi-person-check-fill"/><span><small>Accepted</small><b>{staffAccepted}</b></span></article><article><i className="bi bi-cloud-check-fill"/><span><small>Scoring safety</small><b>Offline-ready</b></span></article><article><i className="bi bi-shield-lock-fill"/><span><small>Final result</small><b>Admin confirms</b></span></article></div>
@@ -213,7 +230,7 @@ const Dashboard = () => {
       </section>}
 
       {dashboardMode === 'admin' && <section className="admin-control-board mb-4" aria-label="Platform control priorities">
-        <header className="admin-control-board-head"><div><span>PLATFORM CONTROL</span><h4>Oversight at a glance</h4><p>Key places to review access, eligibility, and live basketball operations.</p></div><span className="admin-control-status"><i/> Platform workspace</span></header>
+        <header className="admin-control-board-head"><div><span>PLATFORM CONTROL</span><h2>Oversight at a glance</h2><p>Key places to review access, eligibility, and live basketball operations.</p></div><span className="admin-control-status"><i/> Platform workspace</span></header>
         <div className="admin-control-board-grid">
           {adminControlLinks.map(item => <Link to={item.path} className={`admin-control-link tone-${item.tone}`} key={item.title}>
             <span className="admin-control-icon"><i className={`bi ${item.icon}`}/></span>
@@ -233,7 +250,7 @@ const Dashboard = () => {
           <div className="player-waiting-icon"><i className="bi bi-envelope-paper-heart" /></div>
           <div>
             <span className="player-status-pill"><i className="bi bi-clock-history" /> Not on a team yet</span>
-            <h5 className="fw-bold mb-1">Your player dashboard is ready</h5>
+            <h2 className="fw-bold mb-1 fs-5">Your player dashboard is ready</h2>
             <p className="mb-0 text-muted small">When a coach invites you, accept it from Notifications to see team eligibility and your match schedule.</p>
           </div>
         </div>
@@ -288,20 +305,20 @@ const Dashboard = () => {
 
       {dashboardMode === 'admin' && <section className="admin-operations-grid mb-4" aria-label="Platform operations overview">
         <article className="card-custom admin-overview-card">
-          <header><div><span className="admin-card-kicker">PLATFORM SNAPSHOT</span><h5>Operations at a glance</h5></div><i className="bi bi-activity" /></header>
+          <header><div><span className="admin-card-kicker">PLATFORM SNAPSHOT</span><h3>Operations at a glance</h3></div><i className="bi bi-activity" /></header>
           <div className="admin-snapshot-list">
             {adminSnapshot.map(([label,value,icon,path])=><Link to={path} key={label}><span><i className={`bi ${icon}`} /></span><div><small>{label}</small><strong>{value}</strong></div><i className="bi bi-chevron-right" /></Link>)}
           </div>
         </article>
         <article className="card-custom admin-overview-card">
-          <header><div><span className="admin-card-kicker">GAME PIPELINE</span><h5>Match status</h5></div><Link to="/schedules">View schedule</Link></header>
+          <header><div><span className="admin-card-kicker">GAME PIPELINE</span><h3>Match status</h3></div><Link to="/schedules">View schedule</Link></header>
           <div className="admin-status-list">
             {(analytics?.match_outcomes || []).map(item=><div key={item.status}><span className={`admin-status-dot status-${item.status}`} /><b>{String(item.status).replaceAll('_',' ')}</b><strong>{item.count}</strong></div>)}
             {!analytics?.match_outcomes?.length&&<div className="admin-empty-line"><i className="bi bi-calendar2-x" /> No recorded match activity yet.</div>}
           </div>
         </article>
         <article className="card-custom admin-overview-card">
-          <header><div><span className="admin-card-kicker">LEAGUE PULSE</span><h5>Top-performing teams</h5></div><Link to="/standings">Standings</Link></header>
+          <header><div><span className="admin-card-kicker">LEAGUE PULSE</span><h3>Top-performing teams</h3></div><Link to="/standings">Standings</Link></header>
           <div className="admin-ranking-list">
             {(analytics?.top_teams || []).slice(0,4).map((team,index)=><div key={`${team.team_name}-${index}`}><span>{String(index+1).padStart(2,'0')}</span><div><b>{team.team_name}</b><small>{team.tournament_name}</small></div><strong>{team.tournament_points || 0}<small> PTS</small></strong></div>)}
             {!analytics?.top_teams?.length&&<div className="admin-empty-line"><i className="bi bi-bar-chart" /> Rankings appear after completed games.</div>}
@@ -310,7 +327,7 @@ const Dashboard = () => {
       </section>}
 
       {['platform_admin','admin','organization_admin','tournament_organizer'].includes(role) && <div className="card-custom p-4 mb-4 dashboard-live-ops">
-        <div className="d-flex justify-content-between align-items-center mb-3"><div><h5 className="fw-bold mb-1"><i className="bi bi-broadcast-pin text-danger me-2"/>Multi-Court Command Center</h5><small className="text-muted">All active and today&apos;s published basketball games · refreshes every 5 seconds</small></div><span className="live-badge">{liveGames.filter(g=>g.status==='in_progress').length} LIVE</span></div>
+        <div className="d-flex justify-content-between align-items-center mb-3"><div><h2 className="fw-bold fs-5 mb-1"><i className="bi bi-broadcast-pin text-danger me-2"/>Multi-Court Command Center</h2><small className="text-muted">All active and today&apos;s published basketball games · refreshes every 5 seconds</small></div><span className="live-badge">{liveGames.filter(g=>g.status==='in_progress').length} LIVE</span></div>
         <div className="row g-3">{liveGames.map(g=><div className="col-md-6 col-xl-4" key={g.id}><div className={`border rounded-3 p-3 h-100 ${g.status==='in_progress'?'border-danger':''}`}><div className="d-flex justify-content-between"><small className="fw-bold text-muted">{g.court_name||g.venue_name||'Court TBA'}</small><span className={`badge ${g.status==='in_progress'?'bg-danger':'bg-primary'}`}>{g.status.replaceAll('_',' ')}</span></div><div className="d-flex justify-content-between align-items-center my-3"><b>{g.home_team||'TBD'}</b><span className="fs-4 fw-bold">{g.home_score}–{g.away_score}</span><b className="text-end">{g.away_team||'TBD'}</b></div><small>{g.current_period||'Pre-game'} · {Math.floor((g.timer_seconds||0)/60)}:{String((g.timer_seconds||0)%60).padStart(2,'0')} · {g.officials_ready} officials ready</small></div></div>)}{!liveGames.length&&<div className="col-12 text-center text-muted py-3">No active or scheduled games today.</div>}</div>
       </div>}
 
@@ -324,12 +341,12 @@ const Dashboard = () => {
               </div>
               <div>
                 <span className="dashboard-section-kicker">COMPETITION OVERVIEW</span>
-                <h5>{role === 'player' ? 'My Basketball Participation' : 'Basketball Competition Activity'}</h5>
+                <h2>{role === 'player' ? 'My Basketball Participation' : 'Basketball Competition Activity'}</h2>
                 <small className="text-muted">{role === 'player' ? (membership?.has_team ? `Approved for ${membership.membership.team_name}` : 'No team membership yet') : 'Registered teams across active basketball tournaments'}</small>
               </div>
               <div className="dashboard-section-total"><i className="bi bi-people-fill" /><div><strong>{activityTotal}</strong>{' '}<span>{role === 'player' ? 'Active team' : 'Registered teams'}</span></div></div>
             </div>
-            {activityTotal > 0 ? <div className="competition-activity-visual"><div className="competition-sport-mark"><span><i className="bi bi-dribbble" /></span><div><small>ACTIVE SPORT</small><h6>Basketball</h6><p>100% of FullCourt competition activity</p></div></div><div className="competition-meter"><div><span>Competition coverage</span><b>100%</b></div><div className="competition-meter-track"><i /></div><small>All registered teams are competing in basketball tournaments.</small></div><div className="competition-mini-stats"><div><strong>{activityTotal}</strong><span>Teams</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.active_tournaments||0)}</strong><span>Active tournaments</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.verified_players||0)}</strong><span>Verified players</span></div></div></div> : <div className="dashboard-empty-state compact"><span><i className="bi bi-dribbble" /></span><div><h6>Competition activity will appear here</h6><p>Add teams to an active tournament to begin tracking basketball participation.</p></div>{dashboardMode!=='player'&&<Link to="/teams">Manage teams <i className="bi bi-arrow-right" /></Link>}</div>}
+            {activityTotal > 0 ? <div className="competition-activity-visual"><div className="competition-sport-mark"><span><i className="bi bi-dribbble" /></span><div><small>ACTIVE SPORT</small><h3>Basketball</h3><p>100% of FullCourt competition activity</p></div></div><div className="competition-meter"><div><span>Competition coverage</span><b>100%</b></div><div className="competition-meter-track"><i /></div><small>All registered teams are competing in basketball tournaments.</small></div><div className="competition-mini-stats"><div><strong>{activityTotal}</strong><span>Teams</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.active_tournaments||0)}</strong><span>Active tournaments</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.verified_players||0)}</strong><span>Verified players</span></div></div></div> : <div className="dashboard-empty-state compact"><span><i className="bi bi-dribbble" /></span><div><h3>Competition activity will appear here</h3><p>Add teams to an active tournament to begin tracking basketball participation.</p></div>{dashboardMode!=='player'&&<Link to="/teams">Manage teams <i className="bi bi-arrow-right" /></Link>}</div>}
           </div>
         </div>
 
@@ -348,7 +365,7 @@ const Dashboard = () => {
             </div>
             <div>
               <span className="dashboard-section-kicker">COURTSIDE SCHEDULE</span>
-              <h5>Today&apos;s Matches</h5>
+              <h2 className="fs-5">Today&apos;s Matches</h2>
               <small className="text-muted">Published basketball courts and venues</small>
             </div>
           </div>
@@ -398,7 +415,7 @@ const Dashboard = () => {
               ))}
             </tbody>
           </table>
-        </div> : <div className="dashboard-empty-state matches-empty"><span><i className="bi bi-calendar2-check" /></span><div><small>NO GAMES ON DECK</small><h6>The court is clear today</h6><p>Published games scheduled for today will appear here with their court, matchup, and live status.</p></div><Link to="/schedules">View all schedules <i className="bi bi-arrow-right" /></Link></div>}
+        </div> : <div className="dashboard-empty-state matches-empty"><span><i className="bi bi-calendar2-check" /></span><div><small>NO GAMES ON DECK</small><h3>The court is clear today</h3><p>Published games scheduled for today will appear here with their court, matchup, and live status.</p></div><Link to="/schedules">View all schedules <i className="bi bi-arrow-right" /></Link></div>}
       </div>}
 
     </div>

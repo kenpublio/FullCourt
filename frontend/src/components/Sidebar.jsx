@@ -48,7 +48,7 @@ const Sidebar = ({ open = false, onClose }) => {
 
   const roleLabel = role === 'platform_admin' || role === 'admin' ? 'Administrator' : role === 'statistician' ? 'Staff Admin' : role.replaceAll('_', ' ');
   const roleHome = ['platform_admin','admin'].includes(role) ? '/platform'
-    : role === 'coach' ? '/coach' : '/statistician';
+    : role === 'coach' ? '/coach' : '/dashboard';
 
   return (
     <aside className={`sidebar-wrapper${open ? ' is-open' : ''}`} aria-label="Primary navigation">

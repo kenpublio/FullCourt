@@ -194,7 +194,7 @@
   line-height: 1.25;
 }
 
-.role-dashboard .dashboard-section-head h5 {
+.role-dashboard .dashboard-section-head h2 {
   margin: 0;
   font-size: 1.05rem;
   line-height: 1.3;
@@ -249,6 +249,12 @@
 @media(max-width:1100px){.organizer-readiness-checks{grid-template-columns:repeat(2,minmax(0,1fr))}.organizer-readiness-checks>a:last-child{grid-column:1/-1}.organizer-readiness-overview{grid-template-columns:1fr}}
 @media(max-width:650px){.organizer-readiness-head{align-items:flex-start;flex-direction:column;padding:19px}.organizer-readiness-head>a{padding:8px 0}.organizer-readiness-overview{padding:14px}.organizer-readiness-score{align-items:flex-start}.organizer-readiness-ring{flex-basis:72px;width:72px;height:72px}.organizer-readiness-ring>span{width:58px;height:58px}.organizer-readiness-next{padding:15px}.organizer-readiness-next>a{position:static;display:inline-flex;margin-top:11px}.organizer-readiness-checks{grid-template-columns:1fr}.organizer-readiness-checks>a,.organizer-readiness-checks>a:last-child{grid-column:auto;min-height:0}.organizer-readiness>footer{align-items:flex-start;flex-direction:column;padding:15px 19px}.organizer-readiness>footer>a{margin-left:0}}
 
+/* One clear task per role keeps busy tournament dashboards actionable. */
+.role-next-action{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:15px;padding:16px 18px;border:1px solid rgba(32,185,120,.3);border-radius:15px;background:linear-gradient(105deg,rgba(32,185,120,.12),rgba(32,185,120,.035));color:var(--dashboard-text)}.role-next-action>span{display:grid;width:44px;height:44px;place-items:center;border-radius:12px;background:rgba(32,185,120,.16);color:#38d896;font-size:1.05rem}.role-next-action>div{min-width:0}.role-next-action small{color:#38d896;font-size:.54rem;font-weight:900;letter-spacing:.13em}.role-next-action h2{margin:3px 0;color:inherit;font-size:1rem;font-weight:900}.role-next-action p{margin:0;color:var(--dashboard-muted);font-size:.72rem}.role-next-action>a{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(32,185,120,.3);border-radius:9px;color:#73e7b0;font-size:.7rem;font-weight:850;text-decoration:none;white-space:nowrap}.role-next-action.is-warning{border-color:rgba(243,180,71,.34);background:linear-gradient(105deg,rgba(243,180,71,.13),rgba(243,180,71,.035))}.role-next-action.is-warning>span{background:rgba(243,180,71,.14);color:#f3b447}.role-next-action.is-warning small,.role-next-action.is-warning>a{color:#f3b447}.role-next-action.is-warning>a{border-color:rgba(243,180,71,.3)}.role-next-action.is-critical{border-color:rgba(244,84,66,.38);background:linear-gradient(105deg,rgba(244,84,66,.14),rgba(244,84,66,.035))}.role-next-action.is-critical>span{background:rgba(244,84,66,.14);color:#ff8274}.role-next-action.is-critical small,.role-next-action.is-critical>a{color:#ff8274}.role-next-action.is-critical>a{border-color:rgba(244,84,66,.32)}
+@media(max-width:650px){.role-next-action{grid-template-columns:auto minmax(0,1fr);padding:14px}.role-next-action>a{grid-column:1/-1;justify-content:center}.role-next-action h2{font-size:.9rem}}
+.admin-console-light .role-dashboard .admin-overview-card>header>a,:root[data-fullcourt-theme="light"] .role-dashboard .admin-overview-card>header>a{color:#9f2d1e!important}
+.coach-readiness-team>span{background:#17212f!important;color:#fff!important}
+
 .role-dashboard .border.rounded-3,
 .role-dashboard .btn-light.border {
   border-color: var(--dashboard-border) !important;
@@ -290,7 +296,7 @@
   letter-spacing: .08em;
 }
 
-.admin-control-board-head h4 {
+.admin-control-board-head h2 {
   margin: .22rem 0 .2rem;
   color: #f4f4f5;
   font-size: 1.05rem;
@@ -381,7 +387,7 @@
 .admin-control-value > i { color: var(--dashboard-muted); font-size: .7rem; }
 
 .admin-console-light .role-dashboard .admin-control-board { background: #fff; }
-.admin-console-light .role-dashboard .admin-control-board-head h4,
+.admin-console-light .role-dashboard .admin-control-board-head h2,
 .admin-console-light .role-dashboard .admin-control-copy b,
 .admin-console-light .role-dashboard .admin-control-value { color: #202124; }
 .admin-console-light .role-dashboard .admin-control-link { background: #f7f7f8; }
@@ -513,11 +519,11 @@
 :root[data-fullcourt-theme="light"] .role-dashboard .role-quick-actions > a > b,
 :root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-value,
 :root[data-fullcourt-theme="light"] .role-dashboard .card-custom :is(h1,h2,h3,h4,h5,h6),
-:root[data-fullcourt-theme="light"] .role-dashboard .dashboard-empty-state h6,
+:root[data-fullcourt-theme="light"] .role-dashboard .dashboard-empty-state h3,
 .admin-console-light .role-dashboard .role-quick-actions > a > b,
 .admin-console-light .role-dashboard .kpi-card-value,
 .admin-console-light .role-dashboard .card-custom :is(h1,h2,h3,h4,h5,h6),
-.admin-console-light .role-dashboard .dashboard-empty-state h6 { color: #17212f !important; }
+.admin-console-light .role-dashboard .dashboard-empty-state h3 { color: #17212f !important; }
 :root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-label,
 :root[data-fullcourt-theme="light"] .role-dashboard .kpi-card-trend,
 :root[data-fullcourt-theme="light"] .role-dashboard .card-custom :is(p,small,.text-muted),

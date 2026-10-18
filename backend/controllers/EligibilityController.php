@@ -117,6 +117,10 @@ class EligibilityController {
             Response::error('Enter a valid player birth date.', 400);
         }
         $input['player_name'] = trim($input['player_name']);
+        $jersey=($input['jersey_number']??'')===''?null:(int)$input['jersey_number'];
+        if($jersey!==null&&($jersey<0||$jersey>999))Response::error('Jersey number must be between 0 and 999.',422);
+        if($jersey!==null&&$this->playerModel->hasJerseyNumber((int)$input['team_id'],$jersey))Response::error("Jersey number {$jersey} is already used by another active player on this team.",409);
+        $input['jersey_number']=$jersey;
         $registration=$this->playerModel->rosterRegistrationState((int)$input['team_id']);
         if($registration['locked']) Response::error('This tournament roster is locked. Ask the Admin to reopen registration before adding a player.',423,['locked_at'=>$registration['lock_time']]);
         if($registration['deadline_passed']) Response::error('The roster registration deadline has passed. Admin approval is required for a late addition.',423,['registration_deadline'=>$registration['deadline']]);

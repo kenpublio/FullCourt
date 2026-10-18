@@ -26,7 +26,7 @@ const axeUrl = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.3/axe.min.j
       localStorage.setItem('sportsync_user', JSON.stringify(value.user));
     }, session);
     const page = await context.newPage();
-    const home = { platform_admin: '/platform', organization_admin: '/organizer', coach: '/coach', player: '/player' }[role] || '/';
+    const home = { platform_admin: '/platform', admin: '/platform', statistician: '/dashboard', coach: '/coach' }[role] || '/';
     await page.goto(base + home, { waitUntil: 'domcontentloaded' });
     if (session) await page.locator('.sidebar-menu').waitFor({ timeout: 20000 });
     const routes = session

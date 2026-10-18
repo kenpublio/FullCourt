@@ -100,9 +100,9 @@ const CoachDashboard = () => {
           <div className="role-hero-topline mb-3">
             <span className="role-hero-eyebrow"><i className="bi bi-clipboard2-pulse" /> Coach overview</span>
           </div>
-          <h3 className="fw-bold text-white mb-1">
+          <h1 className="fw-bold text-white mb-1">
             Welcome, {user?.full_name || "Coach"}
-          </h3>
+          </h1>
           <p className="role-dashboard-intro mb-0">
             Your team, roster, and next-game overview in one place.
           </p>
@@ -173,7 +173,7 @@ const CoachDashboard = () => {
           <div className="card-custom p-4 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
-                <h5 className="fw-bold mb-1">My Teams</h5>
+                <h2 className="fw-bold fs-5 mb-1">My Teams</h2>
                 <small className="text-muted">
                   Teams currently assigned to you
                 </small>
@@ -233,10 +233,10 @@ const CoachDashboard = () => {
         </div>
         <div className="col-lg-5">
           <div className="card-custom p-4 mb-4">
-            <h5 className="fw-bold">
+            <h2 className="fw-bold fs-5">
               <i className="bi bi-calendar2-check text-evsu-primary me-2" />
               Next Game
-            </h5>
+            </h2>
             {nextGame ? (
               <>
                 <div className="text-muted small mb-2">
@@ -261,7 +261,7 @@ const CoachDashboard = () => {
             <div className="mb-4"><MatchupPrediction matchId={nextGame.id} title="Next Game Win Probability" /></div>
           )}
           <div className="card-custom p-4">
-            <h5 className="fw-bold mb-3">Quick Actions</h5>
+            <h2 className="fw-bold fs-5 mb-3">Quick Actions</h2>
             <div className="d-grid gap-2">
               <Link to="/teams" className="btn btn-light border text-start">
                 <i className="bi bi-person-plus-fill text-primary me-2" />

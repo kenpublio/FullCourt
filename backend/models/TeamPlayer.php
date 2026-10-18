@@ -157,6 +157,12 @@ class TeamPlayer {
         return (bool)$stmt->fetch();
     }
 
+    public function hasJerseyNumber(int $teamId, int $jerseyNumber): bool {
+        $stmt=$this->db->prepare("SELECT id FROM team_players WHERE team_id=:team_id AND jersey_number=:jersey_number AND eligibility_status<>'rejected' LIMIT 1");
+        $stmt->execute([':team_id'=>$teamId,':jersey_number'=>$jerseyNumber]);
+        return (bool)$stmt->fetch();
+    }
+
     public function rosterCapacity(int $teamId): array {
         $stmt = $this->db->prepare("SELECT 15 AS roster_limit,
             (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status<>'rejected') AS roster_count
