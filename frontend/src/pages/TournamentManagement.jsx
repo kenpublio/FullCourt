@@ -85,7 +85,7 @@ const TournamentManagement = () => {
     age_cutoff_date: "",
     gender_category: "open",
     format: "round_robin",
-    max_roster_size: 15,
+    max_roster_size: 18,
     eligibility_requirements: "",
   });
 
@@ -970,7 +970,7 @@ const TournamentManagement = () => {
                         value="15"
                         readOnly
                       />
-                      <div className="form-text">FullCourt allows up to 15 active players per team.</div>
+                      <div className="form-text">FullCourt allows up to 18 active players per team.</div>
                     </div>
                     <div className="col-md-4"><label htmlFor="division-min-age" className="form-label small fw-semibold">Minimum age</label><input id="division-min-age" type="number" min="0" max="99" className="form-control" placeholder="No minimum" value={divisionForm.min_age} onChange={e=>setDivisionForm({...divisionForm,min_age:e.target.value})}/></div>
                     <div className="col-md-4"><label htmlFor="division-max-age" className="form-label small fw-semibold">Maximum age</label><input id="division-max-age" type="number" min="0" max="99" className="form-control" placeholder="No maximum" value={divisionForm.max_age} onChange={e=>setDivisionForm({...divisionForm,max_age:e.target.value})}/></div>

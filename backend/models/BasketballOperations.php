@@ -74,7 +74,7 @@ class BasketballOperations {
             ':gender'=>$data['gender_category'] ?? 'open', ':format'=>$data['format'] ?? 'round_robin',
             ':min_age'=>($data['min_age'] ?? '') === '' ? null : (int)$data['min_age'], ':max_age'=>($data['max_age'] ?? '') === '' ? null : (int)$data['max_age'],
             ':age_cutoff_date'=>($data['age_cutoff_date'] ?? '') === '' ? null : $data['age_cutoff_date'],
-            ':max_roster'=>$data['max_roster_size'] ?? 15, ':requirements'=>$data['eligibility_requirements'] ?? null
+            ':max_roster'=>$data['max_roster_size'] ?? 18, ':requirements'=>$data['eligibility_requirements'] ?? null
         ]);
         return (int)$this->db->lastInsertId();
     }

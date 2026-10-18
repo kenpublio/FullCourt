@@ -21,7 +21,7 @@ const sessions=JSON.parse(execFileSync('php',[path.join(__dirname,'BrowserAuditS
       await page.getByText('No matching games').waitFor();
     }else{
       const readiness=await page.locator('.coach-readiness-board').textContent();
-      if(readiness&&!/\d+\/15 players/.test(readiness))throw new Error('Coach readiness does not show the 15-player roster capacity.');
+      if(readiness&&!/\d+\/18 players/.test(readiness))throw new Error('Coach readiness does not show the 18-player roster capacity.');
     }
     const desktopOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2);
     await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);

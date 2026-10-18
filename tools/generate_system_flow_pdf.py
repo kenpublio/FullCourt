@@ -90,7 +90,7 @@ cover = Table([
 ], colWidths=[doc.width], rowHeights=[18 * mm, 38 * mm, 16 * mm, 32 * mm, 18 * mm])
 cover.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), NAVY), ("BOX", (0, 0), (-1, -1), 0, NAVY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 16 * mm), ("RIGHTPADDING", (0, 0), (-1, -1), 16 * mm)]))
 story.extend([Spacer(1, 24 * mm), cover, Spacer(1, 10 * mm)])
-pill = Table([["3 authenticated roles", "15-player roster cap", "Public scores & schedule"]], colWidths=[doc.width / 3] * 3)
+pill = Table([["3 authenticated roles", "18-player roster cap", "Public scores & schedule"]], colWidths=[doc.width / 3] * 3)
 pill.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), RED), ("TEXTCOLOR", (0, 0), (-1, -1), colors.white), ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, -1), 8), ("ALIGN", (0, 0), (-1, -1), "CENTER"), ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8)]))
 story.append(pill)
 story.append(Spacer(1, 30 * mm))
@@ -100,7 +100,7 @@ story.extend([PageBreak(), Paragraph("01 / PRE-TOURNAMENT", styles["SectionKicke
 story.extend([
     step("1", "Administrator creates the tournament", "Set tournament details, divisions, dates, roster deadline, rules, and the playable venue with its Main Court."),
     step("2", "Teams and Coaches are connected", "Administrator manages team oversight. Each team is associated with the Coach who owns its roster actions."),
-    step("3", "Coach completes the 15-player roster", "Add player records without creating player accounts. Record birth date, guardian, jersey, and position; then upload PSA/Birth Certificate and Parent Permit.", GREEN),
+    step("3", "Coach completes the 18-player roster", "Add player records without creating player accounts. Record birth date, guardian, jersey, and position; then upload PSA/Birth Certificate and Parent Permit.", GREEN),
     step("4", "Administrator reviews eligibility", "Review protected files and the birth-date match. Approve or reject with remarks; roster fields remain Coach-owned."),
     step("5", "Bracket and schedule are generated", "Schedule Optimization checks court overlap, team overlap, venue availability, team rest, and daily game limits."),
     step("6", "Administrator publishes", "Publication makes games visible in Game Center and notifies affected Coaches. Conflicts must be zero before publishing."),
@@ -120,7 +120,7 @@ story.extend([Paragraph("03 / RESPONSIBILITY MATRIX", styles["SectionKicker"]), 
 matrix = [
     ["AREA", "ADMINISTRATOR", "COACH", "STAFF ADMIN", "PUBLIC / PLAYER"],
     ["Tournament", "Create and manage", "View", "Assigned games", "Published view"],
-    ["Team / roster", "Oversight", "Manage up to 15", "Lineup use only", "No account"],
+    ["Team / roster", "Oversight", "Manage up to 18", "Lineup use only", "No account"],
     ["Documents", "Review / decide", "Upload / correct", "No access", "No access"],
     ["Schedule", "Generate / change", "View / acknowledge", "View assignment", "Published view"],
     ["Live scoring", "Monitor / approve", "View", "Record score / stats", "Live view"],

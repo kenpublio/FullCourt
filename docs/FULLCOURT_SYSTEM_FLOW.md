@@ -15,7 +15,7 @@ FullCourt has three authenticated user types: Administrator, Coach, and Staff Ad
 ## 2. Coach roster preparation
 
 1. Sign in as Coach and open My Team & Roster.
-2. Add up to 15 player records. No player login is created.
+2. Add up to 18 player records. No player login is created.
 3. Record each player's birth date, guardian details, jersey number, and position.
 4. Upload the Birth Certificate/PSA and Parent Permit.
 5. Correct any birth-date mismatch or rejected document shown by the eligibility review.
@@ -69,7 +69,7 @@ FullCourt has three authenticated user types: Administrator, Coach, and Staff Ad
 | Area | Administrator | Coach | Staff Admin | Public/player |
 |---|---|---|---|---|
 | Tournament, bracket, schedule | Manage | View | View assigned games | View published data |
-| Team and roster | Team oversight | Add/manage up to 15 players | Lineup use only | No account |
+| Team and roster | Team oversight | Add/manage up to 18 players | Lineup use only | No account |
 | Eligibility documents | Review/decide | Upload/correct | No access | No access |
 | Live scoring | Monitor/final approval | View | Record score and stats | View published/live data |
 | Venue/time changes | Manage | Receive notice | See assignment update | View published update |

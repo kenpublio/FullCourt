@@ -60,7 +60,7 @@ class BasketballOperationsController {
         if ($maximum !== null && ($maximum < 0 || $maximum > 99)) Response::error('Maximum age must be between 0 and 99.', 422);
         if ($minimum !== null && $maximum !== null && $minimum > $maximum) Response::error('Minimum age cannot be greater than maximum age.', 422);
         if (!empty($input['age_cutoff_date']) && !DateTimeImmutable::createFromFormat('Y-m-d', (string)$input['age_cutoff_date'])) Response::error('Age cutoff date must be a valid date.', 422);
-        $input['max_roster_size'] = 15;
+        $input['max_roster_size'] = 18;
         $id = $this->model->createDivision($tournamentId, $input);
         $this->audit->log((int)$user['user_id'], 'CREATE_DIVISION', 'TOURNAMENT_MGMT', "Created division {$id} for tournament {$tournamentId}.");
         Response::success('Division created', ['id'=>$id], 201);

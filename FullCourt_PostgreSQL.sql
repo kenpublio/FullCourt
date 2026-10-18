@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS divisions (
   min_age integer DEFAULT NULL,
   max_age integer DEFAULT NULL,
   age_cutoff_date date DEFAULT NULL,
-  max_roster_size integer NOT NULL DEFAULT 15,
+  max_roster_size integer NOT NULL DEFAULT 18,
   eligibility_requirements text DEFAULT NULL,
   created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

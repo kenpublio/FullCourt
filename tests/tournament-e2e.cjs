@@ -52,7 +52,7 @@ async function api(session, method, route, body) {
   let divisions = (await api(organizer,'GET',`/tournaments/${tournamentId}/divisions`)).data.divisions;
   let division = divisions.find(d => d.name === 'Open Division');
   if (!division) division = { id:(await api(organizer,'POST',`/tournaments/${tournamentId}/divisions`,{
-    name:'Open Division', age_group:'Open', gender_category:'open', format:'single_elimination', max_roster_size:15,
+    name:'Open Division', age_group:'Open', gender_category:'open', format:'single_elimination', max_roster_size:18,
     eligibility_requirements:'Valid ID or barangay certification; one active roster per team.'
   })).data.id };
 

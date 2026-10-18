@@ -65,7 +65,7 @@ const CoachDashboard = () => {
     )[0];
   const readinessRows = teams.map(team => {
     const teamRoster=players.filter(player=>Number(player.team_id)===Number(team.id));
-    const rosterLimit=Number(team.max_roster_size||15);
+    const rosterLimit=Number(team.max_roster_size||18);
     const cleared=teamRoster.filter(player=>player.eligibility_status==='verified').length;
     const teamPayments=payments.filter(payment=>Number(payment.team_id)===Number(team.id));
     const fee=Number(teamPayments[0]?.registration_fee||0);

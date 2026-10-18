@@ -73,7 +73,7 @@ async function requestForm(route, token, form) {
     },
   })).id);
   const divisionId = Number((await request(`/tournaments/${tournamentId}/divisions`, {
-    method: 'POST', body: { name: 'Open Test Division', age_group: 'Open', gender_category: 'open', format: 'single_elimination', max_roster_size: 15 },
+    method: 'POST', body: { name: 'Open Test Division', age_group: 'Open', gender_category: 'open', format: 'single_elimination', max_roster_size: 18 },
   })).id);
   const teamA = Number((await request('/teams', { method: 'POST', body: { tournament_id: tournamentId, division_id: divisionId, team_name: 'FullCourt Red Testers', short_name: 'RED', primary_color: '#CD2D17', coach_user_id: Number(coach.user.id), status: 'registered' } })).team_id);
   const teamB = Number((await request('/teams', { method: 'POST', body: { tournament_id: tournamentId, division_id: divisionId, team_name: 'FullCourt Gold Testers', short_name: 'GLD', primary_color: '#D4A72C', coach_user_id: Number(coach.user.id), status: 'registered' } })).team_id);

@@ -263,7 +263,7 @@ CREATE TABLE `divisions` (
   `format` enum('round_robin','single_elimination','group_playoffs') NOT NULL DEFAULT 'round_robin',
   `min_age` int(11) DEFAULT NULL,
   `max_age` int(11) DEFAULT NULL,
-  `max_roster_size` int(11) NOT NULL DEFAULT 15,
+  `max_roster_size` int(11) NOT NULL DEFAULT 18,
   `eligibility_requirements` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),

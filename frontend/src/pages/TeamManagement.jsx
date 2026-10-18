@@ -465,7 +465,7 @@ const TeamManagement = () => {
               <div className="modal-header border-bottom">
                 <div>
                   <h5 className="fw-bold mb-0">{rosterTeam.team_name} Roster</h5>
-                  <small className="text-muted">{isCoach ? 'Manage up to 15 player records, jersey numbers, positions, and documents' : 'Coach-managed roster · Admin reviews player eligibility and documents'}</small>
+                  <small className="text-muted">{isCoach ? 'Manage up to 18 player records, jersey numbers, positions, and documents' : 'Coach-managed roster · Admin reviews player eligibility and documents'}</small>
                 </div>
                 <button type="button" className="btn-close" onClick={() => setRosterTeam(null)} aria-label="Close" />
               </div>

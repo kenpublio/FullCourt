@@ -26,7 +26,7 @@ class Team {
     }
 
     public function getAll(): array {
-        $sql = "SELECT tm.*, u.full_name as coach_name, t.name as tournament_name, s.name as sport_name, d.name AS division_name, 15 AS max_roster_size,
+        $sql = "SELECT tm.*, u.full_name as coach_name, t.name as tournament_name, s.name as sport_name, d.name AS division_name, 18 AS max_roster_size,
                 (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players,
                 (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
                 (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
@@ -42,7 +42,7 @@ class Team {
     }
 
     public function getForCoach(int $userId): array {
-        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, t.registration_deadline, t.roster_locked_at, s.name AS sport_name, d.name AS division_name, 15 AS max_roster_size,
+        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, t.registration_deadline, t.roster_locked_at, s.name AS sport_name, d.name AS division_name, 18 AS max_roster_size,
                        (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players,
                        (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
                        (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
@@ -60,7 +60,7 @@ class Team {
     }
 
     public function getForTournamentManager(int $userId): array {
-        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name, 15 AS max_roster_size,
+        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name, 18 AS max_roster_size,
                        (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified') AS total_players,
                        (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
                        (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
