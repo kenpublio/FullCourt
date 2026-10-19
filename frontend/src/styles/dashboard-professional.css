@@ -4,6 +4,7 @@
   --dashboard-surface-raised: #202125;
   --dashboard-border: rgba(255, 255, 255, 0.1);
   --dashboard-muted: #a7a8ad;
+  --dashboard-text: #f4f4f5;
   position: relative;
 }
 
@@ -456,6 +457,7 @@
   --dashboard-surface-raised: #f7f7f8;
   --dashboard-border: rgba(17, 24, 39, .12);
   --dashboard-muted: #667085;
+  --dashboard-text: #202124;
 }
 
 .admin-console-light .role-dashboard .welcome-banner {
@@ -481,6 +483,19 @@
 
 .admin-console-light .role-dashboard .card-custom .text-muted {
   color: #667085 !important;
+}
+
+:root[data-fullcourt-theme="light"] .role-next-action h2,
+.admin-console-light .role-next-action h2 {
+  color: #202124 !important;
+}
+
+.admin-console-light .admin-attention-board h2 {
+  color: #202124 !important;
+}
+
+.admin-console-dark .admin-attention-board > div .needs-action small {
+  color: #ff9b90;
 }
 
 /* Beat the intentional charcoal defaults above when a dashboard is in light mode. */

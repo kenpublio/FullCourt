@@ -42,6 +42,12 @@ const MainLayout = () => {
     return()=>window.removeEventListener('fullcourt-theme-change',syncAppearance);
   },[user?.id]);
 
+  useEffect(() => {
+    if (!isPlatformAdmin) return;
+    document.documentElement.dataset.fullcourtTheme = adminTheme;
+    document.documentElement.dataset.bsTheme = adminTheme;
+  }, [adminTheme, isPlatformAdmin]);
+
   const toggleAppearance=()=>{
     const next=document.documentElement.dataset.fullcourtTheme==='dark'?'light':'dark';
     let saved={};

@@ -9,6 +9,7 @@ import venueService from "../services/venueService";
 import LocationMapPicker from "../components/LocationMapPicker";
 import { Link } from "react-router-dom";
 import userService from "../services/userService";
+import "../styles/operations-polish.css";
 
 const divisionPresets = {
   custom: { name: "", min_age: "", max_age: "" },

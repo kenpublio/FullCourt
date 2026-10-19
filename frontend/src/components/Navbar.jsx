@@ -50,7 +50,7 @@ const Navbar = ({ onMenuClick, adminTheme, appearance = 'light', onAppearanceTog
     : 'U';
 
   const roleLabel = user?.role
-    ? (user.role === 'admin' ? 'Administrator' : user.role.replaceAll('_', ' '))
+    ? ({ platform_admin: 'Administrator', admin: 'Administrator', statistician: 'Staff Admin', coach: 'Coach' }[user.role] || user.role.replaceAll('_', ' '))
     : '';
 
   return (

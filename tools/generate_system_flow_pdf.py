@@ -8,6 +8,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
+    Image,
     KeepTogether,
     PageBreak,
     PageTemplate,
@@ -39,6 +40,8 @@ styles.add(ParagraphStyle(name="BodyFC", parent=styles["BodyText"], fontSize=9.4
 styles.add(ParagraphStyle(name="StepTitle", parent=styles["Heading3"], fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=NAVY, spaceAfter=3))
 styles.add(ParagraphStyle(name="SmallFC", parent=styles["BodyText"], fontSize=8.2, leading=11, textColor=MUTED))
 styles.add(ParagraphStyle(name="WhiteSmall", parent=styles["BodyText"], fontSize=8.5, leading=12, textColor=colors.white, alignment=TA_CENTER))
+styles.add(ParagraphStyle(name="ScreenCaption", parent=styles["BodyText"], fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=NAVY, alignment=TA_CENTER, spaceBefore=3))
+styles.add(ParagraphStyle(name="GuideStep", parent=styles["BodyText"], fontSize=8.4, leading=11, textColor=colors.HexColor("#334155")))
 
 
 def header_footer(canvas, doc):
@@ -80,6 +83,49 @@ def step(number, title, copy, accent=RED):
     return KeepTogether([card, Spacer(1, 4 * mm)])
 
 
+SCREEN_DIR = ROOT / "tmp" / "pdfs" / "system-guide-screens"
+
+
+def screenshot_pair(left_name, left_caption, right_name, right_caption):
+    width = 86 * mm
+    height = 53.75 * mm
+    left = Image(str(SCREEN_DIR / left_name), width=width, height=height)
+    right = Image(str(SCREEN_DIR / right_name), width=width, height=height)
+    table = Table([
+        [left, right],
+        [Paragraph(left_caption, styles["ScreenCaption"]), Paragraph(right_caption, styles["ScreenCaption"])],
+    ], colWidths=[doc.width / 2, doc.width / 2])
+    table.setStyle(TableStyle([
+        ("BOX", (0, 0), (0, 0), 0.6, colors.HexColor("#CBD5E1")),
+        ("BOX", (1, 0), (1, 0), 0.6, colors.HexColor("#CBD5E1")),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return table
+
+
+def guide_steps(items):
+    cells = []
+    for number, title, copy in items:
+        cells.append(Paragraph(f"<font color='#D52B1E'><b>{number}. {title}</b></font><br/>{copy}", styles["GuideStep"]))
+    table = Table([cells], colWidths=[doc.width / len(cells)] * len(cells))
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#D9E0E8")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D9E0E8")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    return table
+
+
 story = []
 cover = Table([
     [Paragraph("KADAYO STAKEHOLDER-ALIGNED BASKETBALL OPERATIONS", styles["CoverKicker"])],
@@ -95,6 +141,73 @@ pill.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), RED), ("TEXTCOLOR", (
 story.append(pill)
 story.append(Spacer(1, 30 * mm))
 story.append(Paragraph("Prepared for system defense and November game-day operations", styles["CoverKicker"]))
+
+story.extend([
+    PageBreak(),
+    Paragraph("VISUAL GUIDE / PUBLIC", styles["SectionKicker"]),
+    Paragraph("Follow games without an account", styles["SectionTitle"]),
+    Paragraph("Players, parents, and spectators use the public pages. They can view published tournaments, schedules, live scores, standings, brackets, and approved player statistics without signing in.", styles["BodyFC"]),
+    screenshot_pair("02-public-game-center.png", "Game Center - choose a published tournament", "03-public-schedule.png", "Daily Schedule - filter and follow official fixtures"),
+    Spacer(1, 6 * mm),
+    guide_steps([
+        ("1", "Open Game Center", "Go to /sports and choose a published tournament."),
+        ("2", "Check the schedule", "Open Schedule to see game time, venue, court, and status."),
+        ("3", "Follow official results", "Live and final scores update after Staff Admin entry and Admin confirmation."),
+    ]),
+    Spacer(1, 5 * mm),
+    Paragraph("Privacy note: birth documents, guardian details, exact birth dates, and internal review notes never appear on these public pages.", styles["SmallFC"]),
+])
+
+story.extend([
+    PageBreak(),
+    Paragraph("VISUAL GUIDE / ADMINISTRATOR", styles["SectionKicker"]),
+    Paragraph("Build and control the tournament", styles["SectionTitle"]),
+    Paragraph("The Administrator owns tournament setup, accounts, eligibility review, venues, brackets, schedules, assignments, score confirmation, and system reporting.", styles["BodyFC"]),
+    screenshot_pair("04-admin-dashboard.png", "Admin Dashboard - act on the priority queue", "05-admin-tournaments.png", "Tournament Operations - create and manage competitions"),
+    Spacer(1, 6 * mm),
+    guide_steps([
+        ("1", "Create tournament", "Enter details, divisions, dates, rules, and playable venue."),
+        ("2", "Prepare participants", "Connect teams and Coaches; create Staff Admin accounts and assignments."),
+        ("3", "Publish operations", "Review eligibility, generate bracket and conflict-free schedule, then publish."),
+        ("4", "Confirm results", "Monitor live games, review submitted finals, and confirm official results."),
+    ]),
+    Spacer(1, 5 * mm),
+    Paragraph("Recommended sequence: Tournament -> Teams and Coaches -> Eligibility -> Venue -> Bracket -> Schedule -> Staff Assignment -> Publish.", styles["SmallFC"]),
+])
+
+story.extend([
+    PageBreak(),
+    Paragraph("VISUAL GUIDE / COACH", styles["SectionKicker"]),
+    Paragraph("Manage the team and up to 18 players", styles["SectionTitle"]),
+    Paragraph("The Coach owns player records. Players do not create accounts. A team may use fewer than 18 players; the system only blocks additions beyond the maximum.", styles["BodyFC"]),
+    screenshot_pair("07-coach-dashboard.png", "Coach Workspace - readiness, next game, and action queue", "08-coach-roster.png", "Team and Roster - add players and open each roster"),
+    Spacer(1, 6 * mm),
+    guide_steps([
+        ("1", "Open the roster", "Choose Teams and Players, select the team, then Add Player."),
+        ("2", "Complete player data", "Enter birth date, guardian, jersey, and position; avoid duplicate jerseys."),
+        ("3", "Upload requirements", "Attach PSA/Birth Certificate and Parent Permit for Admin review."),
+        ("4", "Follow changes", "Review schedules and acknowledge time, court, or venue notifications."),
+    ]),
+    Spacer(1, 5 * mm),
+    Paragraph("Roster rule: 0-18 active players are allowed. Fifteen players is valid; eighteen is the maximum.", styles["SmallFC"]),
+])
+
+story.extend([
+    PageBreak(),
+    Paragraph("VISUAL GUIDE / STAFF ADMIN", styles["SectionKicker"]),
+    Paragraph("Record the official game", styles["SectionTitle"]),
+    Paragraph("Staff Admin sees assigned games only. The scoring console records team score and individual player points; rebounds and assists remain optional.", styles["BodyFC"]),
+    screenshot_pair("09-staff-dashboard.png", "Staff Dashboard - assignment and shift workflow", "10-staff-scoring.png", "Scoring Console - assigned games and score entry"),
+    Spacer(1, 6 * mm),
+    guide_steps([
+        ("1", "Accept assignment", "Confirm the game before entering the protected scoring workspace."),
+        ("2", "Verify lineup", "Select eligible and present players before recording points."),
+        ("3", "Record the game", "Use +1, +2, and +3; correct mistakes with Undo and keep the clock accurate."),
+        ("4", "Submit final", "Review team totals and player points, then send the result to Admin."),
+    ]),
+    Spacer(1, 5 * mm),
+    Paragraph("The final score becomes official only after Administrator confirmation. Standings, bracket progression, and public results then update.", styles["SmallFC"]),
+])
 
 story.extend([PageBreak(), Paragraph("01 / PRE-TOURNAMENT", styles["SectionKicker"]), Paragraph("From setup to a publishable schedule", styles["SectionTitle"]), Paragraph("The Administrator controls competition structure. The Coach owns roster data. FullCourt blocks unsafe schedules before publication.", styles["BodyFC"])])
 story.extend([
@@ -128,9 +241,9 @@ matrix = [
 ]
 table = Table(matrix, colWidths=[30 * mm, 38 * mm, 34 * mm, 38 * mm, 38 * mm], repeatRows=1)
 table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"), ("FONTSIZE", (0, 0), (-1, 0), 7.2), ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"), ("FONTSIZE", (0, 1), (-1, -1), 7.3), ("TEXTCOLOR", (0, 1), (-1, -1), colors.HexColor("#334155")), ("GRID", (0, 0), (-1, -1), 0.45, colors.HexColor("#CBD5E1")), ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)]))
-story.extend([table, Spacer(1, 8 * mm), Paragraph("Notification checkpoints", styles["StepTitle"]), Paragraph("Schedule publication; time, venue, or court changes; 30-minute reminders; eligibility status; and official final result. Schedule-change notices are tracked for Coach acknowledgment.", styles["BodyFC"]), Paragraph("Privacy boundary", styles["StepTitle"]), Paragraph("PSA/Birth Certificate, Parent Permit, exact birth dates, guardian contacts, receipts, and internal audit details never appear on public pages.", styles["BodyFC"])])
+story.extend([table, Spacer(1, 8 * mm), Paragraph("Notification checkpoints", styles["StepTitle"]), Paragraph("Schedule publication; time, venue, or court changes; 30-minute reminders; eligibility status; and official final result. Schedule-change notices are tracked for Coach acknowledgment.", styles["BodyFC"]), KeepTogether([Paragraph("Privacy boundary", styles["StepTitle"]), Paragraph("PSA/Birth Certificate, Parent Permit, exact birth dates, guardian contacts, receipts, and internal audit details never appear on public pages.", styles["BodyFC"])])])
 
-story.extend([Spacer(1, 28 * mm), Paragraph("04 / RECOVERY & READINESS", styles["SectionKicker"]), Paragraph("Game-day safety when technology fails", styles["SectionTitle"])])
+story.extend([Spacer(1, 8 * mm), Paragraph("04 / RECOVERY & READINESS", styles["SectionKicker"]), Paragraph("Game-day safety when technology fails", styles["SectionTitle"])])
 story.extend([
     step("1", "Run the readiness checker", "Verify public pages, API health, all three demo roles, a recent verified backup, and critical API routes."),
     step("2", "Keep a signed paper score sheet", "When connectivity fails, stop tapping. Record the last confirmed event, period, clock, and totals on paper."),

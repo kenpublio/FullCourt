@@ -224,10 +224,10 @@ const BasketballStatistician = () => {
     <div className="container-fluid p-0 staff-courtside-page">
       <div className="staff-courtside-hero d-flex justify-content-between mb-4">
         <div>
-          <h3 className="fw-bold mb-1">
+          <h1 className="fw-bold mb-1">
             <i className="bi bi-clipboard-data-fill text-evsu-primary me-2" />
             Courtside Statistician
-          </h3>
+          </h1>
           <p className="text-muted small mb-0">
             Record the official score and individual points, with optional rebounds and assists.
           </p>
@@ -246,7 +246,7 @@ const BasketballStatistician = () => {
         {loadError && <div className="col-12"><div className="alert alert-danger d-flex justify-content-between align-items-center gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={loadAssignments}>Try again</button></div></div>}
         <div className="col-lg-3">
           <div className="card-custom p-3">
-            <h6 className="fw-bold">Assigned Games</h6>
+            <h2 className="fw-bold fs-5">Assigned Games</h2>
             {assignments.map((a) => (
               <button
                 className={`btn text-start w-100 border mb-2 ${match?.id === a.id ? "btn-evsu" : "btn-light"}`}
@@ -270,7 +270,7 @@ const BasketballStatistician = () => {
           {!board ? (
             <div className="card-custom staff-courtside-empty p-5 text-center text-muted">
               <span><i className="bi bi-clipboard2-pulse" /></span>
-              <h4>{assignments.length ? "Choose your assigned game" : "Waiting for an Admin assignment"}</h4>
+              <h2>{assignments.length ? "Choose your assigned game" : "Waiting for an Admin assignment"}</h2>
               <p>{assignments.length ? "Select a game from the assignment list to open the courtside scoring console." : "Once Admin assigns and publishes a game, it will appear here automatically."}</p>
               <div className="staff-courtside-flow" aria-label="Staff scoring workflow">
                 {[['bi-person-check-fill','1','Accept assignment'],['bi-people-fill','2','Confirm player lineups'],['bi-clipboard-data-fill','3','Record score & points'],['bi-check2-circle','4','Submit final score']].map(([icon,step,label])=><div key={step}><span><i className={`bi ${icon}`}/></span><b>{step}</b><small>{label}</small></div>)}
@@ -283,14 +283,14 @@ const BasketballStatistician = () => {
                 <div className="staff-clock-control"><select aria-label="Game period" value={clockDraft.period} onChange={event=>setClockDraft({...clockDraft,period:event.target.value})}>{['Q1','Q2','Q3','Q4','OT1','OT2','OT3'].map(value=><option key={value}>{value}</option>)}</select><label><span>MIN</span><input inputMode="numeric" value={clockDraft.minutes} onChange={event=>setClockDraft({...clockDraft,minutes:event.target.value})}/></label><b>:</b><label><span>SEC</span><input inputMode="numeric" value={clockDraft.seconds} onChange={event=>setClockDraft({...clockDraft,seconds:event.target.value})}/></label><div><button disabled={clockBusy||!online} onClick={()=>updateClock(Number(board.score.is_timer_running)?'pause':'start')}><i className={`bi ${Number(board.score.is_timer_running)?'bi-pause-fill':'bi-play-fill'}`}/> {Number(board.score.is_timer_running)?'Pause':'Start'}</button><button disabled={clockBusy||!online} onClick={()=>updateClock('set')}><i className="bi bi-floppy"/> Set</button></div></div>
                 <div className="row align-items-center">
                   <div className="col-5">
-                    <h4 className="fw-bold">{board.score.team1_name}</h4>
+                    <h3 className="fw-bold">{board.score.team1_name}</h3>
                     <div className="display-2 fw-bold text-evsu-primary">
                       {board.score.team1_score}
                     </div>
                   </div>
                   <div className="col-2 text-muted">VS</div>
                   <div className="col-5">
-                    <h4 className="fw-bold">{board.score.team2_name}</h4>
+                    <h3 className="fw-bold">{board.score.team2_name}</h3>
                     <div className="display-2 fw-bold text-evsu-primary">
                       {board.score.team2_score}
                     </div>
@@ -303,7 +303,7 @@ const BasketballStatistician = () => {
               </div>
               <div className="card-custom p-3 mb-3">
                 <div className="d-flex justify-content-between">
-                  <h6 className="fw-bold">Lineup & Player Selection</h6>
+                  <h2 className="fw-bold fs-5">Lineup & Player Selection</h2>
                   <button
                     className="btn btn-outline-success btn-sm"
                     onClick={confirm}
@@ -341,9 +341,9 @@ const BasketballStatistician = () => {
               </div>
               {selected && (
                 <div className="card-custom p-3">
-                  <h5 className="fw-bold">
+                  <h2 className="fw-bold fs-5">
                     Recording for #{selected.jersey_number} {selected.full_name}
-                  </h5>
+                  </h2>
                   <div className="border rounded-3 p-3 mb-3">
                     <div className="fw-bold small mb-2">Substitution & Minutes</div>
                     <div className="row g-2">
@@ -382,7 +382,7 @@ const BasketballStatistician = () => {
                   </details>
                 </div>
               )}
-              <section className="card-custom staff-recent-actions mt-3" aria-labelledby="recent-actions-title"><header><div><span>SCORING AUDIT</span><h5 id="recent-actions-title">Recent actions</h5></div><b>{recentActions.length} active</b></header>{recentActions.length?<div>{recentActions.map(event=><article key={event.id}><span className="staff-event-points">{{'2pt_made':'+2','3pt_made':'+3','ft_made':'+1'}[event.event_type]||'STAT'}</span><div><b>{String(event.event_type).replaceAll('_',' ')}</b><small>#{event.jersey_number||'—'} {event.player_name||event.team_name} · Q{event.period} · {Math.floor(Number(event.game_clock_seconds||0)/60)}:{String(Number(event.game_clock_seconds||0)%60).padStart(2,'0')}</small></div><button type="button" disabled={undoingId===event.id||!online} onClick={()=>undoAction(event)}><i className="bi bi-arrow-counterclockwise"/> {undoingId===event.id?'Undoing…':'Undo'}</button></article>)}</div>:<div className="ops-empty border-0 py-4"><i className="bi bi-clock-history"/><strong>No scoring actions yet</strong><p>Recorded player points and optional stats will appear here.</p></div>}</section>
+              <section className="card-custom staff-recent-actions mt-3" aria-labelledby="recent-actions-title"><header><div><span>SCORING AUDIT</span><h2 id="recent-actions-title">Recent actions</h2></div><b>{recentActions.length} active</b></header>{recentActions.length?<div>{recentActions.map(event=><article key={event.id}><span className="staff-event-points">{{'2pt_made':'+2','3pt_made':'+3','ft_made':'+1'}[event.event_type]||'STAT'}</span><div><b>{String(event.event_type).replaceAll('_',' ')}</b><small>#{event.jersey_number||'—'} {event.player_name||event.team_name} · Q{event.period} · {Math.floor(Number(event.game_clock_seconds||0)/60)}:{String(Number(event.game_clock_seconds||0)%60).padStart(2,'0')}</small></div><button type="button" disabled={undoingId===event.id||!online} onClick={()=>undoAction(event)}><i className="bi bi-arrow-counterclockwise"/> {undoingId===event.id?'Undoing…':'Undo'}</button></article>)}</div>:<div className="ops-empty border-0 py-4"><i className="bi bi-clock-history"/><strong>No scoring actions yet</strong><p>Recorded player points and optional stats will appear here.</p></div>}</section>
             </>
           )}
         </div>
