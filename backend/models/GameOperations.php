@@ -53,13 +53,17 @@ class GameOperations {
 
     public function assign(int $matchId, int $userId, string $role): int {
         $token = bin2hex(random_bytes(32));
-        $stmt = $this->db->prepare("INSERT INTO game_assignments
+        $mysql=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql';
+        $stmt = $this->db->prepare($mysql ? "INSERT INTO game_assignments
+            (match_id,user_id,assignment_role,qr_token_hash,qr_expires_at)
+            VALUES (:match_id,:user_id,:role,:token,NOW() + INTERVAL 7 DAY)
+            ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),status='pending',qr_token_hash=VALUES(qr_token_hash),qr_expires_at=VALUES(qr_expires_at),qr_used_at=NULL" : "INSERT INTO game_assignments
             (match_id,user_id,assignment_role,qr_token_hash,qr_expires_at)
             VALUES (:match_id,:user_id,:role,:token,NOW() + INTERVAL '7 days')
             ON CONFLICT (match_id,user_id,assignment_role) DO UPDATE SET status='pending', qr_token_hash=EXCLUDED.qr_token_hash,
             qr_expires_at=EXCLUDED.qr_expires_at, qr_used_at=NULL RETURNING id");
         $stmt->execute([':match_id'=>$matchId,':user_id'=>$userId,':role'=>$role,':token'=>hash('sha256',$token)]);
-        return (int)$stmt->fetchColumn();
+        return $mysql ? (int)$this->db->lastInsertId() : (int)$stmt->fetchColumn();
     }
 
     public function respondAssignment(int $id, int $userId, string $status): bool {
@@ -71,7 +75,11 @@ class GameOperations {
     public function saveLineup(int $matchId, array $players, int $userId): void {
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare("INSERT INTO game_lineups
+            $mysql=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql';
+            $stmt = $this->db->prepare($mysql ? "INSERT INTO game_lineups
+                (match_id,team_player_id,is_present,is_starter,confirmed_by)
+                VALUES (:match_id,:player_id,:present,:starter,:confirmed_by)
+                ON DUPLICATE KEY UPDATE is_present=VALUES(is_present),is_starter=VALUES(is_starter),confirmed_by=VALUES(confirmed_by)" : "INSERT INTO game_lineups
                 (match_id,team_player_id,is_present,is_starter,confirmed_by)
                 VALUES (:match_id,:player_id,:present,:starter,:confirmed_by)
                 ON CONFLICT (match_id,team_player_id) DO UPDATE SET is_present=EXCLUDED.is_present,is_starter=EXCLUDED.is_starter,confirmed_by=EXCLUDED.confirmed_by");
@@ -83,7 +91,8 @@ class GameOperations {
                     ':confirmed_by'=>$userId]);
             }
             if ($starterCount !== 5) throw new InvalidArgumentException('A basketball lineup must have exactly five starters.');
-            $minutes=$this->db->prepare("INSERT INTO player_game_minutes (match_id,team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court)
+            $minutes=$this->db->prepare($mysql ? "INSERT INTO player_game_minutes (match_id,team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court)
+                VALUES (:match_id,:player_id,0,0,:on_court) ON DUPLICATE KEY UPDATE is_on_court=VALUES(is_on_court),last_entered_elapsed_seconds=CASE WHEN VALUES(is_on_court)=1 THEN 0 ELSE NULL END" : "INSERT INTO player_game_minutes (match_id,team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court)
                 VALUES (:match_id,:player_id,0,0,:on_court) ON CONFLICT (match_id,team_player_id) DO UPDATE SET is_on_court=EXCLUDED.is_on_court,last_entered_elapsed_seconds=CASE WHEN EXCLUDED.is_on_court=1 THEN 0 ELSE NULL END");
             foreach($players as $player){$minutes->execute([':match_id'=>$matchId,':player_id'=>(int)$player['team_player_id'],':on_court'=>!empty($player['is_starter'])?1:0]);}
             $this->db->prepare("UPDATE matches SET lineups_confirmed_at=NOW() WHERE id=:id")->execute([':id'=>$matchId]);
@@ -116,12 +125,13 @@ class GameOperations {
                 WHERE m.id=:match_id AND tp.id IN (:out_id,:in_id)");
             $roster->execute([':match_id'=>$matchId,':out_id'=>$playerOutId,':in_id'=>$playerInId]);$eligible=$roster->fetchAll(PDO::FETCH_UNIQUE|PDO::FETCH_ASSOC);
             if(empty($eligible[$playerOutId])||empty($eligible[$playerInId])||$eligible[$playerOutId]['eligibility_status']!=='verified'||$eligible[$playerInId]['eligibility_status']!=='verified'||(int)$eligible[$playerOutId]['is_present']!==1||(int)$eligible[$playerInId]['is_present']!==1||(int)$eligible[$playerOutId]['team_id']!==(int)$eligible[$playerInId]['team_id']) throw new InvalidArgumentException('Substitutions are allowed only between verified, present players on the same team.');
-            $initialize=$this->db->prepare("INSERT INTO player_game_minutes (match_id,team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court)
+            $mysql=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql';
+            $initialize=$this->db->prepare(($mysql?'INSERT IGNORE':'INSERT')." INTO player_game_minutes (match_id,team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court)
                 SELECT m.id,tp.id,0,CASE WHEN COALESCE(gl.is_starter,0)=1 AND COALESCE(gl.is_present,1)=1 THEN 0 ELSE NULL END,
                     CASE WHEN COALESCE(gl.is_present,1)=1 THEN COALESCE(gl.is_starter,0) ELSE 0 END
                 FROM matches m JOIN team_players tp ON tp.team_id IN (m.team1_id,m.team2_id) AND tp.eligibility_status='verified'
                 LEFT JOIN game_lineups gl ON gl.match_id=m.id AND gl.team_player_id=tp.id
-                WHERE m.id=:match_id ON CONFLICT (match_id,team_player_id) DO NOTHING");
+                WHERE m.id=:match_id".($mysql?'':' ON CONFLICT (match_id,team_player_id) DO NOTHING'));
             $initialize->execute([':match_id'=>$matchId]);
             $lock=$this->db->prepare("SELECT team_player_id,seconds_played,last_entered_elapsed_seconds,is_on_court FROM player_game_minutes WHERE match_id=:match_id AND team_player_id IN (:out_id,:in_id) FOR UPDATE");
             $lock->execute([':match_id'=>$matchId,':out_id'=>$playerOutId,':in_id'=>$playerInId]);$rows=$lock->fetchAll(PDO::FETCH_UNIQUE|PDO::FETCH_ASSOC);

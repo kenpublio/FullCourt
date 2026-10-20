@@ -13,7 +13,6 @@ class Schedule {
     public function publish(int $tournamentId): int {
         $stmt=$this->db->prepare("UPDATE matches SET schedule_status='published' WHERE tournament_id=:tournament_id AND scheduled_start_time IS NOT NULL AND court_id IS NOT NULL");
         $stmt->execute([':tournament_id'=>$tournamentId]);
-        $this->db->prepare("UPDATE tournaments SET is_published=1 WHERE id=:id")->execute([':id'=>$tournamentId]);
         $notify=$this->db->prepare("INSERT INTO notifications (user_id,notification_type,title,message,action_url)
             SELECT DISTINCT tp.user_id,'schedule_publication','Basketball schedule published',CONCAT(t.name,' schedule is now available.'),'/schedules'
             FROM teams tm JOIN team_players tp ON tp.team_id=tm.id AND tp.user_id IS NOT NULL JOIN tournaments t ON t.id=tm.tournament_id

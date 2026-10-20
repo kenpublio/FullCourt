@@ -18,7 +18,7 @@ class Tournament {
                 (SELECT su.full_name FROM tournament_staff_assignments tsa JOIN users su ON su.id=tsa.user_id WHERE tsa.tournament_id=t.id ORDER BY CASE WHEN tsa.assignment_role='primary' THEN 0 ELSE 1 END,tsa.created_at LIMIT 1) AS assigned_staff_name,
                 (SELECT COUNT(*) FROM tournament_courts tc WHERE tc.tournament_id=t.id) AS readiness_courts,
                 (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id) AS readiness_matches,
-                (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id AND (rm.scheduled_start_time IS NULL OR rm.court_id IS NULL)) AS readiness_unscheduled
+                (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id AND rm.team1_id IS NOT NULL AND rm.team2_id IS NOT NULL AND (rm.scheduled_start_time IS NULL OR rm.court_id IS NULL)) AS readiness_unscheduled
                 FROM tournaments t
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON t.created_by = u.id
@@ -213,7 +213,7 @@ class Tournament {
             (SELECT COUNT(*) FROM tournament_courts WHERE tournament_id=:t1) courts,
             (SELECT COUNT(*) FROM teams WHERE tournament_id=:t2 AND status='registered') teams,
             (SELECT COUNT(*) FROM matches WHERE tournament_id=:t3) matches,
-            (SELECT COUNT(*) FROM matches WHERE tournament_id=:t4 AND (scheduled_start_time IS NULL OR court_id IS NULL)) unscheduled,
+            (SELECT COUNT(*) FROM matches WHERE tournament_id=:t4 AND team1_id IS NOT NULL AND team2_id IS NOT NULL AND (scheduled_start_time IS NULL OR court_id IS NULL)) unscheduled,
             (SELECT COUNT(*) FROM tournament_staff_assignments WHERE tournament_id=:t5) assigned_staff,
             (SELECT COUNT(*) FROM team_players tp JOIN teams tm ON tm.id=tp.team_id WHERE tm.tournament_id=:t6 AND tp.eligibility_status='verified') verified_players");
         $stmt->execute([':t1'=>$tournamentId,':t2'=>$tournamentId,':t3'=>$tournamentId,':t4'=>$tournamentId,':t5'=>$tournamentId,':t6'=>$tournamentId]);
@@ -222,7 +222,7 @@ class Tournament {
             ['key'=>'court','label'=>'Main Court attached','ready'=>(int)($row['courts']??0)===1],
             ['key'=>'teams','label'=>'At least two approved teams','ready'=>(int)($row['teams']??0)>=2],
             ['key'=>'bracket','label'=>'Bracket generated','ready'=>(int)($row['matches']??0)>0],
-            ['key'=>'schedule','label'=>'All games have time and court','ready'=>(int)($row['matches']??0)>0 && (int)($row['unscheduled']??0)===0],
+            ['key'=>'schedule','label'=>'All playable games have time and court','ready'=>(int)($row['matches']??0)>0 && (int)($row['unscheduled']??0)===0],
             ['key'=>'players','label'=>'Eligible players recorded','ready'=>(int)($row['verified_players']??0)>0],
             ['key'=>'staff','label'=>'Primary Staff Admin assigned','ready'=>(int)($row['assigned_staff']??0)>0],
         ];
