@@ -56,7 +56,7 @@ class MatchScore {
 
         $this->db->beginTransaction();
         try {
-            $matchStmt = $this->db->prepare("SELECT tournament_id,team1_id,team2_id,status FROM matches WHERE id=:mid FOR UPDATE");
+            $matchStmt = $this->db->prepare("SELECT m.tournament_id,m.team1_id,m.team2_id,m.status,COALESCE(t.operation_mode,'official') operation_mode FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=:mid FOR UPDATE");
             $matchStmt->execute([':mid' => $matchId]);
             $match = $matchStmt->fetch();
             if (!$match) throw new InvalidArgumentException('Game not found.');
@@ -91,11 +91,13 @@ class MatchScore {
             $end = $this->db->prepare("UPDATE matches SET status='completed',winner_team_id=:winner,actual_end_time=NOW(),actual_start_time=COALESCE(actual_start_time,NOW()) WHERE id=:mid");
             $end->execute([':winner'=>$winnerTeamId,':mid'=>$matchId]);
 
-            // Advance the confirmed winner to its next bracket slot.
-            $nodeStmt = $this->db->prepare("SELECT * FROM bracket_nodes WHERE match_id=:mid LIMIT 1");
-            $nodeStmt->execute([':mid'=>$matchId]);
-            $currentNode = $nodeStmt->fetch();
-            if ($currentNode) {
+            // Practice games exercise the complete scoring flow but must never
+            // advance an official bracket or alter official standings.
+            if (($match['operation_mode']??'official') !== 'practice') {
+              $nodeStmt = $this->db->prepare("SELECT * FROM bracket_nodes WHERE match_id=:mid LIMIT 1");
+              $nodeStmt->execute([':mid'=>$matchId]);
+              $currentNode = $nodeStmt->fetch();
+              if ($currentNode) {
                 $nextRound = $currentNode['round'] + 1;
                 $nextPos = (int) ceil($currentNode['position_in_round'] / 2);
                 $nextMatchStmt = $this->db->prepare("SELECT m.id FROM bracket_nodes bn JOIN matches m ON bn.match_id=m.id WHERE bn.bracket_id=:bid AND bn.round=:round AND bn.position_in_round=:position LIMIT 1");
@@ -106,9 +108,9 @@ class MatchScore {
                     $advance = $this->db->prepare("UPDATE matches SET {$column}=:winner WHERE id=:next_match");
                     $advance->execute([':winner'=>$winnerTeamId,':next_match'=>$nextMatchId]);
                 }
+              }
+              $this->recomputeStandings((int)$match['tournament_id']);
             }
-
-            $this->recomputeStandings((int)$match['tournament_id']);
             $this->db->commit();
             return true;
         } catch (Throwable $e) {

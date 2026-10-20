@@ -88,13 +88,18 @@ class TournamentController {
         $input['available_days'] = implode(',', $availableDays);
 
         $input['created_by'] = $user['user_id'];
+        $mode=strtolower(trim((string)($input['operation_mode']??'official')));
+        if(!in_array($mode,['official','practice'],true))Response::error('Choose official or practice tournament mode.',422);
+        $input['operation_mode']=$mode;
         $input['approval_status'] = 'approved';
-        $input['is_published'] = 1;
+        // New competitions start safely as drafts. Official tournaments become
+        // public only after the readiness gate passes; practice data stays private.
+        $input['is_published'] = 0;
         $id = $this->tournamentModel->create($input);
 
         $this->auditLog->log($user['user_id'], 'CREATE_TOURNAMENT', 'TOURNAMENT_MGMT', "Created tournament '{$input['name']}' (ID: {$id}).");
 
-        Response::success('Tournament created successfully', ['id' => $id], 201);
+        Response::success($mode==='practice'?'Practice tournament created. Results will not affect official standings.':'Tournament draft created. Complete the readiness checklist before publishing.', ['id' => $id], 201);
     }
 
     public function update(int $id): void {
@@ -189,5 +194,21 @@ class TournamentController {
     public function readiness(int $id): void {
         $user=AuthMiddleware::authenticate();OrganizationAccess::requireTournament($id,$user);
         Response::success('Tournament readiness retrieved',['readiness'=>$this->tournamentModel->readiness($id)]);
+    }
+
+    public function publish(int $id): void {
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        OrganizationAccess::requireTournament($id,$user);
+        $tournament=$this->tournamentModel->getById($id);
+        if(!$tournament)Response::error('Tournament not found.',404);
+        if(($tournament['operation_mode']??'official')==='practice')Response::error('Practice tournaments stay private and cannot be published.',422);
+        $readiness=$this->tournamentModel->readiness($id);
+        if(!$readiness['publish_ready']){
+            $missing=array_map(fn($check)=>$check['label'],array_values(array_filter($readiness['checks'],fn($check)=>!$check['ready'])));
+            Response::error('Tournament is not ready to publish: '.implode(', ',$missing).'.',422,['readiness'=>$readiness]);
+        }
+        if(!$this->tournamentModel->publish($id))Response::error('Tournament is already published or could not be updated.',409);
+        $this->auditLog->log((int)$user['user_id'],'PUBLISH_TOURNAMENT','TOURNAMENT_MGMT',"Published tournament '{$tournament['name']}' (ID: {$id}) after all readiness checks passed.");
+        Response::success('Tournament published and is now visible to teams.');
     }
 }

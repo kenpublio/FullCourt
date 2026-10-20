@@ -36,6 +36,10 @@ export const tournamentService = {
   async getReadiness(id) {
     const res = await api.get(`/tournaments/${id}/readiness`);
     return res.data?.data?.readiness;
+  },
+
+  async publishTournament(id) {
+    return (await api.post(`/tournaments/${id}/publish`)).data;
   }
 };
 

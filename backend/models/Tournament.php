@@ -75,8 +75,8 @@ class Tournament {
     }
 
     public function create(array $data): int {
-        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_deadline, registration_fee, status, approval_status, is_published, created_by)
-                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_deadline, :registration_fee, 'upcoming', :approval_status, :is_published, :created_by)";
+        $sql = "INSERT INTO tournaments (organization_id,name, sport_id, format, rules, description, start_date, end_date, registration_deadline, registration_fee, status, approval_status, is_published, operation_mode, created_by)
+                VALUES (:organization_id,:name, :sport_id, :format, :rules, :description, :start_date, :end_date, :registration_deadline, :registration_fee, 'upcoming', :approval_status, :is_published, :operation_mode, :created_by)";
         $this->db->beginTransaction();
         try {
           $stmt = $this->db->prepare($sql);
@@ -93,6 +93,7 @@ class Tournament {
             ':registration_fee' => $data['registration_fee'] ?? 0.00,
             ':approval_status' => $data['approval_status'] ?? 'approved',
             ':is_published' => !empty($data['is_published']) ? 1 : 0,
+            ':operation_mode' => $data['operation_mode'] ?? 'official',
             ':created_by' => $data['created_by']
           ]);
           $id=(int)$this->db->lastInsertId();
@@ -223,8 +224,15 @@ class Tournament {
             ['key'=>'bracket','label'=>'Bracket generated','ready'=>(int)($row['matches']??0)>0],
             ['key'=>'schedule','label'=>'All games have time and court','ready'=>(int)($row['matches']??0)>0 && (int)($row['unscheduled']??0)===0],
             ['key'=>'players','label'=>'Eligible players recorded','ready'=>(int)($row['verified_players']??0)>0],
+            ['key'=>'staff','label'=>'Primary Staff Admin assigned','ready'=>(int)($row['assigned_staff']??0)>0],
         ];
         $ready=count(array_filter($checks,fn($check)=>$check['ready']));
         return ['checks'=>$checks,'ready_count'=>$ready,'total_count'=>count($checks),'publish_ready'=>$ready===count($checks),'counts'=>$row];
+    }
+
+    public function publish(int $tournamentId): bool {
+        $stmt=$this->db->prepare("UPDATE tournaments SET is_published=1 WHERE id=:id AND operation_mode='official'");
+        $stmt->execute([':id'=>$tournamentId]);
+        return $stmt->rowCount()===1;
     }
 }

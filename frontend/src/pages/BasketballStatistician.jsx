@@ -32,6 +32,8 @@ const optionalStatGroups = [
     ],
   ],
 ];
+const scoringDraftKey=(matchId)=>`fullcourt_scoring_recovery_${matchId}`;
+const readScoringDraft=(matchId)=>{try{return JSON.parse(localStorage.getItem(scoringDraftKey(matchId))||'null');}catch{return null;}};
 const BasketballStatistician = () => {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState([]),
@@ -51,7 +53,9 @@ const BasketballStatistician = () => {
     [online, setOnline] = useState(()=>navigator.onLine),
     [clockDraft,setClockDraft]=useState({period:'Q1',minutes:'10',seconds:'00'}),
     [clockBusy,setClockBusy]=useState(false),
-    [tournamentFilter, setTournamentFilter] = useState("all");
+    [tournamentFilter, setTournamentFilter] = useState("all"),
+    [recoveredDraft,setRecoveredDraft]=useState(false),
+    [lastSavedAt,setLastSavedAt]=useState(null);
   const isStatistician = user?.role === "statistician";
   const statisticianAssignments = useMemo(
     () => assignments.filter((assignment) => assignment.assignment_role === "statistician"),
@@ -76,8 +80,15 @@ const BasketballStatistician = () => {
   }, [isStatistician]);
   useEffect(() => { loadAssignments(); }, [loadAssignments]);
   useEffect(()=>{const up=()=>setOnline(true),down=()=>setOnline(false);window.addEventListener('online',up);window.addEventListener('offline',down);return()=>{window.removeEventListener('online',up);window.removeEventListener('offline',down);};},[]);
+  useEffect(()=>{
+    if(!match?.match_id||!board)return;
+    const snapshot={match,board,players,recentActions,selectedId:selected?.team_player_id||null,savedAt:new Date().toISOString()};
+    localStorage.setItem(scoringDraftKey(match.match_id),JSON.stringify(snapshot));
+    setLastSavedAt(snapshot.savedAt);
+  },[match,board,players,recentActions,selected]);
   const open = async (assignment) => {
     setMatch(assignment);
+    setRecoveredDraft(false);
     setLoadError("");
     try {
       const [score, lineup, recent] = await Promise.all([
@@ -87,13 +98,20 @@ const BasketballStatistician = () => {
       ]);
       setBoard(score);setPlayers(lineup);setRecentActions(recent);setSelected(lineup[0] || null);setClockDraft({period:score.score.current_period||'Q1',minutes:String(Math.floor(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)/60)),seconds:String(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)%60).padStart(2,'0')});
     } catch (error) {
-      setBoard(null);setLoadError(error.response?.data?.message || "Could not open this game console. Refresh the assignment list and try again.");
+      const draft=readScoringDraft(assignment.match_id);
+      if(!error.response&&draft?.board){
+        setBoard(draft.board);setPlayers(draft.players||[]);setRecentActions(draft.recentActions||[]);
+        setSelected((draft.players||[]).find(player=>player.team_player_id===draft.selectedId)||(draft.players||[])[0]||null);
+        setRecoveredDraft(true);setLastSavedAt(draft.savedAt||null);
+        setLoadError("");setMessage("Recovered the last local game snapshot. Scoring remains locked until the connection returns.");
+      }else{setBoard(null);setLoadError(error.response?.data?.message || "Could not open this game console. Refresh the assignment list and try again.");}
     }
   };
   const refresh = async () => {
     if (!match) return;
     const [score,lineup,recent]=await Promise.all([scorekeeperService.getScoreboard(match.match_id),gameOperationsService.lineup(match.match_id),gameOperationsService.recentStats(match.match_id)]);
     setBoard(score);setPlayers(lineup);setRecentActions(recent);
+    setRecoveredDraft(false);
   };
   const record = async (eventType) => {
     if (!selected || !board) return setMessage("Select a player first.");
@@ -241,7 +259,7 @@ const BasketballStatistician = () => {
         )}
       </div>
       {message && <div className="alert alert-info py-2">{message}</div>}
-      <div className={`staff-connection-banner ${online?'is-online':'is-offline'}`}><i className={`bi ${online?'bi-cloud-check-fill':'bi-cloud-slash-fill'}`}/><span><b>{online?'Connected to FullCourt':'Connection unavailable'}</b><small>{online?'New scoring actions are saved to the official game record.':'Pause scoring until the connection returns to avoid duplicate entries.'}</small></span></div>
+      <div className={`staff-connection-banner ${online?'is-online':'is-offline'}`}><i className={`bi ${online?'bi-cloud-check-fill':'bi-cloud-slash-fill'}`}/><span><b>{recoveredDraft?'Recovered local snapshot':online?'Connected to FullCourt':'Connection unavailable'}</b><small>{recoveredDraft?'Review the recovered score, then refresh after reconnection before recording another action.':online?`Official record connected${lastSavedAt?` · Last safely saved ${new Date(lastSavedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:''}.`:'Current game state is stored locally. Scoring is locked until the connection returns.'}</small></span>{recoveredDraft&&online&&<button type="button" className="btn btn-sm btn-light ms-auto" onClick={refresh}><i className="bi bi-arrow-repeat me-1"/>Verify official score</button>}</div>
       <div className="row g-4">
         {loadError && <div className="col-12"><div className="alert alert-danger d-flex justify-content-between align-items-center gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={loadAssignments}>Try again</button></div></div>}
         <div className="col-lg-3">
@@ -355,7 +373,7 @@ const BasketballStatistician = () => {
                   <div className="mb-3">
                     <small className="text-uppercase fw-bold text-muted">Scoring</small>
                     <div className="d-flex flex-wrap gap-2 mt-2">
-                      {scoringActions.map((action) => <button className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : "btn-outline-danger"}`} onClick={() => record(action[0])} key={action[0]}>{action[1]}</button>)}
+                      {scoringActions.map((action) => <button disabled={!online||recoveredDraft} className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : "btn-outline-danger"}`} onClick={() => record(action[0])} key={action[0]}>{action[1]}</button>)}
                     </div>
                   </div>
                   <details className="border rounded-3 p-3 bg-light">
@@ -370,6 +388,7 @@ const BasketballStatistician = () => {
                         {group[1].map((action) => (
                           <button
                             className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : action[0].includes("missed") ? "btn-outline-danger" : "btn-outline-dark"}`}
+                            disabled={!online||recoveredDraft}
                             onClick={() => record(action[0])}
                             key={action[0]}
                           >

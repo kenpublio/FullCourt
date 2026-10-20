@@ -583,6 +583,7 @@ CREATE TABLE `news` (
   `cover_url` varchar(255) DEFAULT NULL,
   `author_id` int(11) DEFAULT NULL,
   `is_published` tinyint(1) NOT NULL DEFAULT 0,
+  `operation_mode` varchar(16) NOT NULL DEFAULT 'official',
   `published_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -1249,7 +1250,7 @@ CREATE TABLE `tournament_courts` (
 
 LOCK TABLES `tournaments` WRITE;
 /*!40000 ALTER TABLE `tournaments` DISABLE KEYS */;
-INSERT INTO `tournaments` VALUES (1,1,'Basketball sa Capstone',NULL,1,'double_elimination','automatic','','','2026-08-06','2026-09-30',NULL,100.00,'upcoming',1,2,'2026-08-04 19:53:42','2026-08-17 03:44:19');
+INSERT INTO `tournaments` VALUES (1,1,'Basketball sa Capstone',NULL,1,'double_elimination','automatic','','','2026-08-06','2026-09-30',NULL,100.00,'upcoming',1,'official',2,'2026-08-04 19:53:42','2026-08-17 03:44:19');
 /*!40000 ALTER TABLE `tournaments` ENABLE KEYS */;
 UNLOCK TABLES;
 

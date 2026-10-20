@@ -109,6 +109,7 @@ const TournamentManagement = () => {
     min_rest_minutes_between_games: 120,
     max_games_per_team_per_day: 2,
     available_days: courtWeekdays.map(([value]) => value),
+    operation_mode: "official",
   });
 
   const loadData = useCallback(async () => {
@@ -204,8 +205,8 @@ const TournamentManagement = () => {
     }
     try {
       setSubmittingTournament(true);
-      await tournamentService.createTournament(formData);
-      setMsg("Tournament saved and published. Coaches can now view the competition.");
+      const response=await tournamentService.createTournament(formData);
+      setMsg(response.message||"Tournament draft saved.");
       setShowModal(false);
       loadData();
     } catch (err) {
@@ -213,6 +214,19 @@ const TournamentManagement = () => {
     } finally {
       setSubmittingTournament(false);
     }
+  };
+
+  const handlePublish = async (tournament) => {
+    if (!window.confirm(`Publish “${tournament.name}” for coaches and the public Game Center?`)) return;
+    try {
+      setReviewingId(tournament.id);
+      const response=await tournamentService.publishTournament(tournament.id);
+      setMsg(response.message||'Tournament published.');
+      await loadData();
+      if(detailTournament?.id===tournament.id) setDetailTournament((current)=>({...current,is_published:1}));
+    } catch (error) {
+      setMsg(error.response?.data?.message||'Complete every readiness check before publishing.');
+    } finally { setReviewingId(null); }
   };
 
   const handleRosterLock = async (tournament) => {
@@ -545,7 +559,7 @@ const TournamentManagement = () => {
                 <div>
                   <div className="tournament-ops-card-top">
                     <span className="tournament-ops-sport"><i className="bi bi-dribbble" /> BASKETBALL</span>
-                    <span className={`tournament-ops-status ${t.status === 'ongoing' ? 'is-live' : t.status === 'completed' ? 'is-complete' : 'is-upcoming'}`}><i className="bi bi-circle-fill" /> {t.status || 'upcoming'}</span>
+                    <span className={`tournament-ops-status ${t.operation_mode==='practice'?'is-complete':t.status === 'ongoing' ? 'is-live' : t.status === 'completed' ? 'is-complete' : 'is-upcoming'}`}><i className="bi bi-circle-fill" /> {t.operation_mode==='practice'?'practice':Number(t.is_published)?'published':'draft'}</span>
                   </div>
                   <h3 className="tournament-ops-card-title">{t.name}</h3>
                   <p className="tournament-ops-card-description">
@@ -590,6 +604,7 @@ const TournamentManagement = () => {
                     >
                       <i className="bi bi-archive me-1" /> Archive
                     </button>}
+                    {canReviewTournaments && t.operation_mode!=='practice' && !Number(t.is_published) && <button className="btn btn-success btn-sm" disabled={reviewingId===t.id} onClick={()=>handlePublish(t)}><i className="bi bi-broadcast me-1"/>{reviewingId===t.id?'Checking…':'Publish when ready'}</button>}
                     {canReviewTournaments && t.approval_status === 'pending' && <>
                       <button className="btn btn-success btn-sm" disabled={reviewingId === t.id} onClick={() => handleReview(t, 'approved')}><i className="bi bi-check-lg me-1"/>{reviewingId === t.id ? 'Saving…' : 'Approve & publish'}</button>
                       <button className="btn btn-outline-danger btn-sm" disabled={reviewingId === t.id} onClick={() => handleReview(t, 'rejected')}><i className="bi bi-x-lg me-1"/>Reject</button>
@@ -608,7 +623,7 @@ const TournamentManagement = () => {
               </div>
             </div>
           ))}
-        </div> : <div className="tournament-ops-empty"><span><i className="bi bi-trophy" /></span><h3>No tournaments yet</h3><p>{canCreateTournaments ? 'Create the first official tournament. It becomes visible immediately.' : 'There are no upcoming competitions yet.'}</p>{canCreateTournaments && <button className="btn btn-evsu" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create first tournament</button>}</div>}
+        </div> : <div className="tournament-ops-empty"><span><i className="bi bi-trophy" /></span><h3>No tournaments yet</h3><p>{canCreateTournaments ? 'Create a tournament draft, complete its setup, then publish it safely.' : 'There are no upcoming competitions yet.'}</p>{canCreateTournaments && <button className="btn btn-evsu" onClick={() => setShowModal(true)}><i className="bi bi-plus-lg me-1" /> Create first tournament</button>}</div>}
         </>
       )}
 
@@ -636,7 +651,7 @@ const TournamentManagement = () => {
               <div className="row g-4 mt-1"><div className="col-lg-7"><section className="tournament-content-panel"><header><div><small>PARTICIPANTS</small><h5>Registered Teams</h5></div><Link to="/teams">Manage teams <i className="bi bi-arrow-up-right"/></Link></header><div className="tournament-team-grid">{detailData.teams.map(team=><article key={team.id}><span style={{background:team.primary_color||'#cd2d17'}}>{team.logo_url?<img src={team.logo_url} alt=""/>:team.team_name.slice(0,2).toUpperCase()}</span><div><b>{team.team_name}</b><small>{team.division_name||'Open division'} · {team.status}</small></div></article>)}{!detailData.teams.length&&<p className="tournament-detail-empty">No registered teams yet.</p>}</div></section></div><div className="col-lg-5"><section className="tournament-content-panel"><header><div><small>COMPETITION STRUCTURE</small><h5>Divisions</h5></div></header><div className="tournament-division-list">{detailData.divisions.map(division=><div key={division.id}><span><i className="bi bi-layers"/></span><div><b>{division.name}</b><small>{division.age_group||'Open age'} · {division.gender_category} · {division.team_count} teams</small></div></div>)}{!detailData.divisions.length&&<p className="tournament-detail-empty">No divisions created yet.</p>}</div></section></div></div>
             </>}
           </div>
-          <footer className="modal-footer">{detailTournament.approval_status === 'approved' && <Link to={`/sports/tournaments/${detailTournament.id}`} className="btn btn-outline-secondary btn-sm" target="_blank"><i className="bi bi-box-arrow-up-right me-1"/>Public tournament page</Link>}<button className="btn btn-light btn-sm" onClick={()=>setDetailTournament(null)}>Close</button></footer>
+          <footer className="modal-footer">{canReviewTournaments&&detailTournament.operation_mode!=='practice'&&!Number(detailTournament.is_published)&&<button className="btn btn-success btn-sm" disabled={!detailData.readiness?.publish_ready||reviewingId===detailTournament.id} onClick={()=>handlePublish(detailTournament)}><i className="bi bi-broadcast me-1"/>Publish tournament</button>}{Number(detailTournament.is_published)===1 && <Link to={`/sports/tournaments/${detailTournament.id}`} className="btn btn-outline-secondary btn-sm" target="_blank"><i className="bi bi-box-arrow-up-right me-1"/>Public tournament page</Link>}<button className="btn btn-light btn-sm" onClick={()=>setDetailTournament(null)}>Close</button></footer>
         </div></div>
       </div>}
       {showModal && (
@@ -647,7 +662,7 @@ const TournamentManagement = () => {
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tournament-create-dialog">
             <div className="modal-content card-custom border-0">
               <div className="modal-header border-bottom">
-                <div><h5 className="fw-bold mb-0">Create Official Tournament</h5><small className="text-muted">Saving publishes the tournament immediately for coaches.</small></div>
+                <div><h5 className="fw-bold mb-0">Create Tournament</h5><small className="text-muted">Save a draft or run a private practice tournament.</small></div>
                 <button
                   type="button"
                   className="btn-close"
@@ -672,6 +687,14 @@ const TournamentManagement = () => {
                       }
                       placeholder="e.g. Barangay Summer Basketball League 2026"
                     />
+                  </div>
+                  <div className="mb-3">
+                      <label className="form-label small fw-semibold">Tournament mode</label>
+                      <select className="form-select" value={formData.operation_mode} onChange={e=>setFormData({...formData,operation_mode:e.target.value})}>
+                        <option value="official">Official · readiness required before publishing</option>
+                        <option value="practice">Practice / test · private, no official standings</option>
+                      </select>
+                      <div className="form-text">Practice mode lets the team rehearse scoring and game-day operations safely.</div>
                   </div>
                   <div className="mb-3">
                       <label className="form-label small fw-semibold">
