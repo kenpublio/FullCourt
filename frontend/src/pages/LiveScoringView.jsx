@@ -19,6 +19,7 @@ const LiveScoringView = () => {
   });
   const [scoreSnapshot, setScoreSnapshot] = useState({ team1_score: 0, team2_score: 0 });
   const [scoreHistory, setScoreHistory] = useState([]);
+  const [scoreLoading, setScoreLoading] = useState(false);
   const [saveState, setSaveState] = useState('idle');
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [matchFilter, setMatchFilter] = useState('active');
@@ -58,6 +59,7 @@ const LiveScoringView = () => {
   }, [selectedTournament, refreshMatches]);
 
   const selectMatchToScore = async (m) => {
+    setScoreLoading(true);
     setConfirmingWinnerId(null);
     setScoreHistory([]);
     setSaveState('idle');
@@ -78,7 +80,7 @@ const LiveScoringView = () => {
       }
     } catch (err) {
       console.error(err);
-    }
+    } finally { setScoreLoading(false); }
   };
 
   const handleScoreChange = (team, delta) => {
@@ -254,15 +256,15 @@ const LiveScoringView = () => {
                   <div className="score-team-name mb-1">{activeMatch.team1_name || 'Team 1'}</div>
                   <div className="score-number">{scoreData.team1_score}</div>
                   <div className="score-btn-group">
-                    <button className="score-btn" onClick={() => handleScoreChange('team1_score', 1)}>+1</button>
-                    <button className="score-btn" onClick={() => handleScoreChange('team1_score', 2)}>+2</button>
-                    <button className="score-btn" onClick={() => handleScoreChange('team1_score', 3)}>+3</button>
+                    <button disabled={scoreLoading} className="score-btn" onClick={() => handleScoreChange('team1_score', 1)}>+1</button>
+                    <button disabled={scoreLoading} className="score-btn" onClick={() => handleScoreChange('team1_score', 2)}>+2</button>
+                    <button disabled={scoreLoading} className="score-btn" onClick={() => handleScoreChange('team1_score', 3)}>+3</button>
                   </div>
                   <button
                     className="btn btn-outline-light btn-sm mt-2 px-3"
                     style={{ borderRadius: 8, fontSize: '0.75rem', opacity: 0.7 }}
                     onClick={() => undoLastScore('team1_score')}
-                    disabled={!scoreHistory.some(action=>action.team==='team1_score')}
+                    disabled={scoreLoading||!scoreHistory.some(action=>action.team==='team1_score')}
                   >
                     <i className="bi bi-arrow-counterclockwise" /> Undo last
                   </button>
@@ -279,15 +281,15 @@ const LiveScoringView = () => {
                   <div className="score-team-name mb-1">{activeMatch.team2_name || 'Team 2'}</div>
                   <div className="score-number">{scoreData.team2_score}</div>
                   <div className="score-btn-group">
-                    <button className="score-btn" onClick={() => handleScoreChange('team2_score', 1)}>+1</button>
-                    <button className="score-btn" onClick={() => handleScoreChange('team2_score', 2)}>+2</button>
-                    <button className="score-btn" onClick={() => handleScoreChange('team2_score', 3)}>+3</button>
+                    <button disabled={scoreLoading} className="score-btn" onClick={() => handleScoreChange('team2_score', 1)}>+1</button>
+                    <button disabled={scoreLoading} className="score-btn" onClick={() => handleScoreChange('team2_score', 2)}>+2</button>
+                    <button disabled={scoreLoading} className="score-btn" onClick={() => handleScoreChange('team2_score', 3)}>+3</button>
                   </div>
                   <button
                     className="btn btn-outline-light btn-sm mt-2 px-3"
                     style={{ borderRadius: 8, fontSize: '0.75rem', opacity: 0.7 }}
                     onClick={() => undoLastScore('team2_score')}
-                    disabled={!scoreHistory.some(action=>action.team==='team2_score')}
+                    disabled={scoreLoading||!scoreHistory.some(action=>action.team==='team2_score')}
                   >
                     <i className="bi bi-arrow-counterclockwise" /> Undo last
                   </button>

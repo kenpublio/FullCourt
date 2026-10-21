@@ -9,6 +9,8 @@
 - Prepare a laptop running XAMPP as the local fallback when internet access becomes unstable.
 - In **Settings > System health & verified backup**, create a fresh verified backup and copy it to a second device.
 - Run the complete Admin -> Coach -> Staff Admin -> Public rehearsal using a disposable tournament.
+- Create that rehearsal as **Practice / Test** mode so its scores never affect official standings or bracket advancement.
+- Open the tournament command center and confirm every readiness item is green before publishing the official tournament.
 
 ## Before the first game
 
@@ -46,7 +48,7 @@
 
 1. Stop scoring on all devices and keep the paper score sheet as the temporary source of truth.
 2. Record the last confirmed event, period, clock, and team totals.
-3. If only the browser lost connection, reconnect and reload the same assigned game. Do not repeatedly tap score actions while offline.
+3. If only the browser lost connection, use the recovered local snapshot to confirm the last visible score. Scoring stays locked until reconnection; use **Verify official score** before recording another action.
 4. If the main server failed, start the prepared XAMPP/local fallback and restore the latest verified backup according to the database administrator procedure.
 5. Admin compares the restored scoreboard with the signed paper sheet before reopening scoring.
 6. Record the incident and every correction in Game-Day Control and the audit trail.
@@ -65,3 +67,17 @@
 - **Coach:** team registration, roster, birth record/PSA, parent permit, payment submission, and schedule awareness.
 - **Staff Admin:** live team score, individual points, optional statistics, and final score confirmation.
 - **Public/player:** Game Center and public Schedule only; no player account is required.
+
+## Final deployment handoff
+
+- **Domain and HTTPS:** set the final `APP_URL` to the deployed HTTPS address and confirm HTTP redirects to HTTPS.
+- **Session security:** generate a unique production `JWT_SECRET` of at least 32 random characters. Never commit it or reuse the local secret.
+- **Email:** verify the sender domain with the email provider, then configure `RESEND_API_KEY` and `RESEND_FROM` only on the production host.
+- **Database:** create a dedicated non-root production database user, import the base schema, run every migration, and keep demo records out of production.
+- **Acceptance:** record the rehearsal date, participants, passed scenarios, open issues, and Kadayo representative approval/signature.
+- Run `php backend/cli/production_readiness.php`. External production checks must be green before public launch; local/XAMPP defense mode does not require a public domain.
+
+## Feature freeze rule
+
+- From final rehearsal until event day, accept only bug fixes, security corrections, and stakeholder-approved copy changes.
+- Any new feature request goes to the post-event backlog unless it blocks an agreed Kadayo workflow.

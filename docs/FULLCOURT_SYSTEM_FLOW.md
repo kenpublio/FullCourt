@@ -7,10 +7,10 @@ FullCourt has three authenticated user types: Administrator, Coach, and Staff Ad
 ## 1. Administrator setup
 
 1. Sign in through the Admin portal.
-2. Create the tournament, divisions, registration rules, dates, and roster deadline.
+2. Create an **Official** tournament draft, or choose **Practice / Test** for a private rehearsal whose results cannot affect official standings or bracket advancement.
 3. Add the playable venue and Main Court using the map-assisted venue form.
 4. Create or approve teams and associate each team with its Coach.
-5. Review tournament readiness, staff coverage, eligibility decisions, and audit history from the dashboard.
+5. Review tournament readiness, staff coverage, eligibility decisions, and audit history from the dashboard. Official publication is blocked until court, teams, bracket, playable schedules, eligible players, and primary Staff Admin are complete.
 
 ## 2. Coach roster preparation
 
@@ -37,7 +37,7 @@ FullCourt has three authenticated user types: Administrator, Coach, and Staff Ad
 3. Record team score through individual +1, +2, and +3 player events.
 4. Optionally record rebounds, assists, steals, blocks, turnovers, and fouls.
 5. Use Undo for an incorrect latest action. Every event remains attributable in the audit trail.
-6. If disconnected, pause scoring and keep the official paper score sheet until the connection returns.
+6. If disconnected, FullCourt preserves a local game snapshot and locks new scoring actions. Keep the official paper score sheet, reconnect, then verify the official score before resuming.
 7. Review the final totals and submit the result to Admin. Scoring locks while awaiting confirmation.
 
 ## 5. Administrator final-result flow

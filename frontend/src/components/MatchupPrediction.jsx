@@ -26,7 +26,7 @@ const MatchupPrediction = ({ matchId, title = 'Matchup Win Probability' }) => {
   return (
     <section className="card-custom p-4 matchup-probability-card" aria-labelledby={`matchup-title-${matchId}`}>
       <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-        <div><span className="matchup-eyebrow"><i className="bi bi-graph-up-arrow me-1" /> PERFORMANCE ANALYTICS</span><h5 id={`matchup-title-${matchId}`} className="fw-bold mb-1">{title}</h5><small className="text-muted">Based only on completed games recorded in FullCourt</small></div>
+        <div><span className="matchup-eyebrow"><i className="bi bi-graph-up-arrow me-1" /> PERFORMANCE ANALYTICS</span><h2 id={`matchup-title-${matchId}`} className="h5 fw-bold mb-1">{title}</h2><small className="text-muted">Based only on completed games recorded in FullCourt</small></div>
         <span className={`badge ${outlook.confidence === 'moderate' ? 'bg-success' : 'bg-warning text-dark'}`}>{outlook.confidence} confidence</span>
       </div>
       <div className="matchup-team-row">
@@ -34,7 +34,7 @@ const MatchupPrediction = ({ matchId, title = 'Matchup Win Probability' }) => {
         <span className="matchup-vs">VS</span>
         <div className="text-end"><b>{outlook.away_team || 'Team 2'}</b><strong>{away}%</strong><small>{outlook.away_record?.wins || 0}–{outlook.away_record?.losses || 0} · {outlook.away_record?.win_rate ?? 50}% win rate · {outlook.away_ppg || 0} PPG</small></div>
       </div>
-      <div className="matchup-meter my-3" aria-label={`${outlook.home_team} ${home} percent, ${outlook.away_team} ${away} percent`}><span style={{ width: `${home}%` }} /></div>
+      <div className="matchup-meter my-3" role="img" aria-label={`${outlook.home_team} ${home} percent, ${outlook.away_team} ${away} percent`}><span style={{ width: `${home}%` }} /></div>
       <div className="d-flex flex-wrap justify-content-between gap-2 small text-muted"><span><i className="bi bi-database-check me-1" />{completed} completed game{completed === 1 ? '' : 's'} used</span><span>Estimated favorite: <b>{outlook.favored_team || 'Even matchup'}</b></span></div>
       <details className="matchup-details mt-3"><summary>How this estimate works</summary><p className="mb-1 mt-2">{outlook.formula}</p><p className="mb-0"><b>Limitations:</b> {(outlook.limitations || []).join(' ')}</p></details>
       <div className="matchup-disclaimer mt-3"><i className="bi bi-info-circle-fill me-2" />{outlook.disclaimer}</div>
