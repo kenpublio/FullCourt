@@ -3,7 +3,7 @@ const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const webBase = process.env.FULLCOURT_WEB_URL || 'http://127.0.0.1:5173';
+const webBase = process.env.FULLCOURT_WEB_URL || 'http://127.0.0.1:5180';
 const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd: root, encoding: 'utf8' }));
 const admin = sessions.find((entry) => entry.user.role === 'platform_admin');
 if (!admin) throw new Error('Admin session unavailable.');

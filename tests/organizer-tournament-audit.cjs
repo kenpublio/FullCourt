@@ -4,7 +4,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const apiBase = 'http://127.0.0.1:8767/api';
-const webBase = process.env.APP_URL || 'http://127.0.0.1:5173';
+const webBase = process.env.APP_URL || 'http://127.0.0.1:5180';
 const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd: root, encoding: 'utf8' }));
 const organizer = sessions.find((session) => session.user.role === 'organization_admin');
 if (!organizer) throw new Error('Organizer demo account was not found.');

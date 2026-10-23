@@ -143,9 +143,9 @@ const LiveScoringView = () => {
     }
   };
 
-  const confirmingWinner = activeMatch && [activeMatch.team1_id, activeMatch.team2_id]
+  const confirmingWinner = confirmingWinnerId !== null && activeMatch && [activeMatch.team1_id, activeMatch.team2_id]
     .map((id, index) => ({ id, name: index === 0 ? activeMatch.team1_name : activeMatch.team2_name }))
-    .find((team) => Number(team.id) === Number(confirmingWinnerId));
+    .find((team) => team.id !== null && team.id !== undefined && Number(team.id) === Number(confirmingWinnerId));
   const scoresAreTied = Number(scoreData.team1_score) === Number(scoreData.team2_score);
   const selectedIsPendingReview = activeMatch?.status === 'awaiting_confirmation';
   const scoreWinnerId = Number(scoreData.team1_score) > Number(scoreData.team2_score) ? activeMatch?.team1_id : activeMatch?.team2_id;

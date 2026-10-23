@@ -5,11 +5,12 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const apiBase = process.env.FULLCOURT_API_URL || 'http://127.0.0.1:8767/api';
-const webBase = process.env.FULLCOURT_WEB_URL || 'http://127.0.0.1:5173';
+const webBase = process.env.FULLCOURT_WEB_URL || 'http://127.0.0.1:5180';
 const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd: root, encoding: 'utf8' }));
 const admin = sessions.find((entry) => entry.user.role === 'platform_admin');
 const coach = sessions.find((entry) => entry.user.role === 'coach');
-if (!admin || !coach) throw new Error('Admin or Coach demo session is unavailable.');
+const staff = sessions.find((entry) => entry.user.role === 'statistician');
+if (!admin || !coach || !staff) throw new Error('Admin, Coach, or Staff Admin demo session is unavailable.');
 
 async function request(route, { method = 'GET', token = admin.token, body } = {}) {
   const response = await fetch(apiBase + route, {
@@ -72,6 +73,9 @@ async function requestForm(route, token, form) {
       court_ids: [Number(court.id)],
     },
   })).id);
+  await request(`/tournaments/${tournamentId}/staff`, {
+    method: 'PUT', body: { staff_user_id: Number(staff.user.id) },
+  });
   const divisionId = Number((await request(`/tournaments/${tournamentId}/divisions`, {
     method: 'POST', body: { name: 'Open Test Division', age_group: 'Open', gender_category: 'open', format: 'single_elimination', max_roster_size: 18 },
   })).id);
@@ -96,6 +100,12 @@ async function requestForm(route, token, form) {
   await request(`/eligibility/${rosterPlayerId}`, { method: 'PUT', body: { status: 'verified', remarks: 'Verified for automated scoring test.' } });
   await request(`/tournaments/${tournamentId}/bracket/generate`, { method: 'POST', body: { format: 'single_elimination', shuffle: false } });
   await request(`/tournaments/${tournamentId}/schedule/auto`, { method: 'POST', body: { start_date: startDate, start_time: '08:00:00' } });
+  const conflicts = await request(`/tournaments/${tournamentId}/schedule/conflicts`, { method: 'POST', body: {} });
+  const conflictCount = ['court_clashes', 'team_clashes', 'venue_violations']
+    .reduce((total, key) => total + (conflicts[key]?.length || 0), 0);
+  if (conflictCount) throw new Error(`Generated scoring fixture has ${conflictCount} schedule conflict(s).`);
+  await request(`/tournaments/${tournamentId}/schedule/publish`, { method: 'POST', body: {} });
+  await request(`/tournaments/${tournamentId}/publish`, { method: 'POST', body: {} });
   const schedule = (await request(`/tournaments/${tournamentId}/schedule`)).schedule;
   const game = schedule.find((entry) => entry.team1_id && entry.team2_id);
   if (!game || ![teamA, teamB].includes(Number(game.team1_id)) || ![teamA, teamB].includes(Number(game.team2_id))) throw new Error('Fresh tournament game was not generated correctly.');
