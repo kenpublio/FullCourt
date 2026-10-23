@@ -50,8 +50,8 @@ process.on('SIGINT', () => stopChildren(0));
 process.on('SIGTERM', () => stopChildren(0));
 
 console.log('Starting FullCourt PHP API at http://127.0.0.1:8767');
-console.log('Starting FullCourt frontend at http://127.0.0.1:5173');
+console.log('Starting FullCourt frontend at http://127.0.0.1:5180');
 console.log('Press Ctrl+C to stop both servers. Ensure MySQL is running separately.');
 
 start('PHP API', 'php', ['-S', '127.0.0.1:8767', '-t', 'backend'], projectRoot);
-start('Frontend', process.execPath, [viteEntry, '--host', '127.0.0.1'], frontendRoot);
+start('Frontend', process.execPath, [viteEntry, '--host', '127.0.0.1', '--port', '5180', '--strictPort'], frontendRoot);
