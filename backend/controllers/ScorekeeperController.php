@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../models/Scorekeeper.php';
 require_once __DIR__ . '/../models/MatchScore.php';
+require_once __DIR__ . '/../models/GameOperations.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../middleware/OrganizationAccess.php';
 require_once __DIR__ . '/../utils/response.php';
@@ -40,6 +41,7 @@ class ScorekeeperController {
             'timeouts' => $this->skModel->getTimeoutHistory($matchId),
             'events' => $this->skModel->getEventLog($matchId),
             'officials' => $this->skModel->getOfficialAssignment($matchId),
+            'period_scores' => (new GameOperations())->periodScores($matchId),
         ]);
     }
 

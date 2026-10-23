@@ -112,8 +112,9 @@ class PublicController {
         $events=$scorekeeper->getEventLog($matchId,40);
         $fouls=$scorekeeper->getFoulCounts($matchId);
         $timeouts=$scorekeeper->getTimeoutHistory($matchId);
-        $boxScore=!isset($privacy['public_player_profiles'])||$privacy['public_player_profiles']?(new GameOperations())->boxScore($matchId):[];
-        Response::success('Live match state retrieved', ['score'=>$board,'events'=>$events,'fouls'=>$fouls,'timeouts'=>$timeouts,'box_score'=>$boxScore]);
+        $operations = new GameOperations();
+        $boxScore=!isset($privacy['public_player_profiles'])||$privacy['public_player_profiles']?$operations->boxScore($matchId):[];
+        Response::success('Live match state retrieved', ['score'=>$board,'events'=>$events,'fouls'=>$fouls,'timeouts'=>$timeouts,'box_score'=>$boxScore,'period_scores'=>$operations->periodScores($matchId)]);
     }
 
     public function matchDetails(int $matchId): void {

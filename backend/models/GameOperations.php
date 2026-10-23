@@ -225,6 +225,55 @@ class GameOperations {
         $stmt->bindValue(':match_id',$matchId,PDO::PARAM_INT);$stmt->bindValue(':limit',$limit,PDO::PARAM_INT);$stmt->execute();return$stmt->fetchAll();
     }
 
+    public function periodScores(int $matchId): array {
+        $matchStmt = $this->db->prepare("SELECT m.team1_id,m.team2_id,COALESCE(ms.team1_score,0) team1_score,
+            COALESCE(ms.team2_score,0) team2_score,COALESCE(ms.current_period,'Q1') current_period
+            FROM matches m LEFT JOIN match_scores ms ON ms.match_id=m.id WHERE m.id=:match_id LIMIT 1");
+        $matchStmt->execute([':match_id' => $matchId]);
+        $match = $matchStmt->fetch();
+        if (!$match) return [];
+
+        $stmt = $this->db->prepare("SELECT period, team_id,
+            COALESCE(SUM(CASE event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END),0) points
+            FROM basketball_stat_events
+            WHERE match_id=:match_id AND is_void=0
+            GROUP BY period, team_id ORDER BY period");
+        $stmt->execute([':match_id' => $matchId]);
+        $points = [];
+        $highestPeriod = 4;
+        foreach ($stmt->fetchAll() as $row) {
+            $period = max(1, (int)$row['period']);
+            $highestPeriod = max($highestPeriod, $period);
+            $points[$period][(int)$row['team_id']] = (int)$row['points'];
+        }
+
+        $currentPeriod = 1;
+        if (preg_match('/^Q([1-4])$/', (string)$match['current_period'], $quarter)) $currentPeriod = (int)$quarter[1];
+        elseif (preg_match('/^OT([1-9])$/', (string)$match['current_period'], $overtime)) $currentPeriod = 4 + (int)$overtime[1];
+        $highestPeriod = max($highestPeriod, $currentPeriod);
+
+        // Keep legacy/manual scoreboard adjustments visible in the active period
+        // so the period columns always reconcile with the official total.
+        foreach (['team1_id' => 'team1_score', 'team2_id' => 'team2_score'] as $teamKey => $scoreKey) {
+            $teamId = (int)$match[$teamKey];
+            $recorded = 0;
+            foreach ($points as $periodPoints) $recorded += $periodPoints[$teamId] ?? 0;
+            $difference = (int)$match[$scoreKey] - $recorded;
+            if ($difference > 0) $points[$currentPeriod][$teamId] = ($points[$currentPeriod][$teamId] ?? 0) + $difference;
+        }
+
+        $periods = [];
+        for ($period = 1; $period <= $highestPeriod; $period++) {
+            $periods[] = [
+                'period' => $period,
+                'label' => $period <= 4 ? "Q{$period}" : 'OT' . ($period - 4),
+                'team1_score' => $points[$period][(int)$match['team1_id']] ?? 0,
+                'team2_score' => $points[$period][(int)$match['team2_id']] ?? 0,
+            ];
+        }
+        return $periods;
+    }
+
     public function boxScore(int $matchId): array {
         $stmt = $this->db->prepare("SELECT tp.id team_player_id, COALESCE(tp.player_name,u.full_name) AS full_name, tp.jersey_number, tm.id team_id, tm.team_name,
             SUM(CASE WHEN e.event_type='2pt_made' THEN 1 ELSE 0 END) fg2m, SUM(CASE WHEN e.event_type IN ('2pt_made','2pt_missed') THEN 1 ELSE 0 END) fg2a,

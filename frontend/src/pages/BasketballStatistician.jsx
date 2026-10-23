@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import gameOperationsService from "../services/gameOperationsService";
+import "../styles/period-scores.css";
 import scorekeeperService from "../services/scorekeeperService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
@@ -34,6 +35,7 @@ const optionalStatGroups = [
 ];
 const scoringDraftKey=(matchId)=>`fullcourt_scoring_recovery_${matchId}`;
 const readScoringDraft=(matchId)=>{try{return JSON.parse(localStorage.getItem(scoringDraftKey(matchId))||'null');}catch{return null;}};
+const periodNumber=(value)=>{const label=String(value||'Q1').toUpperCase();const quarter=label.match(/^Q([1-4])$/);if(quarter)return Number(quarter[1]);const overtime=label.match(/^OT([1-9])$/);return overtime?4+Number(overtime[1]):1;};
 const BasketballStatistician = () => {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState([]),
@@ -120,8 +122,7 @@ const BasketballStatistician = () => {
       team_id: selected.team_id,
       team_player_id: selected.team_player_id,
       event_type: eventType,
-      period:
-        Number(String(board.score.current_period).replace(/\D/g, "")) || 1,
+      period: periodNumber(board.score.current_period),
       game_clock_seconds: board.score.timer_seconds,
     });
     setMessage(
@@ -313,6 +314,15 @@ const BasketballStatistician = () => {
                       {board.score.team2_score}
                     </div>
                   </div>
+                </div>
+                <div className="staff-period-table" aria-label="Score by quarter">
+                  <table>
+                    <thead><tr><th>Team</th>{(board.period_scores||[]).map(period=><th key={period.label}>{period.label}</th>)}<th>T</th></tr></thead>
+                    <tbody>
+                      <tr><th>{board.score.team1_name}</th>{(board.period_scores||[]).map(period=><td key={period.label}>{period.team1_score}</td>)}<td><b>{board.score.team1_score}</b></td></tr>
+                      <tr><th>{board.score.team2_name}</th>{(board.period_scores||[]).map(period=><td key={period.label}>{period.team2_score}</td>)}<td><b>{board.score.team2_score}</b></td></tr>
+                    </tbody>
+                  </table>
                 </div>
                 <div className="staff-score-safety mt-3">
                   <span><i className="bi bi-cloud-check-fill"/><b>Score synced</b><small>Admin confirmation is required before publication.</small></span>

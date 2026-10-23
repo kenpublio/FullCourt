@@ -11,6 +11,7 @@ import courtDate from "../utils/courtDate";
 import "../styles/public-game.css";
 import "../styles/game-pregame.css";
 import "../styles/match-insights.css";
+import "../styles/period-scores.css";
 
 const gameClock = (seconds) =>
   `${String(Math.floor(Number(seconds || 0) / 60)).padStart(2, "0")}:${String(Number(seconds || 0) % 60).padStart(2, "0")}`;
@@ -26,6 +27,7 @@ export default function PublicGameDetails() {
       fouls: [],
       timeouts: [],
       box_score: [],
+      period_scores: [],
     }),
     [pregame, setPregame] = useState({
       lineup: [],
@@ -72,6 +74,7 @@ export default function PublicGameDetails() {
             fouls: data.fouls || [],
             timeouts: data.timeouts || [],
             box_score: data.box_score || [],
+            period_scores: data.period_scores || [],
           });
           setUpdated(new Date());
         }
@@ -205,6 +208,23 @@ export default function PublicGameDetails() {
                   </span>
                 </footer>
               </section>
+              {score && (
+                <section className="game-period-breakdown" aria-labelledby="period-score-title">
+                  <header>
+                    <div><span>SCORING BY PERIOD</span><h2 id="period-score-title">Quarter breakdown</h2></div>
+                    <small>Official live totals</small>
+                  </header>
+                  <div className="game-period-scroll">
+                    <table>
+                      <thead><tr><th>Team</th>{details.period_scores.map((period) => <th key={period.label}>{period.label}</th>)}<th>T</th></tr></thead>
+                      <tbody>
+                        <tr><th>{display.team1}</th>{details.period_scores.map((period) => <td key={period.label}>{period.team1_score}</td>)}<td><strong>{display.score1}</strong></td></tr>
+                        <tr><th>{display.team2}</th>{details.period_scores.map((period) => <td key={period.label}>{period.team2_score}</td>)}<td><strong>{display.score2}</strong></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
               {!score && (
                 <div className="game-waiting">
                   <i className="bi bi-hourglass-split" />
