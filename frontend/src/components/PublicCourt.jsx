@@ -7,7 +7,7 @@ export function CourtNav() {
   return <nav className="court-nav court-container" aria-label="Main navigation">
     <Link to="/" className="court-brand"><span><i className="bi bi-dribbble" aria-hidden="true" /></span>FULLCOURT<span className="court-brand-dot">.</span></Link>
     <div className="court-nav-links"><NavLink to="/" end>Home</NavLink><NavLink to="/sports">Game center</NavLink><NavLink to="/sports/schedule">Schedule</NavLink></div>
-    <div className="court-nav-account"><Link to="/login" className="court-signin"><span className="court-signin-icon"><i className="bi bi-box-arrow-in-right" aria-hidden="true"/></span><span>Sign in</span></Link><Link to="/register" className="court-button compact court-join-button"><span className="court-join-icon"><i className="bi bi-person-plus-fill" aria-hidden="true"/></span><span>Coach sign-up</span><i className="bi bi-arrow-right court-join-arrow" aria-hidden="true"/></Link></div>
+    <div className="court-nav-account"><Link to="/login" className="court-signin"><span className="court-signin-icon"><i className="bi bi-box-arrow-in-right" aria-hidden="true"/></span><span>Sign in</span></Link><Link to="/register" className="court-button compact court-join-button" aria-label="Coach sign-up"><span className="court-join-icon"><i className="bi bi-person-plus-fill" aria-hidden="true"/></span><span className="court-join-label-full">Coach sign-up</span><span className="court-join-label-mobile">Sign up</span><i className="bi bi-arrow-right court-join-arrow" aria-hidden="true"/></Link></div>
   </nav>;
 }
 export function CourtFooter() {
