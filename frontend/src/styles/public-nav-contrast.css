@@ -41,6 +41,23 @@ html body .court-home-top .court-nav-account .court-signin > span:last-child {
   display: none;
 }
 
+html body .court-home-top .court-nav-account .court-join-button {
+  min-height: 40px;
+  padding: 5px 10px 5px 6px;
+  gap: 6px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+html body .court-home-top .court-nav-account .court-join-button > .court-join-icon {
+  width: 28px;
+  height: 28px;
+}
+
+html body .court-home-top .court-nav-account .court-join-button > .court-join-arrow {
+  display: none;
+}
+
 @media (max-width: 430px) {
   .court-home-top .court-nav-account {
     gap: 8px;
