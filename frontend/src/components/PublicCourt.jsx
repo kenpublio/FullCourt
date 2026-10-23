@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import courtDate from '../utils/courtDate';
 import '../styles/public-court.css';
+import '../styles/public-nav-contrast.css';
 
 export function CourtNav() {
   return <nav className="court-nav court-container" aria-label="Main navigation">

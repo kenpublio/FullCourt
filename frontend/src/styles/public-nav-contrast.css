@@ -1,0 +1,28 @@
+.court-home-top .court-nav .court-brand,
+.court-home-top .court-nav .court-brand:visited,
+.court-home-top .court-nav-links a,
+.court-home-top .court-nav-links a:visited,
+.court-home-top .court-nav-links a.active {
+  color: #fff;
+}
+
+.court-home-top .court-nav-links a {
+  position: relative;
+}
+
+.court-home-top .court-nav-links a.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -10px;
+  left: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--court-gold);
+  content: "";
+}
+
+.court-home-top .court-nav .court-brand:hover,
+.court-home-top .court-nav-links a:hover {
+  color: #fff;
+  opacity: .82;
+}
