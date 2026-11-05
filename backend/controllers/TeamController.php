@@ -21,7 +21,7 @@ class TeamController {
 
     public function index(): void {
         $user = AuthMiddleware::authenticate();
-        if ($user['role'] === 'coach') {
+        if (in_array($user['role'], ['coach','assistant_coach'], true)) {
             $teams = $this->teamModel->getForCoach((int) $user['user_id']);
         } elseif ($user['role'] === 'statistician') {
             $teams = $this->teamModel->getForTournamentManager((int)$user['user_id']);
@@ -98,7 +98,7 @@ class TeamController {
         $user = AuthMiddleware::authenticate();
         OrganizationAccess::requireTournament($tournamentId, $user);
         $teams = $this->teamModel->getByTournament($tournamentId);
-        if ($user['role']==='coach') {
+        if (in_array($user['role'],['coach','assistant_coach'],true)) {
             $uid=(int)$user['user_id'];
             $teams=array_values(array_filter($teams,static fn(array $team):bool=>(int)$team['coach_user_id']===$uid || (int)($team['manager_user_id']??0)===$uid));
         }
@@ -120,8 +120,16 @@ class TeamController {
         if ($user['role']==='coach') {
             $input['tournament_id']=$team['tournament_id'];
             $input['division_id']=$team['division_id'];
+            $input['manager_user_id']=$team['manager_user_id'];
         } else {
             OrganizationAccess::requireTournament((int)$team['tournament_id'],$user);
+            $managerId=(int)($input['manager_user_id']??0);
+            if($managerId){
+                $db=(new Database())->getConnection();
+                $check=$db->prepare("SELECT id FROM users WHERE id=:id AND role='assistant_coach' AND is_active=1 LIMIT 1");
+                $check->execute([':id'=>$managerId]);
+                if(!$check->fetchColumn())Response::error('Choose an active Assistant Coach account.',422);
+            }
         }
 
         $this->teamModel->update($id, $input);

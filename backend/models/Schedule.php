@@ -49,6 +49,20 @@ class Schedule {
         ];
     }
 
+    public function setTournamentCourt(int $tournamentId, int $courtId): void {
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare('DELETE FROM tournament_courts WHERE tournament_id=:tournament_id')
+                ->execute([':tournament_id'=>$tournamentId]);
+            $this->db->prepare('INSERT INTO tournament_courts(tournament_id,court_id) VALUES(:tournament_id,:court_id)')
+                ->execute([':tournament_id'=>$tournamentId,':court_id'=>$courtId]);
+            $this->db->commit();
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $error;
+        }
+    }
+
     // All courts with their venue + unavailable dates for the tournament window.
     private function availableCourts(int $tournamentId): array {
         $stmt = $this->db->prepare("
@@ -315,14 +329,14 @@ class Schedule {
 
     // Reschedule a single match (drag/time edit). Rejects completed/postponed matches.
     public function updateMatchSlot(int $matchId, string $start, ?int $courtId): array {
-        $stmt = $this->db->prepare("SELECT m.id, m.tournament_id, m.court_id, m.scheduled_start_time, m.scheduled_end_time, m.status, m.schedule_status,
+        $stmt = $this->db->prepare("SELECT m.id, m.tournament_id, m.court_id, m.scheduled_start_time, m.scheduled_end_time, m.status, m.schedule_status,t.is_published,
                 c.court_name, v.name AS venue_name
-            FROM matches m LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN venues v ON v.id=c.venue_id
+            FROM matches m JOIN tournaments t ON t.id=m.tournament_id LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN venues v ON v.id=c.venue_id
             WHERE m.id = :mid LIMIT 1");
         $stmt->execute([':mid' => $matchId]);
         $m = $stmt->fetch();
         if (!$m) throw new Exception("Match not found.");
-        if (in_array($m['status'], ['completed', 'cancelled'])) throw new Exception("Cannot reschedule a completed/cancelled match.");
+        if (in_array($m['status'], ['in_progress', 'completed', 'cancelled'])) throw new Exception("Cannot change the time or venue after a game has started.");
 
         $startDt = new DateTime($start);
         $tinfo = $this->tournamentInfo((int)$m['tournament_id']);
@@ -336,13 +350,9 @@ class Schedule {
 
         // Court clash (excluding self)
         if ($courtId) {
-            $hasTournamentCourts=$this->db->prepare('SELECT 1 FROM tournament_courts WHERE tournament_id=:tid LIMIT 1');
-            $hasTournamentCourts->execute([':tid'=>(int)$m['tournament_id']]);
-            if ($hasTournamentCourts->fetchColumn()) {
-                $allowedCourt=$this->db->prepare("SELECT 1 FROM courts c JOIN venues v ON v.id=c.venue_id WHERE c.id=:cid AND c.is_available=1 AND v.approval_status='approved' LIMIT 1");
-                $allowedCourt->execute([':cid'=>$courtId]);
-                if (!$allowedCourt->fetchColumn()) $conflicts[]=['type'=>'court_not_selected','court_id'=>$courtId];
-            }
+            $allowedCourt=$this->db->prepare("SELECT 1 FROM courts c JOIN venues v ON v.id=c.venue_id WHERE c.id=:cid AND c.is_available=1 AND v.approval_status='approved' LIMIT 1");
+            $allowedCourt->execute([':cid'=>$courtId]);
+            if (!$allowedCourt->fetchColumn()) $conflicts[]=['type'=>'court_unavailable','court_id'=>$courtId];
             $r = $this->db->prepare("SELECT id, scheduled_start_time, scheduled_end_time FROM matches WHERE court_id = :cid AND id != :mid AND status IN ('scheduled','in_progress') AND scheduled_start_time IS NOT NULL");
             $r->execute([':cid' => $courtId, ':mid' => $matchId]);
             foreach ($r as $row) {
@@ -386,8 +396,19 @@ class Schedule {
 
         if ($conflicts) return ['scheduled' => false, 'conflicts' => $conflicts];
 
-        $this->db->prepare("UPDATE matches SET court_id = :court, scheduled_start_time = :s, scheduled_end_time = :e WHERE id = :mid")
-            ->execute([':court' => $courtId, ':s' => $startDt->format('Y-m-d H:i:s'), ':e' => $endDt->format('Y-m-d H:i:s'), ':mid' => $matchId]);
+        $this->db->prepare("UPDATE matches SET court_id = :court, scheduled_start_time = :s, scheduled_end_time = :e,
+                schedule_status=CASE WHEN :publish=1 THEN 'published' ELSE schedule_status END WHERE id = :mid")
+            ->execute([':court' => $courtId, ':s' => $startDt->format('Y-m-d H:i:s'), ':e' => $endDt->format('Y-m-d H:i:s'), ':publish'=>(int)$m['is_published'], ':mid' => $matchId]);
+
+        // A manually selected replacement court becomes part of this
+        // tournament so later optimizer runs and readiness checks keep using it.
+        if ($courtId) {
+            $driver=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+            $sql=$driver==='mysql'
+                ? 'INSERT IGNORE INTO tournament_courts(tournament_id,court_id) VALUES(:tournament_id,:court_id)'
+                : 'INSERT INTO tournament_courts(tournament_id,court_id) VALUES(:tournament_id,:court_id) ON CONFLICT(tournament_id,court_id) DO NOTHING';
+            $this->db->prepare($sql)->execute([':tournament_id'=>(int)$m['tournament_id'],':court_id'=>$courtId]);
+        }
 
         return [
             'scheduled' => true,
@@ -414,7 +435,7 @@ class Schedule {
         if (!$match) return 0;
 
         $recipients = $this->db->prepare("SELECT DISTINCT recipient.user_id FROM (
-                SELECT tm.coach_user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
+                SELECT tm.coach_user_id AS user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
                     WHERE m.id=:coaches_match AND tm.coach_user_id IS NOT NULL
             ) recipient JOIN users u ON u.id=recipient.user_id WHERE u.is_active=1");
         $recipients->execute([
@@ -449,21 +470,21 @@ class Schedule {
 
     public function saveConstraints(int $tournamentId, array $c): bool {
         $sql = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? "
-            INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes)
-            VALUES (:tid, :m, :r, :d, :b)
+            INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes,daily_start_time,daily_end_time)
+            VALUES (:tid, :m, :r, :d, :b,:start_time,:end_time)
             ON DUPLICATE KEY UPDATE
                 max_games_per_team_per_day = VALUES(max_games_per_team_per_day),
                 min_rest_minutes_between_games = VALUES(min_rest_minutes_between_games),
                 default_match_duration_minutes = VALUES(default_match_duration_minutes),
-                default_break_minutes = VALUES(default_break_minutes)
+                default_break_minutes = VALUES(default_break_minutes),daily_start_time=VALUES(daily_start_time),daily_end_time=VALUES(daily_end_time)
         " : "
-            INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes)
-            VALUES (:tid, :m, :r, :d, :b)
+            INSERT INTO schedule_constraints (tournament_id, max_games_per_team_per_day, min_rest_minutes_between_games, default_match_duration_minutes, default_break_minutes,daily_start_time,daily_end_time)
+            VALUES (:tid, :m, :r, :d, :b,:start_time,:end_time)
             ON CONFLICT (tournament_id) DO UPDATE SET
                 max_games_per_team_per_day = EXCLUDED.max_games_per_team_per_day,
                 min_rest_minutes_between_games = EXCLUDED.min_rest_minutes_between_games,
                 default_match_duration_minutes = EXCLUDED.default_match_duration_minutes,
-                default_break_minutes = EXCLUDED.default_break_minutes
+                default_break_minutes = EXCLUDED.default_break_minutes,daily_start_time=EXCLUDED.daily_start_time,daily_end_time=EXCLUDED.daily_end_time
         ";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
@@ -472,6 +493,8 @@ class Schedule {
             ':r' => (int)$c['min_rest_minutes_between_games'],
             ':d' => (int)$c['default_match_duration_minutes'],
             ':b' => (int)$c['default_break_minutes'],
+            ':start_time' => $c['daily_start_time'] ?? '08:00',
+            ':end_time' => $c['daily_end_time'] ?? '20:00',
         ]);
     }
 }

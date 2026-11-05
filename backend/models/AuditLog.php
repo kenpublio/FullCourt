@@ -21,7 +21,7 @@ class AuditLog {
                 VALUES (:user_id, :action, :module, :ip_address, :user_agent, :details)";
         $stmt = $this->db->prepare($sql);
 
-        return $stmt->execute([
+        $saved = $stmt->execute([
             ':user_id' => $userId,
             ':action' => $action,
             ':module' => $module,
@@ -29,6 +29,16 @@ class AuditLog {
             ':user_agent' => $userAgent,
             ':details' => $details
         ]);
+        $operationalModule = preg_match('/TOURNAMENT|TEAM|SCHEDULE|SCOR|GAME|QR|BRACKET/', strtoupper($module));
+        if ($saved && $userId && $operationalModule) {
+            $actor=$this->db->prepare("SELECT full_name,role FROM users WHERE id=:id LIMIT 1");
+            $actor->execute([':id'=>$userId]);$account=$actor->fetch();
+            if (($account['role']??'')==='statistician') {
+                $notice=$this->db->prepare("INSERT INTO notifications(user_id,notification_type,title,message,action_url) SELECT id,'staff_activity','Staff Admin activity',:message,'/notifications' FROM users WHERE role IN ('platform_admin','admin') AND is_active=1");
+                $notice->execute([':message'=>trim(($account['full_name']??'Staff Admin').' · '.str_replace('_',' ',strtolower($action)).($details!==''?' · '.$details:''))]);
+            }
+        }
+        return $saved;
     }
 
     public function getRecent(int $limit = 50): array {

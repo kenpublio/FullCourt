@@ -14,7 +14,7 @@ const receiptUrl = (path) => {
 
 const PaymentVerificationView = () => {
   const { user } = useAuth();
-  const canSubmitPayment = ['platform_admin','admin','coach','coach_manager'].includes(user?.role);
+  const canSubmitPayment = ['coach','coach_manager'].includes(user?.role);
   const canVerifyPayment = ['platform_admin','admin','finance_officer','organization_admin','tournament_organizer'].includes(user?.role);
   const isCoach = ['coach','coach_manager'].includes(user?.role);
   const [payments, setPayments] = useState([]);
@@ -160,9 +160,9 @@ const PaymentVerificationView = () => {
         <div>
           <h3 className="fw-bold text-dark mb-1">
             <i className="bi bi-credit-card-fill text-evsu-primary me-2"></i>
-            Digital Payment Verification (GCash / Maya)
+            Team Payment Review (GCash / Maya)
           </h3>
-          <p className="text-muted small mb-0">Finance Officer verification portal for team registration receipts</p>
+          <p className="text-muted small mb-0">Review receipts submitted by coaches, then approve or return them with a reason.</p>
         </div>
         <div className="d-flex gap-2">
           {user?.role === 'finance_officer' && <button className="btn btn-outline-danger" onClick={downloadReport}><i className="bi bi-file-earmark-arrow-down-fill me-1" />Download Report</button>}

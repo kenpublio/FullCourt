@@ -36,6 +36,7 @@ export default function PublicGameDetails() {
     }),
     [loading, setLoading] = useState(true),
     [updated, setUpdated] = useState(null);
+  const [boxScoreTeam, setBoxScoreTeam] = useState("team1");
   useEffect(() => {
     let active = true;
     const loadGame = async () => {
@@ -105,10 +106,18 @@ export default function PublicGameDetails() {
   const gameLeaders = useMemo(() => {
     const players = details.box_score || [];
     const top = (key) => [...players].sort((a, b) => Number(b[key] || 0) - Number(a[key] || 0))[0];
-    return [{ label: "Points", key: "points", player: top("points") }, { label: "Rebounds", key: "rebounds", player: top("rebounds") }, { label: "Assists", key: "assists", player: top("assists") }];
+    return [
+      { label: "Points", key: "points", player: top("points") },
+      { label: "Rebounds", key: "rebounds", player: top("rebounds") },
+      { label: "Assists", key: "assists", player: top("assists") },
+      { label: "Steals", key: "steals", player: top("steals") },
+      { label: "Blocks", key: "blocks", player: top("blocks") },
+    ];
   }, [details.box_score]);
   const comparison = pregame.comparison || {};
   const home = comparison.team1 || {}, away = comparison.team2 || {}, head = comparison.head_to_head || {};
+  const selectedBoxTeamId = boxScoreTeam === "team1" ? score?.team1_id || game?.team1_id : score?.team2_id || game?.team2_id;
+  const selectedBoxPlayers = details.box_score.filter((player) => Number(player.team_id) === Number(selectedBoxTeamId));
   return (
     <div className="court-site public-game-page">
       <CourtNav />
@@ -240,65 +249,29 @@ export default function PublicGameDetails() {
               <section className="game-pregame">
                 <header>
                   <div>
-                    <span>GAME PERSONNEL</span>
-                    <h2>Lineups &amp; statistician</h2>
+                    <span>STARTING FIVE</span>
+                    <h2>Team lineups</h2>
                   </div>
                   <i className="bi bi-people-fill" />
                 </header>
-                <div className="game-pregame-grid">
-                  <article>
-                    <h3>Starting lineups</h3>
-                    {pregame.lineup.filter((p) => p.is_starter == 1).length ? (
-                      <div className="game-lineup-list">
-                        {pregame.lineup
-                          .filter((p) => p.is_starter == 1)
-                          .map((p) => (
-                            <div key={`${p.team_name}-${p.full_name}`}>
-                              <span>#{p.jersey_number || "–"}</span>
-                              <b>{p.full_name}</b>
-                              <small>
-                                {p.team_name} · {p.position || "Player"}
-                              </small>
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <p>
-                        Starting lineups will appear after both teams confirm
-                        their five starters.
-                      </p>
-                    )}
-                  </article>
-                  <article>
-                    <h3>Assigned statistician</h3>
-                    {pregame.officials.length ? (
-                      <div className="game-official-list">
-                        {pregame.officials.map((o, index) => (
-                          <div key={`${o.full_name}-${index}`}>
-                            <i className="bi bi-patch-check-fill" />
-                            <span>
-                              <b>{o.full_name}</b>
-                              <small>
-                                {String(o.assignment_role).replaceAll("_", " ")}
-                              </small>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p>
-                        The game statistician has not been confirmed yet.
-                      </p>
-                    )}
-                  </article>
+                <div className="game-team-lineups">
+                  {[display.team1, display.team2].map((teamName, teamIndex) => {
+                    const starters = pregame.lineup.filter((player) => player.is_starter == 1 && player.team_name === teamName);
+                    return <article key={teamName} className={teamIndex === 1 ? "away" : ""}>
+                      <header><span>{teamIndex === 0 ? "HOME" : "AWAY"}</span><h3>{teamName}</h3><small>{starters.length}/5 confirmed</small></header>
+                      {starters.length ? <div className="game-lineup-list">{starters.map((player) => <div key={`${player.team_name}-${player.full_name}`}>
+                        <span>#{player.jersey_number || "–"}</span><b>{player.full_name}</b><small>{player.position || "Player"}</small>
+                      </div>)}</div> : <p>Starting five will appear after the team confirms its lineup.</p>}
+                    </article>;
+                  })}
                 </div>
               </section>
               <section className="match-comparison">
-                <header><div><span>HEAD-TO-HEAD</span><h2>Team comparison</h2></div><small>{head.meetings || 0} previous meetings</small></header>
+                <header><div><span>NBA-STYLE MATCHUP</span><h2>Season snapshot</h2></div><small>{head.meetings || 0} recorded matchup{Number(head.meetings) === 1 ? '' : 's'}</small></header>
                 <div className="comparison-teams">
-                  <article><b>{display.team1}</b><strong>{home.win_rate || 0}%</strong><span>Win rate · {home.wins || 0}–{home.losses || 0}</span></article>
+                  <article><b>{display.team1}</b><strong>{home.win_rate || 0}%</strong><span>WIN RATE</span><em>Record {home.wins || 0}–{home.losses || 0}</em></article>
                   <div className="comparison-metrics"><div><span>{home.points_per_game || 0}</span><b>POINTS / GAME</b><span>{away.points_per_game || 0}</span></div><div><span>{home.points_allowed || 0}</span><b>POINTS ALLOWED</b><span>{away.points_allowed || 0}</span></div><div><span>{head.team1_wins || 0}</span><b>H2H WINS</b><span>{head.team2_wins || 0}</span></div></div>
-                  <article className="away"><b>{display.team2}</b><strong>{away.win_rate || 0}%</strong><span>Win rate · {away.wins || 0}–{away.losses || 0}</span></article>
+                  <article className="away"><b>{display.team2}</b><strong>{away.win_rate || 0}%</strong><span>WIN RATE</span><em>Record {away.wins || 0}–{away.losses || 0}</em></article>
                 </div><p className="comparison-note"><i className="bi bi-info-circle" /> Based only on completed official games recorded in FullCourt.</p>
               </section>
               {details.box_score.length > 0 && <section className="game-leaders"><header><div><span>ON-COURT IMPACT</span><h2>Game leaders</h2></div><i className="bi bi-stars" /></header><div>{gameLeaders.map((item) => <article key={item.label}><span>{item.label}</span><strong>{item.player?.[item.key] || 0}</strong><b>{item.player?.full_name || "No player data"}</b><small>{item.player?.team_name || "Official statistics"}</small></article>)}</div></section>}
@@ -312,6 +285,11 @@ export default function PublicGameDetails() {
                       </div>
                       <i className="bi bi-bar-chart-fill" />
                     </header>
+                    <div className="game-box-team-tabs" role="tablist" aria-label="Select a team box score">
+                      {[{ key: "team1", name: display.team1, score: display.score1 }, { key: "team2", name: display.team2, score: display.score2 }].map((team) => <button type="button" role="tab" aria-selected={boxScoreTeam === team.key} className={boxScoreTeam === team.key ? "active" : ""} onClick={() => setBoxScoreTeam(team.key)} key={team.key}>
+                        <span>{team.name}</span><strong>{team.score}</strong>
+                      </button>)}
+                    </div>
                     {details.box_score.length ? (
                       <div className="game-table-scroll">
                         <table>
@@ -329,7 +307,7 @@ export default function PublicGameDetails() {
                             </tr>
                           </thead>
                           <tbody>
-                            {details.box_score.map((player) => (
+                            {selectedBoxPlayers.map((player) => (
                               <tr key={player.team_player_id}>
                                 <td>
                                   <b>
@@ -360,45 +338,6 @@ export default function PublicGameDetails() {
                       <div className="game-panel-empty">
                         Player statistics will appear after the statistician
                         records game events.
-                      </div>
-                    )}
-                  </article>
-                  <article className="game-play-log">
-                    <header>
-                      <div>
-                        <span>LIVE FEED</span>
-                        <h2>Play-by-play</h2>
-                      </div>
-                      <i className="bi bi-broadcast-pin" />
-                    </header>
-                    {details.events.length ? (
-                      <div className="game-events">
-                        {details.events.map((event) => (
-                          <div key={event.id}>
-                            <span>
-                              {event.period || "GAME"}
-                              <small>{gameClock(event.clock_seconds)}</small>
-                            </span>
-                            <i className="bi bi-circle-fill" />
-                            <p>
-                              <b>
-                                {String(
-                                  event.event_type || "game_event",
-                                ).replaceAll("_", " ")}
-                              </b>
-                              <small>
-                                {event.player_name ||
-                                  event.team_name ||
-                                  "Official game update"}
-                              </small>
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="game-panel-empty">
-                        Play-by-play events will appear when live scoring
-                        begins.
                       </div>
                     )}
                   </article>
@@ -438,7 +377,29 @@ export default function PublicGameDetails() {
           )}
         </div>
       </main>
-      <CourtFooter />
+      <section className="game-next-stop">
+        <div className="court-container game-next-stop-inner">
+          <div className="game-next-stop-copy">
+            <span>KEEP FOLLOWING THE TOURNAMENT</span>
+            <h2>Where do you want to go next?</h2>
+            <p>Check the tournament overview or find the next scheduled game.</p>
+          </div>
+          <nav className="game-next-stop-links" aria-label="Game page shortcuts">
+            {tournamentId && (
+              <Link className="is-primary" to={`/sports/tournaments/${tournamentId}`}>
+                <i className="bi bi-trophy" aria-hidden="true" /> Tournament
+              </Link>
+            )}
+            <Link to="/sports">
+              <i className="bi bi-broadcast" aria-hidden="true" /> Game center
+            </Link>
+            <Link to="/sports/schedule">
+              <i className="bi bi-calendar3" aria-hidden="true" /> Full schedule
+            </Link>
+          </nav>
+        </div>
+      </section>
+      <CourtFooter showCta={false} />
     </div>
   );
 }

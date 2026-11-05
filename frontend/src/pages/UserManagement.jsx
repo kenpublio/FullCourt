@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import userService from '../services/userService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
+import ConfirmActionDialog from '../components/ConfirmActionDialog';
 import '../styles/user-management.css';
 
 const UserManagement = () => {
@@ -19,6 +20,7 @@ const UserManagement = () => {
   const [staffSaving, setStaffSaving] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '', email: '', phone_number: '', address: '', role: '' });
   const [actionMessage, setActionMessage] = useState({ type: '', text: '' });
+  const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
 
   const fetchUsers = async () => {
     try {
@@ -63,7 +65,7 @@ const UserManagement = () => {
 
   const openEditor = (targetUser) => {
     setSelectedUser(targetUser);
-    setEditForm({ full_name: targetUser.full_name || '', email: targetUser.email || '', phone_number: targetUser.phone_number || '', address: targetUser.address || '', role: ['platform_admin','admin','coach','statistician'].includes(targetUser.role) ? targetUser.role : 'coach' });
+    setEditForm({ full_name: targetUser.full_name || '', email: targetUser.email || '', phone_number: targetUser.phone_number || '', address: targetUser.address || '', role: ['platform_admin','admin','coach','assistant_coach','statistician'].includes(targetUser.role) ? targetUser.role : 'coach' });
   };
 
   const handleUserUpdate = async (e) => {
@@ -80,10 +82,10 @@ const UserManagement = () => {
   };
 
   const handleDelete = async (targetUser) => {
-    if (!window.confirm(`Remove ${targetUser.full_name} from active access? Historical tournament records will be retained.`)) return;
     try {
       const res = await userService.deleteUser(targetUser.id);
       setActionMessage({ type: 'success', text: res.message });
+      setPendingDeleteUser(null);
       await fetchUsers();
       fetchAuditLogs();
     } catch (err) {
@@ -116,6 +118,7 @@ const UserManagement = () => {
       case 'tournament_organizer': return 'bg-warning text-dark';
       case 'coach':
       case 'coach_manager': return 'bg-primary';
+      case 'assistant_coach': return 'bg-secondary';
       case 'statistician': return 'bg-info text-dark';
       case 'finance_officer': return 'bg-success';
       case 'player': return 'bg-dark';
@@ -128,7 +131,7 @@ const UserManagement = () => {
                           u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           u.phone_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           u.address?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || (roleFilter === 'administrator' ? ['platform_admin','admin'].includes(u.role) : u.role === roleFilter);
     return matchesSearch && matchesRole;
   });
   const activeUsers = users.filter(u => u.is_active).length;
@@ -210,10 +213,10 @@ const UserManagement = () => {
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
                 >
-                  <option value="all">All three roles</option>
-                  <option value="platform_admin">Administrator</option>
-                  <option value="admin">Administrator</option>
+                  <option value="all">All roles</option>
+                  <option value="administrator">Administrator</option>
                   <option value="coach">Coach</option>
+                  <option value="assistant_coach">Assistant Coach</option>
                   <option value="statistician">Staff Admin</option>
                 </select>
               </div>
@@ -290,7 +293,7 @@ const UserManagement = () => {
                                 type="button"
                                 className="user-action-btn delete"
                                 title="Delete account access"
-                                onClick={() => handleDelete(u)}
+                                onClick={() => setPendingDeleteUser(u)}
                                 disabled={u.id === currentUser?.id}
                               >
                                 <i className="bi bi-trash3"></i><span>Delete</span>
@@ -358,12 +361,12 @@ const UserManagement = () => {
         <div className="modal-dialog modal-dialog-centered"><div className="modal-content card-custom border-0">
           <div className="modal-header border-bottom"><div><span className="user-management-eyebrow mb-1">ADMIN-CREATED ACCESS</span><h5 id="create-staff-title" className="fw-bold mb-0">Create Staff Admin</h5></div><button type="button" className="btn-close" aria-label="Close" onClick={()=>setCreatingStaff(false)}/></div>
           <form onSubmit={handleCreateStaff}>
-            <div className="modal-body"><div className="staff-admin-access-note"><i className="bi bi-trophy-fill"/><span><b>Tournament manager access</b><small>This account can create and manage its own tournaments, brackets, schedules, venues, and live scoring.</small></span></div><div className="row g-3">
+            <div className="modal-body"><div className="staff-admin-access-note"><i className="bi bi-trophy-fill"/><span><b>Assigned tournament access</b><small>This Staff Admin manages only tournaments assigned by the Administrator: teams, eligibility review, schedules, venues, and scoring.</small></span></div><div className="row g-3">
               <div className="col-12"><label className="form-label small fw-semibold">Full name</label><input className="form-control" value={staffForm.full_name} onChange={e=>setStaffForm({...staffForm,full_name:e.target.value})} required autoFocus/></div>
               <div className="col-md-6"><label className="form-label small fw-semibold">Email / login</label><input type="email" className="form-control" value={staffForm.email} onChange={e=>setStaffForm({...staffForm,email:e.target.value})} required/></div>
               <div className="col-md-6"><label className="form-label small fw-semibold">Mobile number</label><input className="form-control" placeholder="09XXXXXXXXX" value={staffForm.phone_number} onChange={e=>setStaffForm({...staffForm,phone_number:e.target.value})}/></div>
               <div className="col-12"><label className="form-label small fw-semibold">Complete address</label><textarea className="form-control" rows="2" value={staffForm.address} onChange={e=>setStaffForm({...staffForm,address:e.target.value})}/></div>
-              <div className="col-12"><label className="form-label small fw-semibold">Temporary password</label><input type="password" minLength="8" className="form-control" value={staffForm.password} onChange={e=>setStaffForm({...staffForm,password:e.target.value})} required/><div className="form-text">At least 8 characters. Give this securely to the Staff Admin.</div></div>
+              <div className="col-12"><label className="form-label small fw-semibold">Initial login password</label><input type="password" minLength="8" className="form-control" value={staffForm.password} onChange={e=>setStaffForm({...staffForm,password:e.target.value})} required/><div className="form-text">At least 8 characters. Share it securely; the Staff Admin can change it after signing in.</div></div>
             </div></div>
             <div className="modal-footer border-top"><button type="button" className="btn btn-light" onClick={()=>setCreatingStaff(false)}>Cancel</button><button type="submit" className="btn btn-evsu" disabled={staffSaving}><i className="bi bi-person-check-fill me-1"/>{staffSaving?'Creating account…':'Create account'}</button></div>
           </form>
@@ -413,9 +416,9 @@ const UserManagement = () => {
                       onChange={(e) => setEditForm({...editForm,role:e.target.value})}
                       required
                     >
-                      <option value="platform_admin">Administrator</option>
-                      <option value="admin">Administrator</option>
+                      <option value={editForm.role==='platform_admin'?'platform_admin':'admin'}>Administrator</option>
                       <option value="coach">Coach</option>
+                      <option value="assistant_coach">Assistant Coach</option>
                       <option value="statistician">Staff Admin</option>
                     </select>
                   </div>
@@ -431,6 +434,7 @@ const UserManagement = () => {
           </div>
         </div>
       )}
+      <ConfirmActionDialog open={Boolean(pendingDeleteUser)} eyebrow="ACCOUNT ACCESS" title="Remove this account?" message={pendingDeleteUser ? <><b>{pendingDeleteUser.full_name}</b> will lose active FullCourt access. Historical tournament, score, and audit records will remain available.</> : null} confirmLabel="Remove access" confirmIcon="bi-person-x-fill" onCancel={()=>setPendingDeleteUser(null)} onConfirm={()=>handleDelete(pendingDeleteUser)}/>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import teamService from '../services/teamService';
 import tournamentService from '../services/tournamentService';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -6,6 +6,8 @@ import eligibilityService from '../services/eligibilityService';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import operationsService from '../services/operationsService';
+import ConfirmActionDialog from '../components/ConfirmActionDialog';
+import userService from '../services/userService';
 
 const ageEligibilityBadge = (player) => {
   if (player.age_eligibility_code === 'qualified') return 'bg-success';
@@ -46,14 +48,16 @@ const TeamManagement = () => {
   const [editingRosterPlayer, setEditingRosterPlayer] = useState(null);
   const [rosterJersey, setRosterJersey] = useState('');
   const [rosterPosition, setRosterPosition] = useState('');
+  const [pendingDeleteTeam, setPendingDeleteTeam] = useState(null);
+  const [assistantCoaches,setAssistantCoaches]=useState([]);
   const apiRoot = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8767/api').replace(/\/api\/?$/, '');
   const mediaUrl = (path) => path?.startsWith('http') ? path : `${apiRoot}${path}`;
   const isCoach = ['coach','coach_manager'].includes(user?.role);
+  const isPlatformAdmin=['platform_admin','admin'].includes(user?.role);
   const tournamentTeams = useMemo(() => isCoach ? teams : teams.filter(team => String(team.tournament_id) === String(selectedTournament)), [teams, selectedTournament, isCoach]);
-  const filterDivisions = useMemo(() => [...new Map(tournamentTeams.filter(team => team.division_id).map(team => [String(team.division_id), {id:team.division_id,name:team.division_name || 'Division'}])).values()], [tournamentTeams]);
   const visibleTeams = useMemo(() => selectedDivision ? tournamentTeams.filter(team => String(team.division_id) === String(selectedDivision)) : tournamentTeams, [tournamentTeams, selectedDivision]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoadError('');
     try {
       setLoading(true);
@@ -61,6 +65,10 @@ const TeamManagement = () => {
       const tourRes = await tournamentService.getTournaments();
       setTeams(tData);
       setTournaments(tourRes.tournaments || []);
+      if(['platform_admin','admin'].includes(user?.role)){
+        const accounts=await userService.getUsers().catch(()=>[]);
+        setAssistantCoaches(accounts.filter(account=>account.role==='assistant_coach'&&Number(account.is_active)!==0));
+      }
       if (tourRes.tournaments?.length > 0) {
         setFormData(prev => ({ ...prev, tournament_id: tourRes.tournaments[0].id }));
       }
@@ -70,9 +78,9 @@ const TeamManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  },[user?.role]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
     if (!formData.tournament_id) return setDivisions([]);
@@ -105,19 +113,6 @@ const TeamManagement = () => {
     }
   };
 
-  const openCreate = () => {
-    setEditingTeam(null);
-    setLogoFile(null);
-    setFormData({
-      team_name: '',
-      short_name: '',
-      tournament_id: selectedTournament || tournaments[0]?.id || '',
-      division_id: '',
-      primary_color: '#F97316',
-    });
-    setShowModal(true);
-  };
-
   const openEdit = (team) => {
     setEditingTeam(team);
     setLogoFile(null);
@@ -127,6 +122,7 @@ const TeamManagement = () => {
       tournament_id: team.tournament_id || '',
       division_id: team.division_id || '',
       primary_color: team.primary_color || '#F97316',
+      manager_user_id: team.manager_user_id || '',
     });
     setShowModal(true);
   };
@@ -169,10 +165,10 @@ const TeamManagement = () => {
   };
 
   const deleteTeam = async (team) => {
-    if (!window.confirm(`Delete ${team.team_name}? This will also remove its roster and invitations.`)) return;
     try {
       await teamService.deleteTeam(team.id);
       setPageMessage('Team deleted successfully.');
+      setPendingDeleteTeam(null);
       await loadData();
     } catch (err) {
       setPageMessage(err.response?.data?.message || 'Unable to delete this team.');
@@ -209,6 +205,11 @@ const TeamManagement = () => {
       setInviteMessage(err.response?.data?.message || 'Unable to send invitation.');
     }
   };
+  const coachTeam = isCoach ? (visibleTeams[0] || null) : null;
+  const rosterVerifiedCount = rosterPlayers.filter(player => player.eligibility_status === 'verified').length;
+  const rosterPendingCount = rosterPlayers.filter(player => player.eligibility_status === 'pending').length;
+  const rosterLimit=Number(rosterTeam?.max_roster_size||18);
+  const rosterCapacityPercent = Math.min(100, Math.round((rosterPlayers.length / rosterLimit) * 100));
 
   return (
     <div className="container-fluid p-0 team-roster-page">
@@ -217,6 +218,7 @@ const TeamManagement = () => {
           <span className="coach-roster-kicker"><i className="bi bi-diagram-3-fill"/> COACH WORKSPACE</span>
           <h1>My Team &amp; Roster</h1>
           <p>Your team, players, and roster actions in one place.</p>
+          {coachTeam&&<div className="coach-roster-team-chip"><span style={{background:coachTeam.primary_color||'#c92d19'}}>{coachTeam.logo_url?<img src={mediaUrl(coachTeam.logo_url)} alt=""/>:(coachTeam.short_name||coachTeam.team_name||'FC').slice(0,2).toUpperCase()}</span><div><small>ASSIGNED TEAM</small><b>{coachTeam.team_name}</b><em>{coachTeam.tournament_name||'Tournament pending'}</em></div><i className="bi bi-patch-check-fill" title="Official assigned team"/></div>}
         </div>
         <div className="coach-roster-heading-actions">
           <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/schedules')}><i className="bi bi-calendar3 me-2"/>Team schedule</button>
@@ -226,13 +228,10 @@ const TeamManagement = () => {
         <div className="team-directory-copy">
           <span className="team-directory-kicker"><i className="bi bi-dribbble"/> COMPETITION OPERATIONS</span>
           <h1>Team Roster Management</h1>
-          <p>Manage registered teams, logos, coaches, and rosters</p>
+          <p>Review coach registrations and open the roster for each tournament entry.</p>
         </div>
         <div className="team-directory-actions">
           <span className="team-directory-emblem" aria-hidden="true"><i className="bi bi-people-fill"/></span>
-          <button className="btn btn-evsu" onClick={openCreate} disabled={!selectedTournament}>
-            <i className="bi bi-plus-lg me-1"></i> New Team
-          </button>
         </div>
       </section>}
 
@@ -252,8 +251,7 @@ const TeamManagement = () => {
       {!isCoach && <section className="card-custom p-3 p-md-4 mb-4 team-tournament-picker">
         <div className="team-picker-heading"><span><i className="bi bi-funnel-fill"/></span><div><h2>Choose a competition</h2><p>Select a tournament first to load its teams and roster activity.</p></div></div>
         <div className="row g-3 align-items-end">
-          <div className="col-md-7"><label htmlFor="team-tournament-filter" className="form-label small fw-bold"><i className="bi bi-trophy me-2 text-evsu-primary"/>Select Tournament</label><select id="team-tournament-filter" className="form-select" value={selectedTournament} onChange={e=>{setSelectedTournament(e.target.value);setSelectedDivision('');}}><option value="">Choose a tournament to manage</option>{tournaments.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
-          <div className="col-md-5"><label htmlFor="team-division-filter" className="form-label small fw-bold"><i className="bi bi-diagram-3 me-2 text-evsu-primary"/>Division</label><select id="team-division-filter" className="form-select" value={selectedDivision} disabled={!selectedTournament||!filterDivisions.length} onChange={e=>setSelectedDivision(e.target.value)}><option value="">All divisions</option>{filterDivisions.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+          <div className="col-12"><label htmlFor="team-tournament-filter" className="form-label small fw-bold"><i className="bi bi-trophy me-2 text-evsu-primary"/>Select Tournament</label><select id="team-tournament-filter" className="form-select" value={selectedTournament} onChange={e=>{setSelectedTournament(e.target.value);setSelectedDivision('');}}><option value="">Choose a tournament to manage</option>{tournaments.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
         </div>
         {selectedTournament&&<div className="team-picker-summary mt-3"><span><b>{visibleTeams.length}</b> teams displayed</span><span><b>{visibleTeams.reduce((sum,team)=>sum+Number(team.total_players||0),0)}</b> rostered players</span></div>}
       </section>}
@@ -265,7 +263,7 @@ const TeamManagement = () => {
       ) : (!isCoach && !selectedTournament) ? (
         <div className="team-selection-empty"><i className="bi bi-trophy"/><h4>Select a tournament first</h4><p>Choose a tournament above to view and manage its registered teams, logos, coaches, and rosters.</p></div>
       ) : visibleTeams.length === 0 ? (
-        <div className="team-selection-empty"><i className="bi bi-people"/><h4>{isCoach ? 'No team application yet' : 'No teams found'}</h4><p>{isCoach ? 'Open Tournament Operations, choose an available tournament, and submit your team application.' : 'No registered teams match the selected tournament and division.'}</p>{isCoach?<button className="btn btn-evsu btn-sm" onClick={()=>navigate('/tournaments')}><i className="bi bi-trophy me-1"/>Find a tournament</button>:<button className="btn btn-evsu btn-sm" onClick={openCreate}><i className="bi bi-plus-lg me-1"/>Register the first team</button>}</div>
+        <div className="team-selection-empty"><i className="bi bi-people"/><h4>{isCoach ? 'No team application yet' : 'No coach registrations yet'}</h4><p>{isCoach ? 'Open Tournament Operations, choose an available tournament, and submit your team application.' : 'Coach team registrations for this tournament will appear here for review.'}</p>{isCoach&&<button className="btn btn-evsu btn-sm" onClick={()=>navigate('/tournaments')}><i className="bi bi-trophy me-1"/>Find a tournament</button>}</div>
       ) : isCoach ? (
         <section className="coach-team-grid" aria-label="Your assigned teams">
           {visibleTeams.map(team => <article className="coach-team-card" key={team.id} style={{'--coach-team-color':team.primary_color || '#c92d19'}}>
@@ -317,7 +315,7 @@ const TeamManagement = () => {
                   {tm.status==='draft'&&!isCoach&&<><button className="btn btn-success btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'approve')}><i className="bi bi-check2 me-1"/>Approve</button><button className="btn btn-outline-danger btn-sm rounded-pill px-3" onClick={()=>reviewApplication(tm,'reject')}><i className="bi bi-x-lg"/></button></>}
                   {isCoach&&tm.status==='registered'&&<button className="btn btn-evsu team-action-btn" onClick={() => { setInviteTeam(tm); setInviteMessage(''); }} aria-label={`Add player to ${tm.team_name}`} title="Add player"><i className="bi bi-person-plus-fill" /></button>}
                   <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team"><i className="bi bi-pencil-square" /></button>
-                  {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team"><i className="bi bi-trash3" /></button>}
+                  {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => setPendingDeleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team"><i className="bi bi-trash3" /></button>}
                 </div>
               </div>
             </article>
@@ -373,7 +371,7 @@ const TeamManagement = () => {
                           <button className="btn team-action-btn team-edit-btn" onClick={() => openEdit(tm)} aria-label={`Edit ${tm.team_name}`} title="Edit team">
                             <i className="bi bi-pencil-square" />
                           </button>
-                          {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => deleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team">
+                          {!isCoach&&<button className="btn btn-outline-danger team-action-btn" onClick={() => setPendingDeleteTeam(tm)} aria-label={`Delete ${tm.team_name}`} title="Delete team">
                             <i className="bi bi-trash3" />
                           </button>}
                         </div>
@@ -393,11 +391,11 @@ const TeamManagement = () => {
       )}
 
       {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal show d-block team-edit-backdrop">
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content card-custom border-0">
+            <div className="modal-content card-custom border-0 team-edit-dialog">
               <div className="modal-header border-bottom">
-                <h5 className="fw-bold text-dark mb-0">{editingTeam ? 'Edit Team' : 'Register New Team'}</h5>
+                <div className="team-edit-title"><span><i className="bi bi-shield-fill"/></span><div><small>TEAM PROFILE</small><h5>{editingTeam ? 'Edit team details' : 'Register new team'}</h5><p>{editingTeam ? 'Update the identity used across brackets, schedules, and scoring.' : 'Create the team profile for tournament registration.'}</p></div></div>
                 <button type="button" className="btn-close" onClick={() => { setShowModal(false); setEditingTeam(null); }}></button>
               </div>
               <form onSubmit={handleSubmit}>
@@ -414,12 +412,13 @@ const TeamManagement = () => {
                     </select>
                   </div>
                   <div className="mb-3"><label className="form-label small fw-semibold">Division</label><select className="form-select" value={formData.division_id} onChange={e=>setFormData({...formData,division_id:e.target.value})}><option value="">Open / Unassigned</option>{divisions.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                  {isPlatformAdmin&&editingTeam&&<div className="mb-3"><label className="form-label small fw-semibold">Assistant Coach</label><select className="form-select" value={formData.manager_user_id||''} onChange={e=>setFormData({...formData,manager_user_id:e.target.value})}><option value="">No Assistant Coach assigned</option>{assistantCoaches.map(account=><option value={account.id} key={account.id}>{account.full_name} — {account.email}</option>)}</select><small className="text-muted">The selected Assistant Coach sees only this team’s schedule, standings, reports, and QR pass.</small></div>}
                   <div><label className="form-label small fw-semibold">Jersey Color</label><div className="d-flex align-items-center gap-3"><span className="rounded-circle border flex-shrink-0" style={{width:32,height:32,backgroundColor:formData.primary_color}}/><input className="form-control" list="jersey-color-options" value={formData.primary_color} onChange={e=>setFormData({...formData,primary_color:e.target.value})} placeholder="Type a color, e.g. navy or skyblue"/><datalist id="jersey-color-options"><option value="red"/><option value="blue"/><option value="black"/><option value="white"/><option value="green"/><option value="yellow"/><option value="orange"/><option value="maroon"/><option value="navy"/><option value="skyblue"/><option value="violet"/><option value="gray"/></datalist></div><small className="text-muted">Type any valid color name or choose a suggestion.</small></div>
                   <div className="mt-3"><label className="form-label small fw-semibold">Team Logo</label><input type="file" className="form-control" accept="image/jpeg,image/png,image/webp" onChange={e => setLogoFile(e.target.files?.[0] || null)} /><small className="text-muted">JPG, PNG, or WEBP up to 3MB.</small></div>
                 </div>
                 <div className="modal-footer border-top">
                   <button type="button" className="btn btn-light btn-sm" onClick={() => { setShowModal(false); setEditingTeam(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-evsu btn-sm">{editingTeam ? 'Save Changes' : 'Submit Registration'}</button>
+                  <button type="submit" className="btn btn-evsu btn-sm"><i className="bi bi-floppy-fill me-1"/>{editingTeam ? 'Save team changes' : 'Submit registration'}</button>
                 </div>
               </form>
             </div>
@@ -459,19 +458,26 @@ const TeamManagement = () => {
       )}
 
       {rosterTeam && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+        <div className="modal show d-block roster-overview-backdrop" style={{ backgroundColor: 'rgba(0,0,0,0.68)' }}>
           <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content card-custom border-0">
-              <div className="modal-header border-bottom">
-                <div>
-                  <h5 className="fw-bold mb-0">{rosterTeam.team_name} Roster</h5>
-                  <small className="text-muted">{isCoach ? 'Manage up to 18 player records, jersey numbers, positions, and documents' : 'Coach-managed roster · Admin reviews player eligibility and documents'}</small>
+            <div className="modal-content card-custom border-0 roster-overview-modal">
+              <header className="roster-overview-header">
+                <div className="roster-overview-title">
+                  <span className="roster-overview-mark" style={{background:rosterTeam.primary_color||'#c92d19'}}>{rosterTeam.logo_url?<img src={mediaUrl(rosterTeam.logo_url)} alt=""/>:(rosterTeam.short_name||rosterTeam.team_name||'FC').slice(0,2).toUpperCase()}</span>
+                  <div><small>OFFICIAL TEAM ROSTER</small><h2>{rosterTeam.team_name}</h2><p>{rosterTeam.tournament_name||'Tournament roster'} · {rosterTeam.division_name||'Open division'}</p></div>
                 </div>
-                <button type="button" className="btn-close" onClick={() => setRosterTeam(null)} aria-label="Close" />
-              </div>
-              <div className="modal-body">
+                <button type="button" className="roster-overview-close" onClick={() => setRosterTeam(null)} aria-label="Close roster"><i className="bi bi-x-lg"/></button>
+                <div className="roster-overview-metrics">
+                  <article><i className="bi bi-people-fill"/><span><small>Roster capacity</small><b>{rosterPlayers.length}<em>/{rosterLimit}</em></b></span></article>
+                  <article><i className="bi bi-patch-check-fill"/><span><small>Verified</small><b>{rosterVerifiedCount}</b></span></article>
+                  <article><i className="bi bi-hourglass-split"/><span><small>Needs review</small><b>{rosterPendingCount}</b></span></article>
+                </div>
+                <div className="roster-capacity-track"><span><i style={{width:`${rosterCapacityPercent}%`}}/></span><small>{Math.max(0,rosterLimit-rosterPlayers.length)} roster slot{Math.max(0,rosterLimit-rosterPlayers.length)===1?'':'s'} available</small></div>
+                {isCoach&&<div className="roster-overview-actions"><button type="button" onClick={()=>{setRosterTeam(null);setInviteTeam(rosterTeam);setInviteMessage('');}} disabled={rosterPlayers.length>=rosterLimit}><i className="bi bi-person-plus-fill"/> Add player</button><button type="button" onClick={()=>{setRosterTeam(null);navigate('/eligibility');}}><i className="bi bi-file-earmark-check-fill"/> Player eligibility</button></div>}
+              </header>
+              <div className="modal-body roster-overview-body">
                 {rosterLoading ? <LoadingSpinner message="Loading team roster..." /> : rosterPlayers.length === 0 ? (
-                  <div className="text-center py-5 text-muted"><i className="bi bi-person-plus fs-1 d-block mb-2" />No players in this roster yet.</div>
+                  <div className="roster-overview-empty"><i className="bi bi-person-plus"/><h3>No players in this roster yet</h3><p>Add the first player, then complete eligibility documents before game day.</p>{isCoach&&<button onClick={()=>{setRosterTeam(null);setInviteTeam(rosterTeam);setInviteMessage('');}}>Add first player</button>}</div>
                 ) : (
                   <>
                   <div className="d-grid gap-3 d-md-none">
@@ -528,7 +534,7 @@ const TeamManagement = () => {
                   </>
                 )}
               </div>
-              <div className="modal-footer border-top"><button className="btn btn-light" onClick={() => setRosterTeam(null)}>Close</button></div>
+              <footer className="roster-overview-footer"><span><i className="bi bi-shield-lock-fill"/> Private player records are visible only to authorized users.</span><button className="btn btn-light" onClick={() => setRosterTeam(null)}>Close</button></footer>
             </div>
           </div>
         </div>
@@ -571,6 +577,7 @@ const TeamManagement = () => {
           </div>
         </div>
       )}
+      <ConfirmActionDialog open={Boolean(pendingDeleteTeam)} eyebrow="TEAM REMOVAL" title="Delete this team?" message={pendingDeleteTeam ? <><b>{pendingDeleteTeam.team_name}</b> and its roster invitations will be removed. Historical finalized game records remain protected.</> : null} confirmLabel="Delete team" confirmIcon="bi-trash3-fill" onCancel={()=>setPendingDeleteTeam(null)} onConfirm={()=>deleteTeam(pendingDeleteTeam)}/>
     </div>
   );
 };

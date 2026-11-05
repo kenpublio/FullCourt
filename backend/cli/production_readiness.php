@@ -14,6 +14,7 @@ $check=function(string $name,bool $ok,string $detail,string $level='required')us
     $results[]=['check'=>$name,'status'=>$ok?'ready':($level==='required'?'missing':'warning'),'detail'=>$detail];
 };
 $appUrl=$values['APP_URL']??'';
+$check('Production mode',($values['APP_ENV']??'')==='production','APP_ENV must be set to production.');
 $check('Production HTTPS',str_starts_with($appUrl,'https://'),'APP_URL must use the deployed HTTPS domain.');
 $check('JWT secret',strlen($values['JWT_SECRET']??'')>=32,'JWT_SECRET must contain at least 32 characters.');
 $origins=$values['CORS_ALLOWED_ORIGINS']??'';
@@ -23,6 +24,8 @@ $resendFrom=$values['RESEND_FROM']??'';
 $check('Resend API',str_starts_with($resendKey,'re_'),'A Resend API key is required for production email.');
 $check('Verified sender',$resendFrom!==''&&!str_contains($resendFrom,'onboarding@resend.dev'),'RESEND_FROM must use a verified custom domain.');
 $check('Reminder worker',is_file(__DIR__.'/dispatch_game_reminders.php'),'Schedule this command every five minutes on the production host.');
+$check('Backup command',is_file(__DIR__.'/backup_database.php'),'Schedule a verified database backup at least once every day.');
+$check('Restore command',is_file(__DIR__.'/restore_database.php'),'Keep the guarded restore command available to the deployment administrator.');
 $check('Private environment',is_file($root.'/.gitignore')&&str_contains((string)file_get_contents($root.'/.gitignore'),'.env'),'.env is excluded from version control.');
 $check('Upload storage',is_dir(dirname(__DIR__).'/uploads')&&is_writable(dirname(__DIR__).'/uploads'),'Uploads directory must remain private and writable.');
 
@@ -30,12 +33,20 @@ require_once dirname(__DIR__).'/config/database.php';
 $db=(new Database())->getConnection();
 $check('Database connection',$db instanceof PDO,'Backend must connect to Supabase PostgreSQL.');
 if($db instanceof PDO){
-    $columns=$db->query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='venues'")->fetchAll(PDO::FETCH_COLUMN);
+    $driver=$db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    $schema=$driver==='pgsql'?'public':(string)$db->query('SELECT DATABASE()')->fetchColumn();
+    $columnQuery=$db->prepare("SELECT column_name FROM information_schema.columns WHERE table_schema=:schema AND table_name='venues'");
+    $columnQuery->execute([':schema'=>$schema]);
+    $columns=$columnQuery->fetchAll(PDO::FETCH_COLUMN);
     $check('Venue approval schema',count(array_intersect(['approval_status','submitted_by','reviewed_by','reviewed_at','review_notes'],$columns))===5,'Venue review columns must exist in Supabase.');
     $required=['users','organizations','tournaments','teams','team_players','matches','basketball_stat_events','qr_attendance'];
-    $stmt=$db->query("SELECT table_name FROM information_schema.tables WHERE table_schema='public'");
+    $stmt=$db->prepare("SELECT table_name FROM information_schema.tables WHERE table_schema=:schema");$stmt->execute([':schema'=>$schema]);
     $tables=$stmt->fetchAll(PDO::FETCH_COLUMN);
     $check('Core schema',count(array_diff($required,$tables))===0,'Required FullCourt tables must exist.');
+    if(in_array('users',$tables,true)){
+        $demoUsers=(int)$db->query("SELECT COUNT(*) FROM users WHERE email LIKE '%@fullcourt.local'")->fetchColumn();
+        $check('Demo accounts separated',$demoUsers===0,"{$demoUsers} local demo account(s) remain; keep them only in a separate rehearsal database.",'warning');
+    }
 }
 
 $counts=array_count_values(array_column($results,'status'));

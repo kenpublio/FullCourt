@@ -34,17 +34,17 @@ class Engagement {
     }
     public function awards(int $tournamentId): array {
         $stmt=$this->db->prepare("SELECT ac.id category_id,ac.name,ac.metric_key,ac.is_public,pa.id award_id,
-            pa.status,u.id user_id,u.full_name,u.avatar_url,tp.jersey_number,
+            pa.status,u.id user_id,pa.team_player_id,COALESCE(tp.player_name,u.full_name) full_name,u.avatar_url,tp.jersey_number,
             COALESCE(pp.primary_position,tp.position) position,tm.team_name,
             COALESCE(stats.games_played,0) games_played,COALESCE(stats.points,0) points,
             COALESCE(stats.rebounds,0) rebounds,COALESCE(stats.assists,0) assists,
             COALESCE(stats.defense,0) defense,COALESCE(stats.turnovers,0) turnovers,
             COALESCE(stats.rating,0) rating
             FROM award_categories ac LEFT JOIN player_awards pa ON pa.award_category_id=ac.id
-            LEFT JOIN users u ON u.id=pa.user_id LEFT JOIN team_players tp ON tp.user_id=u.id
+            LEFT JOIN team_players tp ON tp.id=pa.team_player_id LEFT JOIN users u ON u.id=COALESCE(pa.user_id,tp.user_id)
             LEFT JOIN teams tm ON tm.id=tp.team_id AND tm.tournament_id=ac.tournament_id
             LEFT JOIN player_profiles pp ON pp.user_id=u.id
-            LEFT JOIN (SELECT m.tournament_id,tp.user_id,COUNT(DISTINCT e.match_id) games_played,
+            LEFT JOIN (SELECT m.tournament_id,tp.id team_player_id,COUNT(DISTINCT e.match_id) games_played,
                 SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,
                 SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,
                 SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists,
@@ -57,7 +57,7 @@ class Engagement {
                 -SUM(CASE WHEN e.event_type='turnover' THEN 1 ELSE 0 END)*1.2,2) rating
                 FROM basketball_stat_events e JOIN matches m ON m.id=e.match_id
                 JOIN team_players tp ON tp.id=e.team_player_id WHERE e.is_void=0
-                GROUP BY m.tournament_id,tp.user_id) stats ON stats.tournament_id=ac.tournament_id AND stats.user_id=u.id
+                GROUP BY m.tournament_id,tp.id) stats ON stats.tournament_id=ac.tournament_id AND stats.team_player_id=tp.id
             WHERE ac.tournament_id=:tournament_id ORDER BY ac.id");
         $stmt->execute([':tournament_id'=>$tournamentId]); return $stmt->fetchAll();
     }
@@ -67,26 +67,26 @@ class Engagement {
         $this->db->beginTransaction();
         try {
             $cat=$this->db->prepare("INSERT INTO award_categories (tournament_id,name,metric_key) VALUES (:tid,:name,:metric)
-                ON CONFLICT (tournament_id,name) DO UPDATE SET metric_key=EXCLUDED.metric_key RETURNING id");
-            $winnerSql="SELECT tp.user_id,
+                ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id),metric_key=VALUES(metric_key)");
+            $winnerSql="SELECT tp.id,
                 SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,
                 SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists,
                 SUM(CASE WHEN e.event_type IN ('steal','block') THEN 1 ELSE 0 END) defense FROM basketball_stat_events e
                 JOIN matches m ON m.id=e.match_id JOIN team_players tp ON tp.id=e.team_player_id
-                WHERE m.tournament_id=:tid AND e.is_void=0 AND tp.user_id IS NOT NULL
-                GROUP BY tp.user_id ORDER BY %s DESC LIMIT 1";
-            $award=$this->db->prepare("INSERT INTO player_awards (award_category_id,user_id,status) VALUES (:category,:user_id,'recommended')
-                ON CONFLICT (award_category_id,user_id) DO UPDATE SET status=CASE WHEN player_awards.status='confirmed' THEN 'confirmed' ELSE 'recommended' END");
+                WHERE m.tournament_id=:tid AND e.is_void=0
+                GROUP BY tp.id ORDER BY %s DESC LIMIT 1";
+            $award=$this->db->prepare("INSERT INTO player_awards (award_category_id,team_player_id,status) VALUES (:category,:team_player_id,'recommended')
+                ON DUPLICATE KEY UPDATE status=IF(status='confirmed','confirmed','recommended')");
             foreach($categories as $name=>$metric){
                 $cat->execute([':tid'=>$tournamentId,':name'=>$name,':metric'=>$metric]);
-                $categoryId=(int)$cat->fetchColumn();
+                $categoryId=(int)$this->db->lastInsertId();
                 $query=$this->db->prepare(sprintf($winnerSql,$metric));
-                $query->execute([':tid'=>$tournamentId]);$userId=$query->fetchColumn();
-                if($userId)$award->execute([':category'=>$categoryId,':user_id'=>(int)$userId]);
+                $query->execute([':tid'=>$tournamentId]);$teamPlayerId=$query->fetchColumn();
+                if($teamPlayerId)$award->execute([':category'=>$categoryId,':team_player_id'=>(int)$teamPlayerId]);
             }
             $cat->execute([':tid'=>$tournamentId,':name'=>'Tournament MVP',':metric'=>'mvp_rating']);
-            $mvpCategoryId=(int)$cat->fetchColumn();
-            $mvpWinner=$this->db->prepare("SELECT tp.user_id,
+            $mvpCategoryId=(int)$this->db->lastInsertId();
+            $mvpWinner=$this->db->prepare("SELECT tp.id,
                 SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END)
                 + SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END)*1.2
                 + SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END)*1.5
@@ -94,11 +94,11 @@ class Engagement {
                 - SUM(CASE WHEN e.event_type='turnover' THEN 1 ELSE 0 END)*1.2 AS rating
                 FROM basketball_stat_events e JOIN matches m ON m.id=e.match_id
                 JOIN team_players tp ON tp.id=e.team_player_id
-                WHERE m.tournament_id=:tid AND e.is_void=0 AND tp.user_id IS NOT NULL
-                GROUP BY tp.user_id ORDER BY rating DESC LIMIT 1");
-            $mvpWinner->execute([':tid'=>$tournamentId]);$mvpUserId=$mvpWinner->fetchColumn();
-            if($mvpUserId)$award->execute([':category'=>$mvpCategoryId,':user_id'=>(int)$mvpUserId]);
-            $positionWinner=$this->db->prepare("SELECT tp.user_id,
+                WHERE m.tournament_id=:tid AND e.is_void=0
+                GROUP BY tp.id ORDER BY rating DESC LIMIT 1");
+            $mvpWinner->execute([':tid'=>$tournamentId]);$mvpPlayerId=$mvpWinner->fetchColumn();
+            if($mvpPlayerId)$award->execute([':category'=>$mvpCategoryId,':team_player_id'=>(int)$mvpPlayerId]);
+            $positionWinner=$this->db->prepare("SELECT tp.id,
                 ROUND(SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END)
                 + SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END)*1.2 + SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END)*1.5
                 + SUM(CASE WHEN e.event_type IN ('steal','block') THEN 1 ELSE 0 END)*2 - SUM(CASE WHEN e.event_type='turnover' THEN 1 ELSE 0 END)*1.2,2) rating
@@ -106,12 +106,12 @@ class Engagement {
                 LEFT JOIN player_profiles pp ON pp.user_id=tp.user_id
                 WHERE m.tournament_id=:tid AND e.is_void=0
                 AND COALESCE(pp.primary_position,tp.position) IN (:position_name,:position_code)
-                GROUP BY tp.user_id HAVING COUNT(DISTINCT e.match_id)>0 ORDER BY rating DESC LIMIT 1");
+                GROUP BY tp.id HAVING COUNT(DISTINCT e.match_id)>0 ORDER BY rating DESC LIMIT 1");
             foreach($positions as $label=>$position){
                 $name='Mythical Five - '.$label;$cat->execute([':tid'=>$tournamentId,':name'=>$name,':metric'=>'mythical_'.$position]);
-                $categoryId=(int)$cat->fetchColumn();
-                $positionWinner->execute([':tid'=>$tournamentId,':position_name'=>$label,':position_code'=>$position]);$userId=$positionWinner->fetchColumn();
-                if($userId)$award->execute([':category'=>$categoryId,':user_id'=>(int)$userId]);
+                $categoryId=(int)$this->db->lastInsertId();
+                $positionWinner->execute([':tid'=>$tournamentId,':position_name'=>$label,':position_code'=>$position]);$teamPlayerId=$positionWinner->fetchColumn();
+                if($teamPlayerId)$award->execute([':category'=>$categoryId,':team_player_id'=>(int)$teamPlayerId]);
             }
             $this->db->commit(); return $this->awards($tournamentId);
         }catch(Throwable $e){$this->db->rollBack();throw $e;}
@@ -119,10 +119,11 @@ class Engagement {
     public function confirmAward(int $awardId,int $userId,bool $publish): bool {
         $this->db->beginTransaction();
         try {
-            $stmt=$this->db->prepare("UPDATE player_awards SET status='confirmed',confirmed_by=:user_id,confirmed_at=NOW() WHERE id=:id RETURNING award_category_id");
-            $stmt->execute([':user_id'=>$userId,':id'=>$awardId]);
-            $categoryId=$stmt->fetchColumn();
+            $stmt=$this->db->prepare("SELECT award_category_id FROM player_awards WHERE id=:id FOR UPDATE");
+            $stmt->execute([':id'=>$awardId]);$categoryId=$stmt->fetchColumn();
             if($categoryId===false){$this->db->rollBack();return false;}
+            $stmt=$this->db->prepare("UPDATE player_awards SET status='confirmed',confirmed_by=:user_id,confirmed_at=NOW() WHERE id=:id");
+            $stmt->execute([':user_id'=>$userId,':id'=>$awardId]);
             $this->db->prepare("UPDATE award_categories SET is_public=:publish WHERE id=:id")
                 ->execute([':publish'=>$publish?1:0,':id'=>$categoryId]);
             $this->db->commit();return true;

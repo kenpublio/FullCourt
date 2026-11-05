@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import venueService from '../services/venueService';
 import LoadingSpinner from '../components/LoadingSpinner';
+import LocationMapPicker from '../components/LocationMapPicker';
+import ConfirmActionDialog from '../components/ConfirmActionDialog';
 import '../styles/operations-polish.css';
 
 const VenueManagement = () => {
@@ -10,7 +12,9 @@ const VenueManagement = () => {
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [editingVenue, setEditingVenue] = useState(null);
   const [venueForm, setVenueForm] = useState({ name: '', location: '' });
+  const [showMapPicker,setShowMapPicker]=useState(false);
   const [showCourtModal, setShowCourtModal] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [courtForm, setCourtForm] = useState({ venue_id: '', court_name: '', sport_id: '', is_available: true });
   const totalCourts = venues.reduce((sum, venue) => sum + (venue.courts || []).length, 0);
   const availableCourts = venues.reduce((sum, venue) => sum + (venue.courts || []).filter(court => Boolean(Number(court.is_available))).length, 0);
@@ -37,6 +41,7 @@ const VenueManagement = () => {
   const openVenueModal = (venue = null) => {
     setEditingVenue(venue);
     setVenueForm(venue ? { name: venue.name, location: venue.location } : { name: '', location: '' });
+    setShowMapPicker(false);
     setShowVenueModal(true);
   };
 
@@ -58,10 +63,10 @@ const VenueManagement = () => {
   };
 
   const deleteVenue = async (venue) => {
-    if (!window.confirm(`Delete venue "${venue.name}" and its courts?`)) return;
     try {
       await venueService.deleteVenue(venue.id);
       notify('Venue deleted.');
+      setPendingDelete(null);
       load();
     } catch (err) {
       notify(err.response?.data?.message || 'Unable to delete venue.', 'danger');
@@ -86,10 +91,10 @@ const VenueManagement = () => {
   };
 
   const deleteCourt = async (court) => {
-    if (!window.confirm(`Delete court "${court.court_name}"?`)) return;
     try {
       await venueService.deleteCourt(court.id);
       notify('Court deleted.');
+      setPendingDelete(null);
       load();
     } catch (err) {
       notify(err.response?.data?.message || 'Unable to delete court.', 'danger');
@@ -128,7 +133,7 @@ const VenueManagement = () => {
                       <div>
                         <h5 className="fw-bold mb-0">{v.name}</h5>
                         <small className="text-muted"><i className="bi bi-geo me-1" />{v.location}</small>
-                        <small className="d-block text-muted mt-1">{v.organization_name || 'Organization not specified'}</small>
+                        <small className="d-block text-muted mt-1">{v.can_manage ? 'Managed by your account' : 'Shared tournament venue'}</small>
                       </div>
                       <span className="badge bg-light text-dark border">{v.court_count || 0} courts</span>
                     </div>
@@ -140,17 +145,21 @@ const VenueManagement = () => {
                           {v.courts.map(c => (
                             <li key={c.id} className="d-flex justify-content-between align-items-center border-bottom py-1">
                               <span>{c.court_name}{c.sport_name ? ` · ${c.sport_name}` : ''}{!c.is_available && <span className="text-danger"> · offline</span>}</span>
-                              <button className="btn btn-sm btn-outline-danger py-0 px-1" title="Delete court" aria-label={`Delete court ${c.court_name}`} onClick={() => deleteCourt(c)}><i className="bi bi-trash" /></button>
+                              {v.can_manage && <button className="btn btn-sm btn-outline-danger py-0 px-1" title="Delete court" aria-label={`Delete court ${c.court_name}`} onClick={() => setPendingDelete({type:'court',item:c,name:c.court_name})}><i className="bi bi-trash" /></button>}
                             </li>
                           ))}
                         </ul>
                       )}
                     </div>
-                    <div className="d-flex gap-2 mt-3">
-                      <button className="btn btn-outline-primary btn-sm" onClick={() => openCourtModal(v.id)}><i className="bi bi-plus-lg me-1" />Add Court</button>
-                      <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={() => openVenueModal(v)}><i className="bi bi-pencil me-1" />Edit</button>
-                      <button className="btn btn-outline-danger btn-sm" aria-label={`Delete venue ${v.name}`} title={`Delete ${v.name}`} onClick={() => deleteVenue(v)}><i className="bi bi-trash" /></button>
-                    </div>
+                    {v.can_manage ? (
+                      <div className="d-flex gap-2 mt-3">
+                        <button className="btn btn-outline-primary btn-sm" onClick={() => openCourtModal(v.id)}><i className="bi bi-plus-lg me-1" />Add Court</button>
+                        <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={() => openVenueModal(v)}><i className="bi bi-pencil me-1" />Edit</button>
+                        <button className="btn btn-outline-danger btn-sm" aria-label={`Delete venue ${v.name}`} title={`Delete ${v.name}`} onClick={() => setPendingDelete({type:'venue',item:v,name:v.name})}><i className="bi bi-trash" /></button>
+                      </div>
+                    ) : (
+                      <div className="small text-muted border-top pt-2 mt-3"><i className="bi bi-shield-lock me-1" />View only · managed by Admin</div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -158,6 +167,8 @@ const VenueManagement = () => {
           )}
         </div>
       )}
+
+      <ConfirmActionDialog open={Boolean(pendingDelete)} eyebrow="CONFIRM REMOVAL" title={`Delete this ${pendingDelete?.type || 'item'}?`} message={pendingDelete ? <><b>{pendingDelete.name}</b> will be removed. {pendingDelete.type === 'venue' ? 'Its courts will also be deleted. Existing scheduled games may need a new court assignment.' : 'Games assigned to this court may need to be rescheduled.'}</> : null} confirmLabel="Delete permanently" confirmIcon="bi-trash3-fill" onCancel={()=>setPendingDelete(null)} onConfirm={()=>pendingDelete?.type==='venue'?deleteVenue(pendingDelete.item):deleteCourt(pendingDelete.item)}/>
 
       {/* Venue Modal */}
       {showVenueModal && (
@@ -178,6 +189,8 @@ const VenueManagement = () => {
                     <label className="form-label small fw-semibold">Location</label>
                     <input type="text" className="form-control" required value={venueForm.location} onChange={e => setVenueForm({ ...venueForm, location: e.target.value })} placeholder="e.g. Main Campus, Ormoc City" />
                   </div>
+                  <button type="button" className="btn btn-outline-secondary btn-sm mb-3" onClick={()=>setShowMapPicker(current=>!current)}><i className="bi bi-map me-2"/>{showMapPicker?'Hide map':'Choose location on map'}</button>
+                  {showMapPicker&&<LocationMapPicker onPick={place=>{setVenueForm(current=>({...current,name:current.name||place.name,location:place.address}));setShowMapPicker(false);}}/>}
                 </div>
                 <div className="modal-footer border-top">
                   <button type="button" className="btn btn-light btn-sm" onClick={() => setShowVenueModal(false)}>Cancel</button>

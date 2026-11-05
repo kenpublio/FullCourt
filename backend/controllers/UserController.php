@@ -91,7 +91,7 @@ class UserController {
         $input = json_decode(file_get_contents('php://input'), true);
         $role = trim($input['role'] ?? '');
 
-        $validRoles = ['platform_admin','admin','coach','statistician'];
+        $validRoles = ['platform_admin','admin','coach','assistant_coach','statistician'];
 
         if (!in_array($role, $validRoles, true)) {
             Response::error('Invalid role specified.', 400);
@@ -126,7 +126,7 @@ class UserController {
         $phone = preg_replace('/[\s-]+/', '', trim((string)($input['phone_number'] ?? '')));
         $address = trim((string)($input['address'] ?? ''));
         $role = trim((string)($input['role'] ?? ''));
-        $validRoles = ['platform_admin','admin','coach','statistician'];
+        $validRoles = ['platform_admin','admin','coach','assistant_coach','statistician'];
         if ($fullName === '' || $email === '') Response::error('Full name and email/login are required.', 422);
         if ($phone !== '' && !preg_match('/^(09\d{9}|\+639\d{9})$/', $phone)) Response::error('Enter a valid Philippine mobile number.', 422);
         if (!in_array($role, $validRoles, true)) Response::error('Invalid role specified.', 422);

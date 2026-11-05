@@ -6,6 +6,7 @@
 # Installed dependencies and generated builds
 /vendor/
 /frontend/node_modules/
+/node_modules/
 /frontend/dist/
 
 # Local runtime artifacts

@@ -19,12 +19,12 @@ class PublicController {
         $tournaments = $this->db->query("SELECT t.id,t.name,t.format,t.description,t.start_date,t.end_date,t.status,s.name sport_name FROM tournaments t JOIN sports s ON s.id=t.sport_id WHERE LOWER(s.name)='basketball' AND t.is_published=1 AND t.status IN ('upcoming','ongoing','completed') ORDER BY CASE t.status WHEN 'ongoing' THEN 1 WHEN 'upcoming' THEN 2 ELSE 3 END,t.start_date DESC LIMIT 12")->fetchAll();
         $matches = $this->db->query("SELECT m.id,m.tournament_id,m.stage_name,m.round_number,m.scheduled_start_time,m.status,t.name tournament_name,a.team_name team1_name,b.team_name team2_name,c.court_name,ms.team1_score,ms.team2_score FROM matches m JOIN tournaments t ON t.id=m.tournament_id JOIN sports s ON s.id=t.sport_id LEFT JOIN teams a ON a.id=m.team1_id LEFT JOIN teams b ON b.id=m.team2_id LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN match_scores ms ON ms.match_id=m.id WHERE LOWER(s.name)='basketball' AND t.is_published=1 AND m.schedule_status='published' ORDER BY COALESCE(m.scheduled_start_time,'9999-12-31') LIMIT 30")->fetchAll();
         $standings = $this->db->query("SELECT st.rank_position,st.played,st.won,st.lost,st.drawn,st.tournament_points,tm.team_name,t.name tournament_name FROM standings st JOIN teams tm ON tm.id=st.team_id JOIN tournaments t ON t.id=st.tournament_id JOIN sports s ON s.id=t.sport_id WHERE LOWER(s.name)='basketball' AND t.is_published=1 ORDER BY st.tournament_id,st.rank_position LIMIT 40")->fetchAll();
-        $leaders = $this->db->query("SELECT COALESCE(tp.player_name,u.full_name) AS full_name,tm.team_name,
+        $leaders = $this->db->query("SELECT COALESCE(tp.player_name,u.full_name) AS full_name,u.avatar_url,tm.team_name,t.id tournament_id,t.name tournament_name,
             SUM(CASE e.event_type WHEN '2pt_made' THEN 2 WHEN '3pt_made' THEN 3 WHEN 'ft_made' THEN 1 ELSE 0 END) points,
             SUM(CASE WHEN e.event_type IN ('off_rebound','def_rebound') THEN 1 ELSE 0 END) rebounds,SUM(CASE WHEN e.event_type='assist' THEN 1 ELSE 0 END) assists
             FROM basketball_stat_events e JOIN team_players tp ON tp.id=e.team_player_id LEFT JOIN users u ON u.id=tp.user_id
             JOIN teams tm ON tm.id=e.team_id JOIN matches m ON m.id=e.match_id JOIN tournaments t ON t.id=m.tournament_id
-            WHERE e.is_void=0 AND t.is_published=1 GROUP BY tp.id,tp.player_name,u.full_name,tm.id ORDER BY points DESC LIMIT 12")->fetchAll();
+            WHERE e.is_void=0 AND t.is_published=1 GROUP BY tp.id,tp.player_name,u.full_name,u.avatar_url,tm.id,tm.team_name,t.id,t.name ORDER BY points DESC LIMIT 12")->fetchAll();
         Response::success('Public basketball portal retrieved', compact('tournaments', 'matches', 'standings', 'leaders'));
     }
 
@@ -33,9 +33,15 @@ class PublicController {
         $stmt->execute([':id' => $tournamentId]);
         $tournament = $stmt->fetch();
         if (!$tournament) Response::error('Tournament not found.', 404);
-        $teamsStmt = $this->db->prepare("SELECT tm.id, tm.team_name, tm.logo_url, tm.status, u.full_name AS coach_name, (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified') AS player_count FROM teams tm JOIN users u ON tm.coach_user_id=u.id WHERE tm.tournament_id=:id ORDER BY tm.team_name");
+        $teamsStmt = $this->db->prepare("SELECT tm.id, tm.team_name, tm.logo_url, tm.status, u.full_name AS coach_name,COALESCE(d.max_roster_size,18) max_roster_size, (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified') AS player_count FROM teams tm JOIN users u ON tm.coach_user_id=u.id LEFT JOIN divisions d ON d.id=tm.division_id WHERE tm.tournament_id=:id ORDER BY tm.team_name");
         $teamsStmt->execute([':id' => $tournamentId]);
         $teams = $teamsStmt->fetchAll();
+        $rosterStmt = $this->db->prepare("SELECT tp.id,tp.team_id,COALESCE(tp.player_name,u.full_name) AS full_name,tp.jersey_number,tp.position FROM team_players tp LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=tp.team_id WHERE tm.tournament_id=:id AND tp.eligibility_status='verified' ORDER BY tm.team_name,CAST(tp.jersey_number AS UNSIGNED),COALESCE(tp.player_name,u.full_name)");
+        $rosterStmt->execute([':id' => $tournamentId]);
+        $rosters = [];
+        foreach ($rosterStmt->fetchAll() as $player) $rosters[(string)$player['team_id']][] = $player;
+        foreach ($teams as &$team) $team['roster'] = $rosters[(string)$team['id']] ?? [];
+        unset($team);
         $schedule = (new Schedule())->getMasterSchedule($tournamentId);
         $bracket = (new Bracket())->getBracket($tournamentId);
         $standingsStmt = $this->db->prepare("SELECT st.*, tm.team_name FROM standings st JOIN teams tm ON st.team_id=tm.id WHERE st.tournament_id=:id ORDER BY st.rank_position, st.tournament_points DESC");
@@ -52,9 +58,9 @@ class PublicController {
             WHERE m.tournament_id=:id AND e.is_void=0 GROUP BY tp.id,tp.player_name,u.full_name,tm.id,tm.team_name,tp.jersey_number,tp.position
             ORDER BY points DESC,rebounds DESC,assists DESC LIMIT 25");
         $leadersStmt->execute([':id'=>$tournamentId]);$leaders=$leadersStmt->fetchAll();
-        $awardsStmt=$this->db->prepare("SELECT ac.name,ac.metric_key,u.full_name,tp.jersey_number,tp.position,tm.team_name
+        $awardsStmt=$this->db->prepare("SELECT ac.name,ac.metric_key,COALESCE(tp.player_name,u.full_name) full_name,tp.jersey_number,tp.position,tm.team_name
             FROM award_categories ac JOIN player_awards pa ON pa.award_category_id=ac.id AND pa.status='confirmed'
-            JOIN users u ON u.id=pa.user_id LEFT JOIN team_players tp ON tp.user_id=u.id
+            JOIN team_players tp ON tp.id=pa.team_player_id LEFT JOIN users u ON u.id=COALESCE(pa.user_id,tp.user_id)
             LEFT JOIN teams tm ON tm.id=tp.team_id AND tm.tournament_id=ac.tournament_id
             WHERE ac.tournament_id=:id AND ac.is_public=1 ORDER BY ac.name");
         $awardsStmt->execute([':id'=>$tournamentId]);$awards=$awardsStmt->fetchAll();
@@ -109,10 +115,13 @@ class PublicController {
         $scorekeeper=new Scorekeeper();
         $board = $scorekeeper->getMatchScoreState($matchId);
         if (!$board) Response::error('Live scoreboard not found for this match.', 404);
-        $events=$scorekeeper->getEventLog($matchId,40);
+        // The official scoring-link console records to basketball_stat_events.
+        // Use the same source for the public play-by-play so every courtside
+        // action reaches the NBA-style game overview immediately.
+        $operations = new GameOperations();
+        $events=$operations->recentStats($matchId,40);
         $fouls=$scorekeeper->getFoulCounts($matchId);
         $timeouts=$scorekeeper->getTimeoutHistory($matchId);
-        $operations = new GameOperations();
         $boxScore=!isset($privacy['public_player_profiles'])||$privacy['public_player_profiles']?$operations->boxScore($matchId):[];
         Response::success('Live match state retrieved', ['score'=>$board,'events'=>$events,'fouls'=>$fouls,'timeouts'=>$timeouts,'box_score'=>$boxScore,'period_scores'=>$operations->periodScores($matchId)]);
     }
@@ -120,7 +129,7 @@ class PublicController {
     public function matchDetails(int $matchId): void {
         $match=$this->db->prepare("SELECT m.id,m.tournament_id,m.team1_id,m.team2_id,m.stage_name,m.match_number,m.scheduled_start_time,m.status,m.lineups_confirmed_at,t.name tournament_name,h.team_name team1_name,a.team_name team2_name,h.logo_url team1_logo,a.logo_url team2_logo,c.court_name,v.name venue_name FROM matches m JOIN tournaments t ON t.id=m.tournament_id JOIN sports s ON s.id=t.sport_id LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN venues v ON v.id=c.venue_id WHERE m.id=:id AND t.is_published=1 AND LOWER(s.name)='basketball' AND m.schedule_status='published' LIMIT 1");
         $match->execute([':id'=>$matchId]);$game=$match->fetch();if(!$game)Response::error('Public game not found.',404);
-        $lineup=$this->db->prepare("SELECT tm.team_name,u.full_name,tp.jersey_number,tp.position,gl.is_starter FROM game_lineups gl JOIN team_players tp ON tp.id=gl.team_player_id JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=tp.team_id WHERE gl.match_id=:id AND gl.is_present=1 ORDER BY tm.id,gl.is_starter DESC,tp.jersey_number,u.full_name");$lineup->execute([':id'=>$matchId]);
+        $lineup=$this->db->prepare("SELECT tm.team_name,COALESCE(tp.player_name,u.full_name) full_name,tp.jersey_number,tp.position,gl.is_starter FROM game_lineups gl JOIN team_players tp ON tp.id=gl.team_player_id LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=tp.team_id WHERE gl.match_id=:id AND gl.is_present=1 ORDER BY tm.id,gl.is_starter DESC,tp.jersey_number,COALESCE(tp.player_name,u.full_name)");$lineup->execute([':id'=>$matchId]);
         $officials=$this->db->prepare("SELECT u.full_name,ga.assignment_role FROM game_assignments ga JOIN users u ON u.id=ga.user_id WHERE ga.match_id=:id AND ga.status='accepted' AND ga.assignment_role IN ('scorekeeper','statistician') ORDER BY ga.assignment_role,u.full_name");$officials->execute([':id'=>$matchId]);
         $comparison=[];
         foreach(['team1'=>(int)$game['team1_id'],'team2'=>(int)$game['team2_id']] as $side=>$teamId){
@@ -158,9 +167,9 @@ class PublicController {
             LEFT JOIN divisions d ON d.id=tm.division_id WHERE t.organization_id=:organization_id AND t.is_published=1
             ORDER BY t.id,d.id,st.rank_position LIMIT 100");
         $standings->execute([':organization_id'=>$organization['id']]);
-        $awards=$this->db->prepare("SELECT ac.name,u.full_name,tm.team_name FROM award_categories ac
+        $awards=$this->db->prepare("SELECT ac.name,COALESCE(tp.player_name,u.full_name) full_name,tm.team_name FROM award_categories ac
             JOIN player_awards pa ON pa.award_category_id=ac.id AND pa.status='confirmed'
-            JOIN users u ON u.id=pa.user_id LEFT JOIN team_players tp ON tp.user_id=u.id
+            JOIN team_players tp ON tp.id=pa.team_player_id LEFT JOIN users u ON u.id=COALESCE(pa.user_id,tp.user_id)
             LEFT JOIN teams tm ON tm.id=tp.team_id JOIN tournaments t ON t.id=ac.tournament_id
             WHERE t.organization_id=:organization_id AND ac.is_public=1");
         $awards->execute([':organization_id'=>$organization['id']]);

@@ -87,3 +87,76 @@ html body .court-home-top .court-nav-account .court-join-button > .court-join-ar
     display: none;
   }
 }
+
+/* Public pages with a light header need a deliberate dark navigation palette. */
+.court-site:not(.court-home-dark) > .court-nav {
+  min-height: 84px;
+  border-bottom: 1px solid #d9dee8;
+  background: #fff;
+  color: #172033;
+}
+
+.court-site:not(.court-home-dark) > .court-nav .court-brand,
+.court-site:not(.court-home-dark) > .court-nav .court-brand:visited {
+  color: #101827 !important;
+}
+
+.court-site:not(.court-home-dark) > .court-nav .court-brand > span:first-child,
+.court-site:not(.court-home-dark) > .court-nav .court-brand-dot {
+  color: #d53218 !important;
+}
+
+.court-site:not(.court-home-dark) > .court-nav .court-nav-links a,
+.court-site:not(.court-home-dark) > .court-nav .court-nav-links a:visited {
+  position: relative;
+  color: #263247 !important;
+}
+
+.court-site:not(.court-home-dark) > .court-nav .court-nav-links a:hover,
+.court-site:not(.court-home-dark) > .court-nav .court-nav-links a:focus-visible {
+  color: #b82512 !important;
+}
+
+.court-site:not(.court-home-dark) > .court-nav .court-nav-links a.active {
+  color: #b82512 !important;
+}
+
+.court-site:not(.court-home-dark) > .court-nav .court-nav-links a.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -12px;
+  left: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: #d53218;
+  content: "";
+}
+
+html body .court-site:not(.court-home-dark) > .court-nav .court-signin,
+html body .court-site:not(.court-home-dark) > .court-nav .court-signin:visited,
+html body .court-site:not(.court-home-dark) > .court-nav .court-signin > span:last-child {
+  border-color: #cfd5df;
+  background: #fff;
+  color: #172033 !important;
+}
+
+html body .court-site:not(.court-home-dark) > .court-nav .court-signin:hover,
+html body .court-site:not(.court-home-dark) > .court-nav .court-signin:focus-visible {
+  border-color: #d53218;
+  background: #fff5f2;
+  color: #9f1e0e !important;
+}
+
+@media (max-width: 650px) {
+  .court-site:not(.court-home-dark) > .court-nav {
+    min-height: 108px;
+  }
+
+  .court-site:not(.court-home-dark) > .court-nav .court-nav-links {
+    border-top-color: #d9dee8;
+  }
+
+  .court-site:not(.court-home-dark) > .court-nav .court-nav-links a.active::after {
+    bottom: -7px;
+  }
+}

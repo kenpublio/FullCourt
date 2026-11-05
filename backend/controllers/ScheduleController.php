@@ -38,7 +38,8 @@ class ScheduleController {
     public function show(int $tournamentId): void {
         $user=AuthMiddleware::authenticate();OrganizationAccess::requireTournament($tournamentId,$user);
         $schedule = $this->scheduleModel->getMasterSchedule($tournamentId);
-        if ($user['role'] === 'coach') {
+        $scope = strtolower(trim((string)($_GET['scope'] ?? 'all')));
+        if ($user['role'] === 'coach' && $scope === 'my_team') {
             $teamIds = $this->coachTeamIds((int)$user['user_id'], $tournamentId);
             $schedule = array_values(array_filter($schedule, static fn(array $match): bool =>
                 in_array((int)($match['team1_id'] ?? 0), $teamIds, true)
@@ -102,14 +103,25 @@ class ScheduleController {
             'min_rest_minutes_between_games' => $input['min_rest_minutes_between_games'] ?? 120,
             'default_match_duration_minutes' => $input['default_match_duration_minutes'] ?? 0,
             'default_break_minutes' => $input['default_break_minutes'] ?? 15,
+            'daily_start_time' => $input['daily_start_time'] ?? '08:00',
+            'daily_end_time' => $input['daily_end_time'] ?? '20:00',
         ];
         // If duration not supplied, fall back to the sport default already stored.
         if (empty($c['default_match_duration_minutes'])) {
             $c['default_match_duration_minutes'] = null;
         }
+        $courtId=(int)($input['court_id']??0);
+        if($courtId>0){
+            $tournamentModel=new Tournament();
+            $basketballSportId=$tournamentModel->getBasketballSportId();
+            if($basketballSportId===null||!$tournamentModel->canUseCourts([$courtId],0,$basketballSportId)){
+                Response::error('Choose an available basketball venue and court.',422);
+            }
+            $this->scheduleModel->setTournamentCourt($tournamentId,$courtId);
+        }
         $this->scheduleModel->saveConstraints($tournamentId, $c);
-        $this->auditLog->log($user['user_id'], 'SAVE_SCHEDULE_CONSTRAINTS', 'SCHEDULING', "Updated scheduling constraints for tournament ID {$tournamentId}.");
-        Response::success('Scheduling constraints saved');
+        $this->auditLog->log($user['user_id'], 'SAVE_SCHEDULE_CONSTRAINTS', 'SCHEDULING', "Updated scheduling constraints and Main Court ID " . ($courtId?:'unchanged') . " for tournament ID {$tournamentId}.");
+        Response::success('Schedule setup saved',['court_id'=>$courtId?:null]);
     }
 
     public function publish(int $tournamentId): void {

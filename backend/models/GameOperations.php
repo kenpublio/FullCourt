@@ -217,8 +217,8 @@ class GameOperations {
     }
 
     public function recentStats(int $matchId,int $limit=12):array {
-        $stmt=$this->db->prepare("SELECT e.id,e.event_type,e.period,e.game_clock_seconds,e.created_at,e.team_id,e.team_player_id,
-            COALESCE(tp.player_name,u.full_name) AS player_name,tp.jersey_number,tm.team_name
+        $stmt=$this->db->prepare("SELECT e.id,e.event_type,e.period,e.game_clock_seconds,e.game_clock_seconds AS clock_seconds,e.created_at,e.team_id,e.team_player_id,
+            COALESCE(tp.player_name,u.full_name) AS player_name,tp.jersey_number,tp.jersey_number AS player_number,tm.team_name
             FROM basketball_stat_events e LEFT JOIN team_players tp ON tp.id=e.team_player_id
             LEFT JOIN users u ON u.id=tp.user_id JOIN teams tm ON tm.id=e.team_id
             WHERE e.match_id=:match_id AND e.is_void=0 ORDER BY e.created_at DESC,e.id DESC LIMIT :limit");

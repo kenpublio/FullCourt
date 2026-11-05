@@ -9,8 +9,8 @@ class EligibilityDocument {
         if(in_array($role,['platform_admin','admin'],true))return true;
         $stmt=$this->db->prepare("SELECT tp.id FROM team_players tp JOIN teams tm ON tm.id=tp.team_id JOIN tournaments t ON t.id=tm.tournament_id
             LEFT JOIN organization_members om ON om.organization_id=t.organization_id AND om.user_id=:org_user AND om.status='active'
-            WHERE tp.id=:id AND (tp.user_id=:player_user OR tm.coach_user_id=:coach_user OR tm.manager_user_id=:manager_user OR t.created_by=:creator_user OR om.id IS NOT NULL) LIMIT 1");
-        $stmt->execute([':id'=>$teamPlayerId,':org_user'=>$userId,':player_user'=>$userId,':coach_user'=>$userId,':manager_user'=>$userId,':creator_user'=>$userId]);return(bool)$stmt->fetch();
+            WHERE tp.id=:id AND (tp.user_id=:player_user OR tm.coach_user_id=:coach_user OR tm.manager_user_id=:manager_user OR t.created_by=:creator_user OR om.id IS NOT NULL OR EXISTS (SELECT 1 FROM tournament_staff_assignments tsa WHERE tsa.tournament_id=t.id AND tsa.user_id=:staff_user)) LIMIT 1");
+        $stmt->execute([':id'=>$teamPlayerId,':org_user'=>$userId,':player_user'=>$userId,':coach_user'=>$userId,':manager_user'=>$userId,':creator_user'=>$userId,':staff_user'=>$userId]);return(bool)$stmt->fetch();
     }
     public function create(int $teamPlayerId,string $type,string $path,string $mime,array $identity=[]):int{
         $stmt=$this->db->prepare("INSERT INTO eligibility_documents (team_player_id,document_type,file_path,mime_type,id_type,id_number_last4,id_birth_date,selfie_path,selfie_mime_type,birthdate_match,consent_confirmed,declared_birth_date,mismatch_flag) VALUES (:player,:type,:path,:mime,:id_type,:last4,:dob,:selfie,:selfie_mime,:match,:consent,:declared_dob,:mismatch)");

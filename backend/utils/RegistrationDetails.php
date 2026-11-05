@@ -13,7 +13,7 @@ final class RegistrationDetails {
                 throw new InvalidArgumentException('Enter a valid height in centimeters (up to 300).');
             }
             $details = ['playing_position'=>$position === 'Not Sure' ? null : $position, 'height_cm'=>$height === '' ? null : round((float)$height, 2)];
-        } elseif ($role === 'coach') {
+        } elseif ($role === 'coach' || $role === 'assistant_coach') {
             $team = trim($input['team_name'] ?? '');
             $experience = $input['coaching_experience'] ?? '';
             if (strlen($team) > 150) throw new InvalidArgumentException('Team name must not exceed 150 characters.');

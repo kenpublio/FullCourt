@@ -14,7 +14,7 @@ class ScoringAccessController {
     private GameOperations $operations;
     private Scorekeeper $scores;
     private AuditLog $audit;
-    private const MANAGERS=['platform_admin','admin','organization_admin','tournament_organizer'];
+    private const MANAGERS=['platform_admin','admin','organization_admin','tournament_organizer','statistician'];
 
     public function __construct(){ $this->links=new ScoringAccess();$this->operations=new GameOperations();$this->scores=new Scorekeeper();$this->audit=new AuditLog(); }
 
@@ -41,7 +41,7 @@ class ScoringAccessController {
         $access=$this->session();$matchId=(int)$access['match_id'];$score=$this->scores->getMatchScoreState($matchId);
         if(!$score)Response::error('The scoreboard is not ready for this game.',404);
         $score['timer_seconds']=(int)($score['clock_remaining_seconds']??$score['timer_seconds']??0);
-        Response::success('Scoring console loaded',['game'=>$score,'players'=>$this->operations->lineup($matchId),'box_score'=>$this->operations->boxScore($matchId),'operator_name'=>$access['operator_name']]);
+        Response::success('Scoring console loaded',['game'=>$score,'players'=>$this->operations->lineup($matchId),'box_score'=>$this->operations->boxScore($matchId),'period_scores'=>$this->operations->periodScores($matchId),'recent_actions'=>$this->operations->recentStats($matchId,8),'operator_name'=>$access['operator_name']]);
     }
 
     public function stat():void{
@@ -51,6 +51,14 @@ class ScoringAccessController {
         try{$id=$this->operations->recordStat((int)$access['match_id'],$in,(int)$access['created_by']);}
         catch(InvalidArgumentException $e){Response::error($e->getMessage(),422);}
         Response::success('Basketball statistic recorded',['id'=>$id],201);
+    }
+
+    public function undoStat(int $eventId):void{
+        $access=$this->session();$matchId=(int)$access['match_id'];
+        if(!$this->operations->voidStat($matchId,$eventId))Response::error('That game action was already removed or could not be found.',404);
+        $operator=trim((string)($access['operator_name']??'Guest statistician'));
+        $this->audit->log((int)$access['created_by'],'UNDO_SCORING_ACTION','LIVE_SCORING',"{$operator} undid scoring action {$eventId} in match {$matchId}.");
+        Response::success('Last game action removed and the scoreboard was corrected.');
     }
 
     public function updateClock():void{

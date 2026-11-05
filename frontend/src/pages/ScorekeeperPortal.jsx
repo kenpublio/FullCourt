@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import scorekeeperService from '../services/scorekeeperService';
+import ConfirmActionDialog from '../components/ConfirmActionDialog';
 
 const formatTime = (sec) => {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
@@ -14,6 +15,7 @@ const ScorekeeperPortal = () => {
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
+  const [pendingEventDelete, setPendingEventDelete] = useState(null);
   const pollRef = useRef(null);
 
   const loadAssigned = async () => {
@@ -108,8 +110,7 @@ const ScorekeeperPortal = () => {
     await send({ event_type: 'substitution', player_in_id: Number(pin), player_out_id: Number(pout), team_id: Number(tid) });
   };
   const undo = async (eventId) => {
-    if (!window.confirm('Remove this event?')) return;
-    try { await scorekeeperService.undoEvent(activeMatch.id, eventId); loadBoard(); } catch (e) { alert(e.response?.data?.message || 'Undo failed'); }
+    try { await scorekeeperService.undoEvent(activeMatch.id, eventId); setPendingEventDelete(null); loadBoard(); } catch (e) { alert(e.response?.data?.message || 'Undo failed'); }
   };
 
   if (loading) {
@@ -274,7 +275,7 @@ const ScorekeeperPortal = () => {
                     <td className="small text-muted">{ev.player_name || '—'}</td>
                     <td className="small text-muted text-truncate" style={{ maxWidth: 200 }}>{JSON.stringify(ev.detail_json ?? '')}</td>
                     <td className="small text-end">
-                      <button className="btn btn-sm btn-outline-secondary" style={{ borderRadius: 6, fontSize: '0.68rem' }} onClick={() => undo(ev.id)}>Remove</button>
+                      <button className="btn btn-sm btn-outline-danger" style={{ borderRadius: 6, fontSize: '0.68rem' }} onClick={() => setPendingEventDelete(ev)}>Remove</button>
                     </td>
                   </tr>
                 ))}
@@ -349,6 +350,7 @@ const ScorekeeperPortal = () => {
           {renderScoreboard()}
         </div>
       </div>
+      <ConfirmActionDialog open={Boolean(pendingEventDelete)} eyebrow="SCORING CORRECTION" title="Remove this event?" message="The event will be voided and the official score and statistics will be recalculated." confirmLabel="Remove event" confirmIcon="bi-arrow-counterclockwise" onCancel={()=>setPendingEventDelete(null)} onConfirm={()=>undo(pendingEventDelete?.id)}/>
     </div>
   );
 };

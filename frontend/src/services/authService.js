@@ -17,7 +17,7 @@ export const authService = {
     const response = await api.post('/auth/register', data);
     return response.data;
   },
-  async requestEmailCode(email) { return (await api.post('/auth/email-code', { email, purpose: 'registration' })).data; },
+  async requestEmailCode(email, phoneNumber = '') { return (await api.post('/auth/email-code', { email, phone_number: phoneNumber, purpose: 'registration' })).data; },
   async requestPasswordReset(email) { return (await api.post('/auth/forgot-password', { email })).data; },
   async verifyPasswordResetCode(email, code) { return (await api.post('/auth/verify-reset-code', { email, code })).data; },
   async verifyRegistrationCode(email, code) { return (await api.post('/auth/verify-email-code', { email, code })).data; },

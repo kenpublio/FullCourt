@@ -4,6 +4,7 @@ import "../styles/period-scores.css";
 import scorekeeperService from "../services/scorekeeperService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
+import ConfirmActionDialog from "../components/ConfirmActionDialog";
 import "../styles/operations-polish.css";
 
 const scoringActions = [
@@ -51,7 +52,9 @@ const BasketballStatistician = () => {
     [message, setMessage] = useState(""),
     [showFinalReview, setShowFinalReview] = useState(false),
     [submittingFinal, setSubmittingFinal] = useState(false),
+    [recordingStat,setRecordingStat]=useState(""),
     [undoingId, setUndoingId] = useState(null),
+    [pendingUndo, setPendingUndo] = useState(null),
     [online, setOnline] = useState(()=>navigator.onLine),
     [clockDraft,setClockDraft]=useState({period:'Q1',minutes:'10',seconds:'00'}),
     [clockBusy,setClockBusy]=useState(false),
@@ -117,18 +120,21 @@ const BasketballStatistician = () => {
   };
   const record = async (eventType) => {
     if (!selected || !board) return setMessage("Select a player first.");
-    await gameOperationsService.recordStat(match.match_id, {
-      event_uuid: crypto.randomUUID(),
-      team_id: selected.team_id,
-      team_player_id: selected.team_player_id,
-      event_type: eventType,
-      period: periodNumber(board.score.current_period),
-      game_clock_seconds: board.score.timer_seconds,
-    });
-    setMessage(
-      `${eventType.replaceAll("_", " ")} recorded for ${selected.full_name}.`,
-    );
-    await refresh();
+    if(recordingStat)return;
+    setRecordingStat(eventType);setLoadError("");
+    try{
+      await gameOperationsService.recordStat(match.match_id, {
+        event_uuid: crypto.randomUUID(),
+        team_id: selected.team_id,
+        team_player_id: selected.team_player_id,
+        event_type: eventType,
+        period: periodNumber(board.score.current_period),
+        game_clock_seconds: board.score.clock_remaining_seconds??board.score.timer_seconds,
+      });
+      setMessage(`${eventType.replaceAll("_", " ")} recorded for ${selected.full_name}.`);
+      await refresh();
+    }catch(error){setLoadError(error.response?.data?.message||"The statistic could not be saved. Check the connection and try again.");}
+    finally{setRecordingStat("");}
   };
   const toggleStarter = (id) =>
     setPlayers((rows) =>
@@ -197,11 +203,11 @@ const BasketballStatistician = () => {
     }
   };
   const undoAction = async (event) => {
-    if (!match || undoingId || !window.confirm(`Undo ${String(event.event_type).replaceAll('_',' ')} for ${event.player_name||event.team_name}?`)) return;
+    if (!match || undoingId) return;
     setUndoingId(event.id);setLoadError("");
     try { await gameOperationsService.voidStat(match.match_id,event.id);setMessage("The last scoring action was undone and the official score was recalculated.");await refresh(); }
     catch(error){setLoadError(error.response?.data?.message||"Unable to undo this scoring action.");}
-    finally{setUndoingId(null);}
+    finally{setUndoingId(null);setPendingUndo(null);}
   };
   const updateClock = async (action) => {
     if(!match||clockBusy)return;const minutes=Number(clockDraft.minutes),seconds=Number(clockDraft.seconds);if(!Number.isInteger(minutes)||!Number.isInteger(seconds)||minutes<0||minutes>59||seconds<0||seconds>59)return setLoadError('Enter a valid game clock from 00:00 to 59:59.');
@@ -276,8 +282,9 @@ const BasketballStatistician = () => {
                   {a.home_team || "TBD"} vs {a.away_team || "TBD"}
                 </b>
                 <small className="d-block">
-                  {a.assignment_role} · {a.status}
+                  {a.scheduled_start_time ? new Date(a.scheduled_start_time).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}) : 'Schedule pending'}
                 </small>
+                <small className="d-block text-muted">{a.court_name||a.venue_name||'Court TBA'} · {a.status}</small>
               </button>
             ))}
             {!assignments.length && (
@@ -383,7 +390,7 @@ const BasketballStatistician = () => {
                   <div className="mb-3">
                     <small className="text-uppercase fw-bold text-muted">Scoring</small>
                     <div className="d-flex flex-wrap gap-2 mt-2">
-                      {scoringActions.map((action) => <button disabled={!online||recoveredDraft} className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : "btn-outline-danger"}`} onClick={() => record(action[0])} key={action[0]}>{action[1]}</button>)}
+                      {scoringActions.map((action) => <button disabled={!online||recoveredDraft||Boolean(recordingStat)} className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : "btn-outline-danger"}`} onClick={() => record(action[0])} key={action[0]}>{recordingStat===action[0]?'Saving…':action[1]}</button>)}
                     </div>
                   </div>
                   <details className="border rounded-3 p-3 bg-light">
@@ -398,11 +405,11 @@ const BasketballStatistician = () => {
                         {group[1].map((action) => (
                           <button
                             className={`btn btn-sm ${action[0].includes("made") ? "btn-success" : action[0].includes("missed") ? "btn-outline-danger" : "btn-outline-dark"}`}
-                            disabled={!online||recoveredDraft}
+                            disabled={!online||recoveredDraft||Boolean(recordingStat)}
                             onClick={() => record(action[0])}
                             key={action[0]}
                           >
-                            {action[1]}
+                            {recordingStat===action[0]?'Saving…':action[1]}
                           </button>
                         ))}
                       </div>
@@ -411,12 +418,13 @@ const BasketballStatistician = () => {
                   </details>
                 </div>
               )}
-              <section className="card-custom staff-recent-actions mt-3" aria-labelledby="recent-actions-title"><header><div><span>SCORING AUDIT</span><h2 id="recent-actions-title">Recent actions</h2></div><b>{recentActions.length} active</b></header>{recentActions.length?<div>{recentActions.map(event=><article key={event.id}><span className="staff-event-points">{{'2pt_made':'+2','3pt_made':'+3','ft_made':'+1'}[event.event_type]||'STAT'}</span><div><b>{String(event.event_type).replaceAll('_',' ')}</b><small>#{event.jersey_number||'—'} {event.player_name||event.team_name} · Q{event.period} · {Math.floor(Number(event.game_clock_seconds||0)/60)}:{String(Number(event.game_clock_seconds||0)%60).padStart(2,'0')}</small></div><button type="button" disabled={undoingId===event.id||!online} onClick={()=>undoAction(event)}><i className="bi bi-arrow-counterclockwise"/> {undoingId===event.id?'Undoing…':'Undo'}</button></article>)}</div>:<div className="ops-empty border-0 py-4"><i className="bi bi-clock-history"/><strong>No scoring actions yet</strong><p>Recorded player points and optional stats will appear here.</p></div>}</section>
+              <section className="card-custom staff-recent-actions mt-3" aria-labelledby="recent-actions-title"><header><div><span>SCORING AUDIT</span><h2 id="recent-actions-title">Recent actions</h2></div><b>{recentActions.length} active</b></header>{recentActions.length?<div>{recentActions.map(event=><article key={event.id}><span className="staff-event-points">{{'2pt_made':'+2','3pt_made':'+3','ft_made':'+1'}[event.event_type]||'STAT'}</span><div><b>{String(event.event_type).replaceAll('_',' ')}</b><small>#{event.jersey_number||'—'} {event.player_name||event.team_name} · Q{event.period} · {Math.floor(Number(event.game_clock_seconds||0)/60)}:{String(Number(event.game_clock_seconds||0)%60).padStart(2,'0')}</small></div><button type="button" disabled={undoingId===event.id||!online} onClick={()=>setPendingUndo(event)}><i className="bi bi-arrow-counterclockwise"/> {undoingId===event.id?'Undoing…':'Undo'}</button></article>)}</div>:<div className="ops-empty border-0 py-4"><i className="bi bi-clock-history"/><strong>No scoring actions yet</strong><p>Recorded player points and optional stats will appear here.</p></div>}</section>
             </>
           )}
         </div>
       </div>
       {showFinalReview&&board&&<div className="modal show d-block game-modal" role="dialog" aria-modal="true" aria-labelledby="staff-final-title"><div className="modal-dialog modal-dialog-centered"><div className="modal-content"><header><div><span>FINAL SCORE REVIEW</span><h5 id="staff-final-title">Confirm before submitting</h5></div><button className="btn-close" onClick={()=>setShowFinalReview(false)} aria-label="Close"/></header><div className="modal-body staff-final-review"><p>Check the official team totals. After submission, only Admin can confirm and publish the result.</p><div><span><b>{board.score.team1_name}</b><strong>{board.score.team1_score}</strong></span><em>FINAL</em><span><b>{board.score.team2_name}</b><strong>{board.score.team2_score}</strong></span></div>{Number(board.score.team1_score)===Number(board.score.team2_score)&&<div className="alert alert-warning mb-0">A tied score cannot be submitted. Record overtime or correct the score first.</div>}</div><footer><button onClick={()=>setShowFinalReview(false)}>Continue scoring</button><button className="primary" disabled={submittingFinal||Number(board.score.team1_score)===Number(board.score.team2_score)} onClick={submitFinal}>{submittingFinal?'Submitting…':'Submit to Admin'}</button></footer></div></div></div>}
+      <ConfirmActionDialog open={Boolean(pendingUndo)} eyebrow="SCORING CORRECTION" title="Undo this game action?" message={pendingUndo ? <><b>{String(pendingUndo.event_type).replaceAll('_',' ')}</b> for {pendingUndo.player_name||pendingUndo.team_name} will be voided. The official score and player statistics will be recalculated.</> : null} confirmLabel="Undo action" confirmIcon="bi-arrow-counterclockwise" onCancel={()=>setPendingUndo(null)} onConfirm={()=>undoAction(pendingUndo)}/>
     </div>
   );
 };

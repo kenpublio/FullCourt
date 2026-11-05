@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import scoringAccessService from '../services/scoringAccessService';
+import ConfirmActionDialog from '../components/ConfirmActionDialog';
 import '../styles/scoring-console.css';
 
 const actions = [
   ['2pt_made', '+2', '2PT Made'],
-  ['2pt_missed', '2PT', 'Miss'],
+  ['2pt_missed', '2PT', '2PT Miss'],
   ['3pt_made', '+3', '3PT Made'],
-  ['3pt_missed', '3PT', 'Miss'],
+  ['3pt_missed', '3PT', '3PT Miss'],
   ['ft_made', '+1', 'Free Throw'],
-  ['ft_missed', 'FT', 'Miss'],
+  ['ft_missed', 'FT', 'Free Throw Miss'],
   ['off_rebound', 'OREB', 'Off. Rebound'],
   ['def_rebound', 'DREB', 'Def. Rebound'],
   ['assist', 'AST', 'Assist'],
@@ -41,6 +42,9 @@ const GuestScoringConsole = () => {
   const [period, setPeriod] = useState('Q1');
   const [clockMinutes, setClockMinutes] = useState('10');
   const [clockSeconds, setClockSeconds] = useState('00');
+  const [shotClock, setShotClock] = useState(24);
+  const [shotClockRunning, setShotClockRunning] = useState(false);
+  const [possession, setPossession] = useState('team1'); // 'team1' or 'team2'
   const clockLoadedFor = useRef(null);
   const clockSyncAt = useRef(Date.now());
   const [clockNow, setClockNow] = useState(Date.now());
@@ -53,12 +57,23 @@ const GuestScoringConsole = () => {
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [showFinalReview, setShowFinalReview] = useState(false);
   const [submittedFinal, setSubmittedFinal] = useState(null);
-  const [advancedStats, setAdvancedStats] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [pendingUndo, setPendingUndo] = useState(null);
 
   const saveQueue = useCallback((items) => {
     localStorage.setItem(queueKey, JSON.stringify(items));
     setPendingEvents(items);
   }, [queueKey]);
+
+  useEffect(() => {
+    let shotTimer;
+    if (shotClockRunning) {
+      shotTimer = setInterval(() => {
+        setShotClock((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(shotTimer);
+  }, [shotClockRunning]);
 
   useEffect(() => {
     const ticker = setInterval(() => setClockNow(Date.now()), 250);
@@ -153,6 +168,15 @@ const GuestScoringConsole = () => {
     } finally {
       setBusy(false);
     }
+  };
+
+  const undoLastAction = async () => {
+    const last=data?.recent_actions?.[0];
+    if(!last||undoBusy)return;
+    setUndoBusy(true);setError('');setMessage('');
+    try{await scoringAccessService.undoStat(session,last.id);setMessage('Last action removed. The scoreboard and player statistics were corrected.');setLastSavedAt(new Date());await load();}
+    catch(undoError){setError(undoError.response?.data?.message||'Unable to undo the last action.');}
+    finally{setUndoBusy(false);setPendingUndo(null);}
   };
 
   const syncPending = useCallback(async () => {
@@ -306,9 +330,76 @@ const GuestScoringConsole = () => {
     </header>
     <div className={`courtside-sync-bar ${online?'is-online':'is-offline'}`} role="status"><span><i className={`bi ${online?'bi-cloud-check':'bi-cloud-slash'}`}/>{online?'Online - game actions are syncing':'Offline - player statistics will queue on this device'}</span><span>{pendingEvents.length?`${pendingEvents.length} waiting to sync`:lastSavedAt?`Last saved ${lastSavedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Ready'}</span>{pendingEvents.length>0&&online&&<button type="button" onClick={syncPending}>Sync now</button>}</div>
     <section className="courtside-scoreboard">
-      <article><small>HOME</small><h2>{teams[0]?.name || 'TBD'}</h2><strong>{teams[0]?.score || 0}</strong></article>
-      <div className="courtside-clock"><span>{data.game.current_period || 'PRE-GAME'}</span><b>{clockDisplay}</b><em>GAME #{data.game.match_id}</em></div>
-      <article><small>AWAY</small><h2>{teams[1]?.name || 'TBD'}</h2><strong>{teams[1]?.score || 0}</strong></article>
+      <article>
+        <small>HOME</small>
+        <h2>{teams[0]?.name || 'TBD'}</h2>
+        <strong>{teams[0]?.score || 0}</strong>
+      </article>
+      <div className="courtside-clock">
+        <span>{data.game.current_period || 'PRE-GAME'}</span>
+        <b>{clockDisplay}</b>
+        <em>GAME #{data.game.match_id}</em>
+      </div>
+      <article>
+        <small>AWAY</small>
+        <h2>{teams[1]?.name || 'TBD'}</h2>
+        <strong>{teams[1]?.score || 0}</strong>
+      </article>
+    </section>
+
+    {/* FIBA Controls: 24s/14s Shot Clock & Alternating Possession Arrow */}
+    <div className="courtside-shotclock-box">
+      <div className="shotclock-display">
+        <span className="shotclock-label">Shot Clock</span>
+        <span className={`shotclock-val ${shotClock <= 5 ? 'danger' : ''}`}>{shotClock}s</span>
+      </div>
+      <div className="shotclock-btn-group">
+        <button
+          type="button"
+          className="shotclock-btn"
+          onClick={() => { setShotClock(24); setShotClockRunning(true); }}
+        >
+          24s Reset
+        </button>
+        <button
+          type="button"
+          className="shotclock-btn"
+          onClick={() => { setShotClock(14); setShotClockRunning(true); }}
+        >
+          14s Reset
+        </button>
+        <button
+          type="button"
+          className="shotclock-btn"
+          onClick={() => setShotClockRunning(!shotClockRunning)}
+        >
+          {shotClockRunning ? 'Stop' : 'Start'}
+        </button>
+      </div>
+
+      <div className="possession-arrow-group">
+        <span className="shotclock-label">Possession</span>
+        <button
+          type="button"
+          className={`possession-arrow-btn ${possession === 'team1' ? 'active' : ''}`}
+          onClick={() => setPossession('team1')}
+          title="Possession to Team 1"
+        >
+          &larr; {teams[0]?.name ? teams[0].name.slice(0, 8) : 'HOME'}
+        </button>
+        <button
+          type="button"
+          className={`possession-arrow-btn ${possession === 'team2' ? 'active' : ''}`}
+          onClick={() => setPossession('team2')}
+          title="Possession to Team 2"
+        >
+          {teams[1]?.name ? teams[1].name.slice(0, 8) : 'AWAY'} &rarr;
+        </button>
+      </div>
+    </div>
+    <section className="courtside-period-board" aria-label="Quarter score breakdown">
+      <div className="period-board-label"><span>QUARTER SCORE</span><b>Live breakdown</b></div>
+      <div className="period-board-table"><div className="period-board-head"><span>Team</span>{['Q1','Q2','Q3','Q4','OT','Total'].map(label=><b key={label}>{label}</b>)}</div>{teams.map((team,teamIndex)=><div className="period-board-row" key={team.id}><strong>{team.name}</strong>{[1,2,3,4].map(q=><span key={q}>{data.period_scores?.find(row=>Number(row.period)===q)?.[`team${teamIndex+1}_score`]||0}</span>)}<span>{(data.period_scores||[]).filter(row=>Number(row.period)>4).reduce((sum,row)=>sum+Number(row[`team${teamIndex+1}_score`]||0),0)}</span><em>{team.score||0}</em></div>)}</div>
     </section>
     <form className="courtside-clock-editor" onSubmit={saveClock} aria-label="Game period and clock controls">
       <div className="courtside-clock-copy"><span className="score-kicker">GAME CONTROL</span><h3>Quarter &amp; game clock</h3><p>Set the time, then save and start. Pause or resume any time.</p></div>
@@ -356,13 +447,15 @@ const GuestScoringConsole = () => {
       </aside>
       <section className="courtside-actions">
         <div className="selected-player"><div><span className="score-kicker">RECORDING FOR</span><h2>{selected ? `#${selected.jersey_number || '—'} ${selected.full_name}` : 'Select a player'}</h2><p>{selected?.team_name || 'Choose an active roster player to begin.'}</p></div><i className="bi bi-person-bounding-box"/></div>
-        <div className="courtside-action-heading"><div><span className="score-kicker">QUICK SCORING</span><p>{advancedStats?'All basketball statistics are available.':'Only essential score and foul controls are shown.'}</p></div><button type="button" aria-pressed={advancedStats} onClick={()=>setAdvancedStats(value=>!value)}><i className={`bi ${advancedStats?'bi-dash-circle':'bi-plus-circle'}`}/> {advancedStats?'Simple mode':'More stats'}</button></div>
-        <div className="stat-action-grid">{actions.filter(([type])=>advancedStats||['2pt_made','3pt_made','ft_made','personal_foul'].includes(type)).map(([type, mark, label]) => <button type="button" disabled={busy || !selected} className={type.includes('made') ? 'made' : type.includes('missed') ? 'missed' : ''} onClick={() => record(type)} key={type}><strong>{mark}</strong><span>{label}</span></button>)}</div>
+        <div className="courtside-action-heading"><div><span className="score-kicker">COMPLETE GAME STATS</span><p>Record scoring, missed shots, rebounds, assists, defense, turnovers, and fouls for the selected player.</p></div><span className="courtside-stat-ready"><i className="bi bi-grid-3x3-gap-fill"/> All controls ready</span></div>
+        <div className="stat-action-grid">{actions.map(([type, mark, label]) => <button type="button" aria-label={label} disabled={busy || !selected} className={type.includes('made') ? 'made' : type.includes('missed') ? 'missed' : ''} onClick={() => record(type)} key={type}><strong>{mark}</strong><span>{label}</span></button>)}</div>
+        <section className="courtside-recent"><header><div><span className="score-kicker">ACTION CONTROL</span><h3>Recent game actions</h3></div><button type="button" disabled={undoBusy||!data.recent_actions?.length} onClick={()=>setPendingUndo(data.recent_actions?.[0]||null)}><i className="bi bi-arrow-counterclockwise"/> {undoBusy?'Undoing…':'Undo last action'}</button></header>{data.recent_actions?.length?<ol>{data.recent_actions.slice(0,5).map(action=><li key={action.id}><span><b>{String(action.event_type).replaceAll('_',' ')}</b><small>#{action.jersey_number||'—'} {action.player_name||action.team_name}</small></span><em>Q{Math.min(Number(action.period)||1,4)} · {Math.floor(Number(action.game_clock_seconds||0)/60)}:{String(Number(action.game_clock_seconds||0)%60).padStart(2,'0')}</em></li>)}</ol>:<p>No game actions recorded yet.</p>}</section>
       </section>
     </div>
     <section className="courtside-finalize"><div><span className="score-kicker">END OF GAME</span><h3>Submit the final score</h3><p>Review the scoreboard first. Submission locks scoring until the Admin confirms the official result.</p></div><button type="button" disabled={busy||pendingEvents.length>0||Number(teams[0]?.score)===Number(teams[1]?.score)} onClick={()=>setShowFinalReview(true)}><i className="bi bi-flag-fill"/> Review final score</button>{pendingEvents.length>0&&<small>Sync all pending actions before ending the game.</small>}{Number(teams[0]?.score)===Number(teams[1]?.score)&&<small>A tied score cannot be submitted. Continue to overtime.</small>}</section>
     <footer><span><i className="bi bi-cloud-check"/> Every action is saved to the FullCourt game log.</span><button type="button" onClick={() => load()}><i className="bi bi-arrow-clockwise"/> Refresh</button></footer>
     {showFinalReview&&<div className="courtside-final-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setShowFinalReview(false)}}><section className="courtside-final-dialog" role="dialog" aria-modal="true" aria-labelledby="guest-final-title"><span className="score-kicker">FINAL SCORE REVIEW</span><h2 id="guest-final-title">Confirm before submitting</h2><div className="courtside-final-score"><span><small>{teams[0]?.name}</small><b>{teams[0]?.score||0}</b></span><em>FINAL</em><span><small>{teams[1]?.name}</small><b>{teams[1]?.score||0}</b></span></div><p>This will pause the clock, lock the scoring link, and send the result to the Admin for official confirmation.</p><div><button type="button" className="secondary" disabled={busy} onClick={()=>setShowFinalReview(false)}>Go back</button><button type="button" disabled={busy} onClick={submitFinal}>{busy?'Submitting…':'Submit final score'}</button></div></section></div>}
+    <ConfirmActionDialog open={Boolean(pendingUndo)} eyebrow="SCORING CORRECTION" title="Undo the last action?" message={pendingUndo ? <><b>{String(pendingUndo.event_type).replaceAll('_',' ')}</b> for {pendingUndo.player_name||pendingUndo.team_name} will be removed and all totals recalculated.</> : null} confirmLabel="Undo action" confirmIcon="bi-arrow-counterclockwise" onCancel={()=>setPendingUndo(null)} onConfirm={undoLastAction}/>
   </main>;
 };
 

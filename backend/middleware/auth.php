@@ -35,7 +35,8 @@ class AuthMiddleware {
         $roleAliases = [
             'platform_admin' => ['admin'],
             'organization_admin' => ['tournament_organizer'],
-            'coach' => ['coach_manager'],
+            'coach' => ['coach_manager', 'assistant_coach'],
+            'assistant_coach' => ['coach', 'coach_manager'],
             'statistician' => ['scorekeeper'],
         ];
         $effectiveRoles = array_merge([$user['role']], $roleAliases[$user['role']] ?? []);

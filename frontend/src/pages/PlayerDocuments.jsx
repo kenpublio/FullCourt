@@ -1,25 +1,144 @@
-import {useEffect,useRef,useState} from 'react';
+import { useEffect, useState } from 'react';
 import eligibilityService from '../services/eligibilityService';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-const badge=s=>s==='verified'?'bg-success':s==='rejected'?'bg-danger':'bg-warning text-dark';
-export default function PlayerDocuments(){
- const[membership,setMembership]=useState(null),[documents,setDocuments]=useState([]),[loading,setLoading]=useState(true),[message,setMessage]=useState('');
- const[idFile,setIdFile]=useState(null),[selfie,setSelfie]=useState(null),[idType,setIdType]=useState('School ID'),[idBirthDate,setIdBirthDate]=useState(''),[consent,setConsent]=useState(false),[submitting,setSubmitting]=useState(false),[cameraOn,setCameraOn]=useState(false);
- const videoRef=useRef(null),canvasRef=useRef(null),streamRef=useRef(null);
- const load=async()=>{const r=await eligibilityService.getMyMembership();setMembership(r.membership);if(r.membership)setDocuments(await eligibilityService.documents(r.membership.id));};
- useEffect(()=>{load().finally(()=>setLoading(false));return()=>streamRef.current?.getTracks().forEach(t=>t.stop());},[]);
- const startCamera=async()=>{try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});streamRef.current=stream;setCameraOn(true);setTimeout(()=>{if(videoRef.current)videoRef.current.srcObject=stream;});}catch{setMessage('Camera access was blocked. Allow camera permission and try again.');}};
- const capture=()=>{const v=videoRef.current,c=canvasRef.current;if(!v||!c)return;c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);c.toBlob(b=>b&&setSelfie(new File([b],'live-selfie.jpg',{type:'image/jpeg'})),'image/jpeg',.9);streamRef.current?.getTracks().forEach(t=>t.stop());setCameraOn(false);};
- const submit=async()=>{setSubmitting(true);setMessage('');try{const r=await eligibilityService.uploadIdentity(membership.id,{idType,idBirthDate,idFile,selfie,consent});await load();setIdFile(null);setSelfie(null);setConsent(false);setMessage(r.data?.birthdate_match?'Identity submitted. The ID birthdate matches your profile.':'Identity submitted. A reviewer must check the birthdate or identity details.');}catch(e){setMessage(e.response?.data?.message||'Identity submission failed.');}finally{setSubmitting(false);}};
- if(loading)return <LoadingSpinner message="Loading identity verification..."/>;
- return <div className="container-fluid p-0" style={{maxWidth:1050}}><div className="mb-4"><h3 className="fw-bold mb-1"><i className="bi bi-person-vcard-fill text-evsu-primary me-2"/>Identity &amp; Age Verification</h3><p className="text-muted">Submit a valid ID and a live selfie. Only authorized reviewers can access these private files.</p></div>{message&&<div className="alert alert-info">{message}</div>}
- {!membership?<div className="card-custom p-5 text-center"><i className="bi bi-people fs-1 text-muted"/><h5 className="mt-3">No team invitation yet</h5><p className="text-muted mb-0">Accept a team invitation before submitting verification.</p></div>:<><div className="card-custom p-4 mb-4"><div className="d-flex justify-content-between flex-wrap gap-2 mb-3"><div><span className="badge bg-dark mb-2">PRIVATE REVIEW</span><h5 className="fw-bold mb-1">Government or School ID</h5><small className="text-muted">Your ID number is not collected. Reviewers check your document and birthdate only.</small></div><span className={`badge align-self-start ${badge(membership.eligibility_status)}`}>{membership.eligibility_status}</span></div><div className="row g-3">
- <div className="col-md-6"><label htmlFor="player-id-type" className="form-label fw-semibold">ID Type</label><select id="player-id-type" className="form-select" value={idType} onChange={e=>setIdType(e.target.value)}>{['School ID','National ID','Passport',"Driver's License",'Barangay ID','Other Government ID'].map(x=><option key={x}>{x}</option>)}</select></div>
- <div className="col-md-6"><label htmlFor="player-id-birthdate" className="form-label fw-semibold">Birthdate shown on ID</label><input id="player-id-birthdate" type="date" className="form-control" value={idBirthDate} max={new Date().toISOString().slice(0,10)} onChange={e=>setIdBirthDate(e.target.value)}/></div>
- <div className="col-md-6"><label htmlFor="player-id-photo" className="form-label fw-semibold">Clear photo of ID</label><input id="player-id-photo" type="file" accept="image/jpeg,image/png" className="form-control" onChange={e=>setIdFile(e.target.files?.[0]||null)}/></div>
- <div className="col-12"><div className="border rounded-4 p-3 bg-body-tertiary"><div className="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><b>Live selfie</b><small className="d-block text-muted">Use good lighting and remove masks or filters.</small></div>{!cameraOn&&!selfie&&<button className="btn btn-outline-danger" onClick={startCamera}><i className="bi bi-camera-fill me-2"/>Open Camera</button>}{selfie&&<button className="btn btn-outline-secondary" onClick={()=>setSelfie(null)}>Retake</button>}</div>{cameraOn&&<div className="text-center mt-3"><video ref={videoRef} autoPlay playsInline muted className="rounded-3 w-100" style={{maxHeight:360,objectFit:'cover'}}/><button className="btn btn-danger mt-2" onClick={capture}>Capture Selfie</button></div>}{selfie&&<div className="alert alert-success py-2 mt-3 mb-0"><i className="bi bi-check-circle-fill me-2"/>Live selfie captured.</div>}<canvas ref={canvasRef} hidden/></div></div>
- <div className="col-12"><label className="d-flex gap-2 align-items-start"><input type="checkbox" className="form-check-input mt-1" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span className="small">I consent to the restricted use of my ID and selfie for identity and age verification. The final decision is made by an authorized reviewer.</span></label></div>
- <div className="col-12"><button className="btn btn-evsu px-4" disabled={submitting||!idFile||!selfie||!idBirthDate||!consent} onClick={submit}>{submitting?'Submitting…':'Submit for Review'}</button></div></div></div>
- <div className="card-custom p-4"><h5 className="fw-bold">Submission History</h5>{documents.map(d=><div className="d-flex justify-content-between align-items-center border-bottom py-3" key={d.id}><div><b>{d.document_type}</b>{d.id_type&&<small className="d-block text-muted">{d.id_type} {d.id_birth_date&&`• Birthdate on ID: ${d.id_birth_date}`}</small>}<small className="d-block text-muted">Submitted {new Date(d.created_at).toLocaleDateString()}</small>{d.birthdate_match!==null&&<small className={d.birthdate_match?'text-success':'text-danger'}>{d.birthdate_match?'Birthdate matched automatically':'Birthdate mismatch—manual review required'}</small>}{d.review_notes&&<small className="d-block text-danger">{d.review_notes}</small>}</div><span className={`badge ${badge(d.status)}`}>{d.status}</span></div>)}{!documents.length&&<p className="text-muted mb-0">No identity submission yet.</p>}</div></>}</div>;
+const badge = s => s === 'verified' ? 'bg-success' : s === 'rejected' ? 'bg-danger' : 'bg-warning text-dark';
+
+export default function PlayerDocuments() {
+  const [membership, setMembership] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    eligibilityService.getMyMembership()
+      .then(r => {
+        setMembership(r.membership);
+        if (r.membership) return eligibilityService.documents(r.membership.id);
+      })
+      .then(docs => { if (docs) setDocuments(docs); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <LoadingSpinner message="Loading your documents..." />;
+
+  return (
+    <div className="container-fluid p-0" style={{ maxWidth: 900 }}>
+      <div className="mb-4">
+        <h3 className="fw-bold mb-1">
+          <i className="bi bi-person-vcard-fill text-evsu-primary me-2" />
+          My Eligibility Documents
+        </h3>
+        <p className="text-muted">
+          Your coach uploads the required documents (Birth Certificate/PSA and Parent Waiver) on your behalf.
+          Only authorized reviewers can access these private files.
+        </p>
+      </div>
+
+      {!membership ? (
+        <div className="card-custom p-5 text-center">
+          <i className="bi bi-people fs-1 text-muted" />
+          <h5 className="mt-3">No team membership yet</h5>
+          <p className="text-muted mb-0">
+            You must be added to a team roster before documents can be submitted.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Eligibility status banner */}
+          <div className={`alert d-flex align-items-center gap-2 mb-4 ${
+            membership.eligibility_status === 'verified' ? 'alert-success' :
+            membership.eligibility_status === 'rejected' ? 'alert-danger' : 'alert-warning'
+          }`}>
+            <i className={`bi fs-4 ${
+              membership.eligibility_status === 'verified' ? 'bi-patch-check-fill' :
+              membership.eligibility_status === 'rejected' ? 'bi-x-circle-fill' : 'bi-hourglass-split'
+            }`} />
+            <div>
+              <strong>Eligibility status: </strong>
+              <span className="text-capitalize">{membership.eligibility_status}</span>
+              {membership.remarks && <p className="mb-0 small mt-1">{membership.remarks}</p>}
+            </div>
+          </div>
+
+          {/* Required documents checklist */}
+          <div className="card-custom p-4 mb-4">
+            <h6 className="fw-bold mb-3">
+              <i className="bi bi-list-check me-2 text-evsu-primary" />
+              Required Documents
+            </h6>
+            {[
+              { type: 'Birth Certificate / PSA', icon: 'bi-file-earmark-person-fill', note: 'Philippine Statistics Authority (PSA) birth certificate or certified true copy.' },
+              { type: 'Parent Waiver', icon: 'bi-file-earmark-check-fill', note: 'Signed parental/guardian waiver allowing the student to participate.' },
+            ].map(req => {
+              const submitted = documents.find(d => d.document_type === req.type);
+              return (
+                <div key={req.type} className="d-flex align-items-start gap-3 py-3 border-bottom">
+                  <i className={`bi ${req.icon} fs-4 mt-1`} style={{ color: 'var(--evsu-primary)' }} />
+                  <div className="flex-grow-1">
+                    <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                      <div>
+                        <b>{req.type}</b>
+                        <p className="text-muted small mb-0">{req.note}</p>
+                      </div>
+                      {submitted ? (
+                        <span className={`badge ${badge(submitted.status)}`}>{submitted.status}</span>
+                      ) : (
+                        <span className="badge bg-secondary">Not yet submitted</span>
+                      )}
+                    </div>
+                    {submitted?.review_notes && (
+                      <div className="alert alert-danger py-1 px-2 mt-2 mb-0 small">
+                        <i className="bi bi-info-circle me-1" />
+                        {submitted.review_notes}
+                      </div>
+                    )}
+                    {submitted?.declared_birth_date && (
+                      <small className="text-muted d-block mt-1">
+                        Declared birth date: {submitted.declared_birth_date}
+                        {submitted.birthdate_match !== null && (
+                          <span className={`ms-2 fw-semibold ${submitted.birthdate_match ? 'text-success' : 'text-danger'}`}>
+                            {submitted.birthdate_match ? '✓ Matches roster' : '✗ Mismatch — review required'}
+                          </span>
+                        )}
+                      </small>
+                    )}
+                    {submitted && (
+                      <small className="text-muted d-block">
+                        Submitted {new Date(submitted.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </small>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Full submission history */}
+          <div className="card-custom p-4">
+            <h6 className="fw-bold mb-3">
+              <i className="bi bi-clock-history me-2 text-evsu-primary" />
+              Full Submission History
+            </h6>
+            {documents.length ? documents.map(d => (
+              <div className="d-flex justify-content-between align-items-start border-bottom py-3" key={d.id}>
+                <div>
+                  <b>{d.document_type}</b>
+                  <small className="d-block text-muted">
+                    Submitted {new Date(d.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </small>
+                  {d.review_notes && <small className="d-block text-danger">{d.review_notes}</small>}
+                </div>
+                <span className={`badge ${badge(d.status)}`}>{d.status}</span>
+              </div>
+            )) : (
+              <p className="text-muted mb-0">
+                <i className="bi bi-file-earmark me-2" />
+                No documents have been submitted yet. Your coach will upload them on your behalf.
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }

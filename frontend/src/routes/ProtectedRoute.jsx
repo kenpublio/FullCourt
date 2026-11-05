@@ -18,7 +18,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
     const role = user?.role;
     const home = ['platform_admin','admin'].includes(role) ? '/platform'
-      : role === 'coach' ? '/coach'
+      : ['coach','assistant_coach'].includes(role) ? '/coach'
       : '/statistician';
     return <Navigate to={home} replace />;
   }

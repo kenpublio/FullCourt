@@ -11,6 +11,7 @@ import "../styles/dashboard-professional.css";
 
 const CoachDashboard = () => {
   const { user } = useAuth();
+  const isAssistant = user?.role === 'assistant_coach';
   const [teams, setTeams] = useState([]),
     [players, setPlayers] = useState([]),
     [payments, setPayments] = useState([]),
@@ -63,6 +64,12 @@ const CoachDashboard = () => {
         new Date(a.scheduled_start_time || "2999") -
         new Date(b.scheduled_start_time || "2999"),
     )[0];
+  const primaryTeam = teams[0] || null;
+  const primaryTeamRoster = primaryTeam
+    ? players.filter((player) => Number(player.team_id) === Number(primaryTeam.id))
+    : [];
+  const primaryRosterLimit = Number(primaryTeam?.max_roster_size || 18);
+  const primaryTeamVerified = primaryTeamRoster.filter((player) => player.eligibility_status === "verified").length;
   const readinessRows = teams.map(team => {
     const teamRoster=players.filter(player=>Number(player.team_id)===Number(team.id));
     const rosterLimit=Number(team.max_roster_size||18);
@@ -95,30 +102,46 @@ const CoachDashboard = () => {
     return <LoadingSpinner message="Preparing your coach workspace..." />;
   return (
     <div className="container-fluid p-0 page-enter role-dashboard role-dashboard-coach">
-      <section className="welcome-banner mb-4">
+      <section className="welcome-banner coach-welcome-banner mb-4">
         <div style={{ position: "relative", zIndex: 1 }}>
           <div className="role-hero-topline mb-3">
-            <span className="role-hero-eyebrow"><i className="bi bi-clipboard2-pulse" /> Coach overview</span>
+            <span className="role-hero-eyebrow"><i className="bi bi-clipboard2-pulse" /> {isAssistant?'Assistant Coach overview':'Coach overview'}</span>
           </div>
           <h1 className="fw-bold text-white mb-1">
             Welcome, {user?.full_name || "Coach"}
           </h1>
           <p className="role-dashboard-intro mb-0">
-            Your team, roster, and next-game overview in one place.
+            {isAssistant?'Your assigned team, next game, standings, and reports in one place.':'Your team, roster, and next-game overview in one place.'}
           </p>
           <div className="role-hero-actions">
-            <Link to="/teams" className="role-hero-primary">Manage roster <i className="bi bi-arrow-up-right" /></Link>
+            <Link to={isAssistant?'/schedules':'/teams'} className="role-hero-primary">{isAssistant?'View team schedule':'Manage roster'} <i className="bi bi-arrow-up-right" /></Link>
             <span className="role-hero-date"><i className="bi bi-calendar3" /> {new Date().toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span>
           </div>
         </div>
+        <aside className="coach-hero-team-card" aria-label="Assigned team summary">
+          {primaryTeam ? <>
+            <div className="coach-hero-team-identity">
+              <span style={{ background: primaryTeam.primary_color || "#d63a1d" }}>
+                {primaryTeam.logo_url ? <img src={`${(import.meta.env.VITE_API_URL || "http://127.0.0.1:8767/api").replace(/\/api\/?$/, "")}${primaryTeam.logo_url}`} alt="" /> : (primaryTeam.short_name || primaryTeam.team_name || "FC").slice(0,2).toUpperCase()}
+              </span>
+              <div><small>MY ASSIGNED TEAM</small><h2>{primaryTeam.team_name}</h2><p>{primaryTeam.tournament_name || "Tournament assignment pending"}</p></div>
+            </div>
+            <div className="coach-hero-team-facts">
+              <span><small>Roster</small><b>{primaryTeamRoster.length}/{primaryRosterLimit}</b></span>
+              <span><small>Verified</small><b>{primaryTeamVerified}</b></span>
+              <span><small>Next game</small><b>{nextGame?.scheduled_start_time ? new Date(nextGame.scheduled_start_time).toLocaleDateString("en-PH",{month:"short",day:"numeric"}) : "TBA"}</b></span>
+            </div>
+            <Link to={isAssistant?'/schedules':'/teams'} className="coach-hero-team-link">{isAssistant?'Open team schedule':'Open team workspace'} <i className="bi bi-arrow-right" /></Link>
+          </> : <div className="coach-hero-no-team"><i className="bi bi-shield-plus"/><div><small>TEAM ASSIGNMENT</small><b>No team assigned yet</b><p>Your team will appear here after Admin assignment.</p></div></div>}
+        </aside>
       </section>
-      <nav className="role-quick-actions mb-4" aria-label="Coach quick actions">
-        {[["Manage Roster","/teams","bi-people-fill"],["Player Eligibility","/eligibility","bi-patch-check-fill"],["Team Schedule","/schedules","bi-calendar-event-fill"],["Team Reports","/reports","bi-bar-chart-fill"]].map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
+      <nav className="role-quick-actions mb-4" aria-label={`${isAssistant?'Assistant Coach':'Coach'} quick actions`}>
+        {(isAssistant?[["Team Schedule","/schedules","bi-calendar-event-fill"],["Standings","/standings","bi-list-ol"],["Team Reports","/reports","bi-bar-chart-fill"],["Team QR Pass","/qr-attendance","bi-qr-code"]]:[["Manage Roster","/teams","bi-people-fill"],["Player Eligibility","/eligibility","bi-patch-check-fill"],["Team Schedule","/schedules","bi-calendar-event-fill"],["Team Reports","/reports","bi-bar-chart-fill"]]).map(([label,path,icon])=><Link to={path} key={label}><span><i className={`bi ${icon}`}/></span><b>{label}</b><i className="bi bi-arrow-up-right"/></Link>)}
       </nav>
-      <section className={`coach-risk-panel mb-4 ${riskTotal?'has-risks':'is-clear'}`} aria-labelledby="coach-risk-title">
+      {!isAssistant&&<section className={`coach-risk-panel mb-4 ${riskTotal?'has-risks':'is-clear'}`} aria-labelledby="coach-risk-title">
         <header><div><span><i className={`bi ${riskTotal?'bi-exclamation-diamond-fill':'bi-shield-check'}`}/> ROSTER QUALITY CHECK</span><h2 id="coach-risk-title">{riskTotal?`${riskTotal} roster detail${riskTotal===1?'':'s'} need attention`:'Roster details are clear'}</h2><p>Resolve missing or rejected information before the Admin locks eligibility.</p></div><div><button type="button" onClick={()=>window.print()}><i className="bi bi-printer"/> Print handoff</button><Link to="/eligibility">Review players <i className="bi bi-arrow-up-right"/></Link></div></header>
         <div>{rosterRisks.map(item=><Link to="/eligibility" className={`${item.tone} ${item.count?'needs-action':'is-done'}`} key={item.label}><i className={`bi ${item.count?item.icon:'bi-check-circle-fill'}`}/><span><small>{item.count?'CHECK REQUIRED':'CLEAR'}</small><b>{item.label}</b></span><strong>{item.count}</strong><i className="bi bi-chevron-right"/></Link>)}</div>
-      </section>
+      </section>}
       <div className="row g-3 mb-4">
         {[
           ["My Teams", teams.length, "bi-shield-fill-check", "kpi-icon-red"],

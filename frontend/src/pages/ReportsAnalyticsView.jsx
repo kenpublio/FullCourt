@@ -27,7 +27,7 @@ ChartJS.register(
 
 const ReportsAnalyticsView = () => {
   const { user } = useAuth();
-  const isCoach=["coach","coach_manager"].includes(user?.role);
+  const isCoach=["coach","assistant_coach","coach_manager"].includes(user?.role);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("overview");
@@ -49,7 +49,9 @@ const ReportsAnalyticsView = () => {
         if(!active)return;
         setTeams(assignedTeams);
         setSelectedTeamId(current=>assignedTeams.some(team=>String(team.id)===current)?current:(assignedTeams[0]?String(assignedTeams[0].id):''));
-      }).catch(error=>{if(active)setLoadError(error.response?.data?.message||'Could not load your assigned team.');}).finally(()=>{if(active){setTeamsLoaded(true);setLoading(false);}});
+        setTeamsLoaded(true);
+        if(!assignedTeams.length)setLoading(false);
+      }).catch(error=>{if(active){setLoadError(error.response?.data?.message||'Could not load your assigned team.');setTeamsLoaded(true);setLoading(false);}});
     }else{
       Promise.all([reportService.getAnalytics(),tournamentService.getTournaments()]).then(([analytics,result])=>{
         if(!active)return;
@@ -176,9 +178,13 @@ const ReportsAnalyticsView = () => {
   if (loading)
     return <LoadingSpinner message="Calculating analytics metrics..." />;
 
-  if(loadError)return <div className="container-fluid p-0 reports-page"><section className="reports-hero"><span className="reports-eyebrow">{isCoach?'MY TEAM INTELLIGENCE':'BASKETBALL INTELLIGENCE'}</span><h1>{isCoach?'Team Reports & Performance':'Reports & Performance Analytics'}</h1><p>{loadError}</p><button type="button" className="btn btn-evsu btn-sm" onClick={()=>window.location.reload()}><i className="bi bi-arrow-clockwise me-2"/>Try again</button></section></div>;
+  if(loadError)return <div className="container-fluid p-0 reports-page"><section className="reports-hero"><h1>{isCoach?'Team Performance':'Reports & Analytics'}</h1><p>{loadError}</p><button type="button" className="btn btn-evsu btn-sm" onClick={()=>window.location.reload()}><i className="bi bi-arrow-clockwise me-2"/>Try again</button></section></div>;
 
-  if(isCoach&&teamsLoaded&&!selectedTeamId)return <div className="container-fluid p-0 reports-page"><section className="reports-hero reports-coach-hero"><span className="reports-eyebrow">MY TEAM INTELLIGENCE</span><h1>Team Reports &amp; Performance</h1><p>Analytics and performance records for your assigned team only.</p></section><section className="reports-empty-team"><span className="reports-empty-icon"><i className="bi bi-people"/></span><div><span className="reports-eyebrow">TEAM ACCESS</span><h2>No team assigned yet</h2><p>Once an Admin assigns you to a team, its roster, match activity, and performance reports will appear here.</p></div><a className="btn btn-outline-secondary" href="/teams">Open team workspace <i className="bi bi-arrow-right ms-1"/></a></section></div>;
+  if(isCoach&&teamsLoaded&&!selectedTeamId)return <div className="container-fluid p-0 reports-page"><section className="reports-hero reports-coach-hero"><h1>Team Performance</h1><p>Official results and player statistics for your assigned team.</p></section><section className="reports-empty-team"><span className="reports-empty-icon"><i className="bi bi-people"/></span><div><h2>No team assigned yet</h2><p>Once an Admin assigns you to a team, its roster, match activity, and performance reports will appear here.</p></div><a className="btn btn-outline-secondary" href="/teams">Open team workspace <i className="bi bi-arrow-right ms-1"/></a></section></div>;
+
+  // Team discovery and analytics are separate requests. Keep the page in a safe
+  // loading state during the short hand-off instead of rendering null report data.
+  if(!data)return <LoadingSpinner message="Preparing performance reports..." />;
 
   const outcomeChart = {
     labels: data?.match_outcomes?.map((m) => m.status) || [],
@@ -218,7 +224,6 @@ const ReportsAnalyticsView = () => {
       <div className="reports-hero">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div>
-            <span className="reports-eyebrow">{isCoach?'MY TEAM INTELLIGENCE':'BASKETBALL INTELLIGENCE'}</span>
             <h1
               className="fw-bold mb-1"
               style={{
@@ -227,10 +232,10 @@ const ReportsAnalyticsView = () => {
               }}
             >
               <i className="bi bi-bar-chart-line-fill text-evsu-primary me-2" />
-              {isCoach?'Team Reports & Performance':'Reports & Performance Analytics'}
+              {isCoach?'Team Performance':'Reports & Analytics'}
             </h1>
             <p className="text-muted small mb-0">
-              {isCoach?`Analytics and performance records for your assigned team only · ${teams.find(team=>String(team.id)===String(selectedTeamId))?.team_name||'Select a team'}`:'Basketball operations analytics and real downloadable reports'}
+              {isCoach?`${teams.find(team=>String(team.id)===String(selectedTeamId))?.team_name||'Select a team'} · Official results and player statistics`:'Official tournament results, team records, and downloadable reports'}
             </p>
           </div>
           <div className="reports-controls">
@@ -320,7 +325,7 @@ const ReportsAnalyticsView = () => {
             </div>
           </div>
 
-          <div className="row g-4">
+          <div className="row g-4 reports-chart-overview" aria-hidden="true">
             <div className="col-lg-6">
               <div className="report-chart-panel">
                 <div className="d-flex align-items-center gap-2 mb-2">
@@ -429,7 +434,7 @@ const ReportsAnalyticsView = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.player_leaders?.length ? (
+                  {data?.player_leaders?.length ? (
                     data.player_leaders.map((player, index) => (
                       <tr key={`${player.full_name}-${player.team_name}`}>
                         <td>
@@ -482,7 +487,7 @@ const ReportsAnalyticsView = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.top_teams?.length ? (
+                {data?.top_teams?.length ? (
                   data.top_teams.map((t, i) => (
                     <tr key={`${t.tournament_name}-${t.team_name}`}>
                       <td className="fw-bold text-evsu-primary">#{i + 1}</td>

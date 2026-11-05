@@ -6,8 +6,8 @@ export const scheduleService = {
     return res.data;
   },
 
-  async getSchedule(tournamentId) {
-    const res = await api.get(`/tournaments/${tournamentId}/schedule`);
+  async getSchedule(tournamentId, scope = 'all') {
+    const res = await api.get(`/tournaments/${tournamentId}/schedule`, { params: { scope } });
     return res.data?.data?.schedule || [];
   },
 

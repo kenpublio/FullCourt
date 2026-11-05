@@ -6,16 +6,20 @@ import '../styles/public-nav-contrast.css';
 export function CourtNav() {
   return <nav className="court-nav court-container" aria-label="Main navigation">
     <Link to="/" className="court-brand"><span><i className="bi bi-dribbble" aria-hidden="true" /></span>FULLCOURT<span className="court-brand-dot">.</span></Link>
-    <div className="court-nav-links"><NavLink to="/" end>Home</NavLink><NavLink to="/sports">Game center</NavLink><NavLink to="/sports/schedule">Schedule</NavLink></div>
-    <div className="court-nav-account"><Link to="/login" className="court-signin"><span className="court-signin-icon"><i className="bi bi-box-arrow-in-right" aria-hidden="true"/></span><span>Sign in</span></Link><Link to="/register" className="court-button compact court-join-button" aria-label="Coach sign-up"><span className="court-join-icon"><i className="bi bi-person-plus-fill" aria-hidden="true"/></span><span className="court-join-label-full">Coach sign-up</span><span className="court-join-label-mobile">Sign up</span><i className="bi bi-arrow-right court-join-arrow" aria-hidden="true"/></Link></div>
+    <div className="court-nav-links">
+      <NavLink to="/" end>Home</NavLink>
+      <NavLink to="/sports">Tournaments</NavLink>
+      <NavLink to="/sports/schedule">Schedules</NavLink>
+    </div>
+    <div className="court-nav-account"><Link to="/login" className="court-signin"><span className="court-signin-icon"><i className="bi bi-box-arrow-in-right" aria-hidden="true"/></span><span>Sign in</span></Link><Link to="/register" className="court-button compact court-join-button" aria-label="Coach sign-up"><span className="court-join-icon"><i className="bi bi-person-plus-fill" aria-hidden="true"/></span><span className="court-join-label-full">Coach registration</span><span className="court-join-label-mobile">Sign up</span><i className="bi bi-arrow-right court-join-arrow" aria-hidden="true"/></Link></div>
   </nav>;
 }
-export function CourtFooter() {
+export function CourtFooter({ showCta = true }) {
   return <footer className="court-footer-shell">
-    <div className="court-footer-cta court-container">
+    {showCta && <div className="court-footer-cta court-container">
       <div><span>READY FOR TIP-OFF?</span><h2>Run every game from one court.</h2><p>Teams, schedules, live scores, standings, and performance analytics—together in FullCourt.</p></div>
       <div className="court-footer-actions"><Link to="/register" className="court-button">Register as Coach <i className="bi bi-arrow-up-right" /></Link><Link to="/sports" className="court-footer-secondary">Explore games <i className="bi bi-arrow-right" /></Link></div>
-    </div>
+    </div>}
     <div className="court-footer court-container">
       <div className="court-footer-brand">
         <Link to="/" className="court-brand"><span><i className="bi bi-dribbble" aria-hidden="true" /></span>FULLCOURT<span className="court-brand-dot">.</span></Link>
@@ -45,9 +49,10 @@ export function MatchCard({ match, sheet = false }) {
     <div className="court-match-bottom"><Link to={`/sports/games/${match.id}?tournament=${match.tournament_id}`}>{match.status==='in_progress'?'Watch live':'Game details'} <i className="bi bi-arrow-right"/></Link>{sheet && <a href={`${apiBase}/reports/matches/${match.id}/score-sheet.pdf`} aria-label={`Download score sheet for ${match.team1_name || 'team one'} vs ${match.team2_name || 'team two'}`}><i className="bi bi-file-earmark-pdf"/> Score sheet</a>}</div>
   </article>;
 }
-export function TournamentCard({ tournament, index = 0 }) {
-  return <Link to={`/sports/tournaments/${tournament.id}`} className="court-tournament">
-    <div className="court-tournament-cover"><span className="court-tournament-number">{String(index + 1).padStart(2,'0')}</span><i className="bi bi-trophy" aria-hidden="true"/><CourtStatus status={tournament.status}/><span className="court-tournament-sport">BASKETBALL / {String(tournament.format || 'Tournament').replaceAll('_',' ')}</span></div>
-    <div className="court-tournament-body"><h3>{tournament.name}</h3><p>{tournament.description || 'Follow the teams, fixtures, standings, and results.'}</p><div className="court-tournament-facts"><span className="court-tournament-date"><i className="bi bi-calendar3"/> {courtDate(tournament.start_date)}</span>{tournament.end_date&&<span><i className="bi bi-flag"/> Ends {courtDate(tournament.end_date)}</span>}{tournament.team_count!=null&&<span><i className="bi bi-people"/> {tournament.team_count} teams</span>}</div><div className="court-tournament-link">Explore tournament <i className="bi bi-arrow-up-right"/></div></div>
+export function TournamentCard({ tournament }) {
+  const completed=tournament.status==='completed';
+  return <Link to={`/sports/tournaments/${tournament.id}`} className="court-tournament" onClick={()=>localStorage.setItem('fullcourt_public_tournament',String(tournament.id))}>
+    <div className="court-tournament-cover"><i className="bi bi-trophy" aria-hidden="true"/><CourtStatus status={tournament.status}/><span className="court-tournament-sport">BASKETBALL / {String(tournament.format || 'Tournament').replaceAll('_',' ')}</span></div>
+    <div className="court-tournament-body"><h3>{tournament.name}</h3><p>{tournament.description || 'Follow the teams, fixtures, standings, and results.'}</p><div className="court-tournament-facts"><span className="court-tournament-date"><i className="bi bi-calendar3"/> {completed?'Started':'Starts'} {courtDate(tournament.start_date)}</span>{completed&&tournament.end_date&&<span><i className="bi bi-flag-fill"/> Ended {courtDate(tournament.end_date)}</span>}{tournament.team_count!=null&&<span><i className="bi bi-people"/> {tournament.team_count} teams</span>}</div><div className="court-tournament-link">Explore tournament <i className="bi bi-arrow-up-right"/></div></div>
   </Link>;
 }

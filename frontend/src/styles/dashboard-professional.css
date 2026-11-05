@@ -26,6 +26,30 @@
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
 }
 
+.role-dashboard-coach .coach-welcome-banner {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(290px,360px);
+  align-items: center;
+  gap: 2rem;
+}
+.coach-hero-team-card { position:relative;z-index:1;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:15px;background:rgba(17,18,21,.88);backdrop-filter:blur(10px);color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.16) }
+.coach-hero-team-identity { display:flex;align-items:center;gap:12px }
+.coach-hero-team-identity>span { display:grid;flex:0 0 48px;width:48px;height:48px;place-items:center;overflow:hidden;border:1px solid rgba(255,255,255,.2);border-radius:13px;color:#fff;font-size:.83rem;font-weight:900;letter-spacing:.04em }
+.coach-hero-team-identity>span img { width:100%;height:100%;object-fit:cover }
+.coach-hero-team-identity>div { min-width:0 }
+.coach-hero-team-identity small,.coach-hero-no-team small { color:#ffb6ae;font-size:.54rem;font-weight:900;letter-spacing:.12em }
+.coach-hero-team-identity h2 { overflow:hidden;margin:2px 0 1px;color:#fff;font-size:1rem;font-weight:900;text-overflow:ellipsis;white-space:nowrap }
+.coach-hero-team-identity p,.coach-hero-no-team p { overflow:hidden;margin:0;color:#c5c7cd;font-size:.65rem;text-overflow:ellipsis;white-space:nowrap }
+.coach-hero-team-facts { display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:14px 0 11px }
+.coach-hero-team-facts>span { display:grid;gap:2px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(0,0,0,.13) }
+.coach-hero-team-facts small { color:#aeb1b9;font-size:.52rem;font-weight:700 }
+.coach-hero-team-facts b { color:#fff;font-size:.76rem }
+.coach-hero-team-link { display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);color:#ffd06a;font-size:.65rem;font-weight:850;text-decoration:none }
+.coach-hero-team-link:hover { color:#fff }
+.coach-hero-no-team { display:flex;align-items:center;gap:12px;min-height:104px }
+.coach-hero-no-team>i { display:grid;width:46px;height:46px;place-items:center;border-radius:13px;background:rgba(255,255,255,.08);color:#ffcb54;font-size:1.25rem }
+.coach-hero-no-team b { display:block;margin:3px 0;color:#fff;font-size:.86rem }
+
 .role-dashboard .role-hero-topline {
   justify-content: flex-start;
 }
@@ -395,6 +419,7 @@
 .admin-console-light .role-dashboard .admin-control-link:hover { background: #fff4f1; }
 
 @media (max-width: 767.98px) {
+  .role-dashboard-coach .coach-welcome-banner { grid-template-columns:1fr;gap:1.2rem }
   .role-dashboard .welcome-banner {
     min-height: 0;
     padding: 1.4rem 1.25rem;

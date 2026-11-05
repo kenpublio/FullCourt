@@ -21,6 +21,8 @@ class VenueController {
         $venues = OrganizationAccess::isPlatform($user) ? $this->venueModel->getAll() : $this->venueModel->getApproved();
         foreach ($venues as &$v) {
             $v['courts'] = $this->venueModel->getCourts((int)$v['id']);
+            $v['can_manage'] = in_array($user['role'], ['platform_admin', 'admin'], true)
+                || $this->venueModel->canManage((int)$v['id'], (int)$user['user_id']);
         }
         unset($v);
         $courts = array_merge(...array_map(fn($v)=>$v['courts'],$venues)) ?: [];
@@ -88,8 +90,9 @@ class VenueController {
     }
 
     public function updateCourt(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         $venueId=$this->venueModel->courtVenueId($id);if(!$venueId)Response::error('Court not found.',404);
+        if ($user['role']==='statistician' && !$this->venueModel->canManage($venueId,(int)$user['user_id'])) Response::forbidden('You can only edit courts in venues you created.');
         $input = json_decode(file_get_contents('php://input'), true);
         $courtName = trim($input['court_name'] ?? '');
         if ($courtName === '') Response::error('Court name is required.', 400);
@@ -100,8 +103,9 @@ class VenueController {
     }
 
     public function destroyCourt(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin', 'admin', 'statistician']);
         $venueId=$this->venueModel->courtVenueId($id);if(!$venueId)Response::error('Court not found.',404);
+        if ($user['role']==='statistician' && !$this->venueModel->canManage($venueId,(int)$user['user_id'])) Response::forbidden('You can only delete courts in venues you created.');
         $this->venueModel->deleteCourt($id);
         $this->auditLog->log($user['user_id'], 'DELETE_COURT', 'VENUE_MGMT', "Deleted court ID {$id}.");
         Response::success('Court deleted successfully');

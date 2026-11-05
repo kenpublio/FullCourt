@@ -158,6 +158,7 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/public/scoring-links/([a-f0-9]{64})/activate$#', $path, $m) && $method === 'POST') { (new ScoringAccessController())->activate($m[1]); return; }
     if ($path === '/scoring-session/console' && $method === 'GET') { (new ScoringAccessController())->console(); return; }
     if ($path === '/scoring-session/stats' && $method === 'POST') { (new ScoringAccessController())->stat(); return; }
+    if (preg_match('#^/scoring-session/stats/(\d+)$#', $path, $m) && $method === 'DELETE') { (new ScoringAccessController())->undoStat((int)$m[1]); return; }
     if ($path === '/scoring-session/clock' && $method === 'PUT') { (new ScoringAccessController())->updateClock(); return; }
     if ($path === '/scoring-session/substitutions' && $method === 'POST') { (new ScoringAccessController())->substitute(); return; }
     if ($path === '/scoring-session/submit-final' && $method === 'POST') { (new ScoringAccessController())->submitFinal(); return; }

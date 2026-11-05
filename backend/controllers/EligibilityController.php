@@ -19,9 +19,11 @@ class EligibilityController {
     }
 
     public function index(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach']);
-        if ($user['role'] === 'coach') {
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','coach','statistician']);
+        if (in_array($user['role'],['coach','assistant_coach'],true)) {
             $players=$this->playerModel->getForCoach((int)$user['user_id']);
+        } elseif ($user['role'] === 'statistician') {
+            $players=$this->playerModel->getForStaffAdmin((int)$user['user_id']);
         } else {
             $players=$this->playerModel->getAllPending();
         }
@@ -59,7 +61,7 @@ class EligibilityController {
     }
 
     public function verify(int $id): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         $status = $input['status'] ?? 'verified'; // 'verified' or 'rejected'
@@ -142,6 +144,7 @@ class EligibilityController {
 
     private function requirePlayerRecordAccess(int $id,array $user):void {
         if(in_array($user['role'],['platform_admin','admin','coach'],true))return;
+        if($user['role']==='statistician' && in_array($id,array_map('intval',array_column($this->playerModel->getForStaffAdmin((int)$user['user_id']),'id')),true))return;
         Response::forbidden('You cannot access this roster record.');
     }
 }

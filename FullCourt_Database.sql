@@ -175,6 +175,22 @@ CREATE TABLE `bracket_nodes` (
   CONSTRAINT `bracket_nodes_ibfk_1` FOREIGN KEY (`bracket_id`) REFERENCES `brackets` (`id`) ON DELETE CASCADE,
   CONSTRAINT `bracket_nodes_ibfk_2` FOREIGN KEY (`match_id`) REFERENCES `matches` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Explicit winner/loser routing for double-elimination brackets.
+CREATE TABLE IF NOT EXISTS `bracket_advancements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `bracket_id` int(11) NOT NULL,
+  `source_match_id` int(11) NOT NULL,
+  `outcome` varchar(10) NOT NULL,
+  `target_match_id` int(11) NOT NULL,
+  `target_slot` tinyint(4) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_bracket_advance` (`source_match_id`,`outcome`,`target_match_id`,`target_slot`),
+  KEY `idx_bracket_advance_target` (`target_match_id`),
+  CONSTRAINT `bracket_advancement_bracket_fk` FOREIGN KEY (`bracket_id`) REFERENCES `brackets` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `bracket_advancement_source_fk` FOREIGN KEY (`source_match_id`) REFERENCES `matches` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `bracket_advancement_target_fk` FOREIGN KEY (`target_match_id`) REFERENCES `matches` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -420,7 +436,8 @@ DROP TABLE IF EXISTS `game_assignments`;
 CREATE TABLE `game_assignments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `match_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `team_player_id` int(11) DEFAULT NULL,
   `assignment_role` enum('referee','scorer','statistician') NOT NULL,
   `status` enum('pending','accepted','declined') NOT NULL DEFAULT 'pending',
   `qr_token_hash` char(64) DEFAULT NULL,
@@ -772,11 +789,14 @@ CREATE TABLE `player_awards` (
   `confirmed_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_player_award` (`award_category_id`,`user_id`),
+  UNIQUE KEY `uniq_roster_player_award` (`award_category_id`,`team_player_id`),
   KEY `user_id` (`user_id`),
+  KEY `team_player_id` (`team_player_id`),
   KEY `confirmed_by` (`confirmed_by`),
   CONSTRAINT `player_awards_ibfk_1` FOREIGN KEY (`award_category_id`) REFERENCES `award_categories` (`id`) ON DELETE CASCADE,
   CONSTRAINT `player_awards_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `player_awards_ibfk_3` FOREIGN KEY (`confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `player_awards_ibfk_3` FOREIGN KEY (`confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `player_awards_team_player_fk` FOREIGN KEY (`team_player_id`) REFERENCES `team_players` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -786,7 +806,7 @@ CREATE TABLE `player_awards` (
 
 LOCK TABLES `player_awards` WRITE;
 /*!40000 ALTER TABLE `player_awards` DISABLE KEYS */;
-INSERT INTO `player_awards` VALUES (1,1,7,'recommended',NULL,NULL),(2,2,7,'recommended',NULL,NULL),(3,3,7,'recommended',NULL,NULL),(4,4,7,'recommended',NULL,NULL);
+INSERT INTO `player_awards` (`id`,`award_category_id`,`user_id`,`team_player_id`,`status`,`confirmed_by`,`confirmed_at`) VALUES (1,1,7,NULL,'recommended',NULL,NULL),(2,2,7,NULL,'recommended',NULL,NULL),(3,3,7,NULL,'recommended',NULL,NULL),(4,4,7,NULL,'recommended',NULL,NULL);
 /*!40000 ALTER TABLE `player_awards` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1267,7 +1287,7 @@ CREATE TABLE `users` (
   `full_name` varchar(100) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
-  `role` enum('platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager','finance_officer','player','official','statistician') NOT NULL DEFAULT 'player',
+  `role` enum('platform_admin','admin','organization_admin','tournament_organizer','coach','assistant_coach','coach_manager','finance_officer','player','official','statistician') NOT NULL DEFAULT 'player',
   `department_course` varchar(100) DEFAULT NULL,
   `year_level` varchar(30) DEFAULT NULL,
   `phone_number` varchar(20) DEFAULT NULL,
@@ -1288,7 +1308,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'ADM-2026-001','Platform Administrator','admin@','$2y$12$IG/z2hMQQMgkuvtBF9OxKOiWO6WKDtZUCy9CCjnU76qK9D88LNC8a','platform_admin','Sports Office',NULL,NULL,NULL,1,'2026-08-04 12:41:08','2026-08-23 10:56:53'),(2,'ORG-2026-002','Tournament Organizer','organizer@','$2y$12$ZKRbzQnoDU7Cxr2rtdxLhOSKfMR1PJw07nRxSOXOaNypQRsWIVdyu','organization_admin','Sports Office',NULL,NULL,NULL,1,'2026-08-04 12:41:08','2026-08-23 10:56:53'),(4,'COACH-2026-004','Team Coach','coach@','$2y$12$m1nSJxHUHtdkMLux/uSLquMjJKgsQmiRBovy0kRcFRXTLlv3kIV7m','coach','Information Technology',NULL,'09700609670','/uploads/avatars/avatar_4_1787483963.jpg',1,'2026-08-04 12:41:08','2026-08-23 11:19:23'),(7,'2023-10492','Basketball Player','player@','$2y$12$2oUTeMZ77w1krFoUWxvrgean8ilo1t8BQaK/kFaZYeFo8seoLOgMe','player','Information Technology','3rd Year',NULL,NULL,1,'2026-08-04 12:41:08','2026-08-23 10:56:54');
+INSERT INTO `users` VALUES (1,'ADM-2026-001','Platform Administrator','platform.admin@fullcourt.local','$2y$12$IG/z2hMQQMgkuvtBF9OxKOiWO6WKDtZUCy9CCjnU76qK9D88LNC8a','platform_admin','Sports Office',NULL,NULL,NULL,1,'2026-08-04 12:41:08','2026-08-23 10:56:53'),(2,'ORG-2026-002','Tournament Organizer','organizer@fullcourt.local','$2y$12$ZKRbzQnoDU7Cxr2rtdxLhOSKfMR1PJw07nRxSOXOaNypQRsWIVdyu','organization_admin','Sports Office',NULL,NULL,NULL,1,'2026-08-04 12:41:08','2026-08-23 10:56:53'),(4,'COACH-2026-004','Team Coach','demo.coach01@fullcourt.local','$2y$12$m1nSJxHUHtdkMLux/uSLquMjJKgsQmiRBovy0kRcFRXTLlv3kIV7m','coach','Information Technology',NULL,'09700609670','/uploads/avatars/avatar_4_1787483963.jpg',1,'2026-08-04 12:41:08','2026-08-23 11:19:23'),(7,'2023-10492','Basketball Player','player@fullcourt.local','$2y$12$2oUTeMZ77w1krFoUWxvrgean8ilo1t8BQaK/kFaZYeFo8seoLOgMe','player','Information Technology','3rd Year',NULL,NULL,1,'2026-08-04 12:41:08','2026-08-23 10:56:54');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 

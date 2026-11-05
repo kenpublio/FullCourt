@@ -19,7 +19,7 @@ class TournamentController {
 
     public function index(): void {
         $user=AuthMiddleware::authenticate();
-        $tournaments = in_array($user['role'], ['coach','coach_manager'], true)
+        $tournaments = in_array($user['role'], ['coach','assistant_coach','coach_manager'], true)
             ? $this->tournamentModel->getAvailableForCoach((int)$user['user_id'])
             : $this->tournamentModel->getAll((int)$user['user_id'],OrganizationAccess::isPlatform($user));
         $sports = $this->tournamentModel->getSports();
@@ -44,7 +44,7 @@ class TournamentController {
     }
 
     public function store(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin']);
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (empty($input['name']) || empty($input['start_date']) || empty($input['end_date'])) {

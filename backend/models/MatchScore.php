@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/Bracket.php';
 // backend/models/MatchScore.php
 
 require_once __DIR__ . '/../config/database.php';
@@ -54,6 +55,7 @@ class MatchScore {
             throw new InvalidArgumentException('The game period or remaining time is invalid.');
         }
 
+        $doubleAdvance=null;$groupAdvance=null;
         $this->db->beginTransaction();
         try {
             $matchStmt = $this->db->prepare("SELECT m.tournament_id,m.team1_id,m.team2_id,m.status,COALESCE(t.operation_mode,'official') operation_mode FROM matches m JOIN tournaments t ON t.id=m.tournament_id WHERE m.id=:mid FOR UPDATE");
@@ -88,6 +90,21 @@ class MatchScore {
             $scoreStmt = $this->db->prepare("UPDATE match_scores SET team1_score=:s1,team2_score=:s2,current_period=:period,timer_seconds=:seconds,is_timer_running=0 WHERE match_id=:mid");
             $scoreStmt->execute([':s1'=>$team1Score,':s2'=>$team2Score,':period'=>$currentPeriod,':seconds'=>$timerSeconds,':mid'=>$matchId]);
 
+            // Close the final on-court stint so completed public box scores
+            // show real minutes instead of leaving every starter at 0.0.
+            if (preg_match('/^Q([1-4])$/', $currentPeriod, $periodMatch)) {
+                $elapsedSeconds = (((int)$periodMatch[1] - 1) * 600) + (600 - min(600, $timerSeconds));
+            } elseif (preg_match('/^OT([1-5])$/', $currentPeriod, $periodMatch)) {
+                $elapsedSeconds = 2400 + (((int)$periodMatch[1] - 1) * 300) + (300 - min(300, $timerSeconds));
+            } else {
+                $elapsedSeconds = 0;
+            }
+            $minutesStmt = $this->db->prepare("UPDATE player_game_minutes
+                SET seconds_played=seconds_played+GREATEST(0,:elapsed-COALESCE(last_entered_elapsed_seconds,:elapsed_default)),
+                    is_on_court=0,last_entered_elapsed_seconds=NULL
+                WHERE match_id=:mid AND is_on_court=1");
+            $minutesStmt->execute([':elapsed'=>$elapsedSeconds,':elapsed_default'=>$elapsedSeconds,':mid'=>$matchId]);
+
             $end = $this->db->prepare("UPDATE matches SET status='completed',winner_team_id=:winner,actual_end_time=NOW(),actual_start_time=COALESCE(actual_start_time,NOW()) WHERE id=:mid");
             $end->execute([':winner'=>$winnerTeamId,':mid'=>$matchId]);
 
@@ -97,7 +114,9 @@ class MatchScore {
               $nodeStmt = $this->db->prepare("SELECT * FROM bracket_nodes WHERE match_id=:mid LIMIT 1");
               $nodeStmt->execute([':mid'=>$matchId]);
               $currentNode = $nodeStmt->fetch();
-              if ($currentNode) {
+              $bracketFormat=null;
+              if($currentNode){$formatStmt=$this->db->prepare('SELECT format FROM brackets WHERE id=:id');$formatStmt->execute([':id'=>$currentNode['bracket_id']]);$bracketFormat=$formatStmt->fetchColumn();}
+              if ($currentNode && $bracketFormat!=='double_elimination' && !($bracketFormat==='group_stage'&&(int)$currentNode['round']===1)) {
                 $nextRound = $currentNode['round'] + 1;
                 $nextPos = (int) ceil($currentNode['position_in_round'] / 2);
                 $nextMatchStmt = $this->db->prepare("SELECT m.id FROM bracket_nodes bn JOIN matches m ON bn.match_id=m.id WHERE bn.bracket_id=:bid AND bn.round=:round AND bn.position_in_round=:position LIMIT 1");
@@ -109,9 +128,16 @@ class MatchScore {
                     $advance->execute([':winner'=>$winnerTeamId,':next_match'=>$nextMatchId]);
                 }
               }
+              if($currentNode && $bracketFormat==='double_elimination'){
+                $loserTeamId=$winnerTeamId===(int)$match['team1_id']?(int)$match['team2_id']:(int)$match['team1_id'];
+                $doubleAdvance=[$matchId,$winnerTeamId,$loserTeamId];
+              }
+              if($currentNode&&$bracketFormat==='group_stage'&&(int)$currentNode['round']===1)$groupAdvance=$matchId;
               $this->recomputeStandings((int)$match['tournament_id']);
             }
             $this->db->commit();
+            if($doubleAdvance)(new Bracket())->advanceDoubleElimination(...$doubleAdvance);
+            if($groupAdvance)(new Bracket())->populateGroupStageKnockout($groupAdvance);
             return true;
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();

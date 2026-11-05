@@ -25,14 +25,32 @@ class Team {
         return $stmt->fetchAll();
     }
 
+    public function saveSeedOrder(int $tournamentId, array $teamIds): void {
+        $this->db->beginTransaction();
+        try {
+            $seed=$this->db->prepare('UPDATE teams SET seed=:seed WHERE id=:team_id AND tournament_id=:tournament_id');
+            foreach(array_values($teamIds) as $index=>$teamId){
+                $seed->execute([':seed'=>$index+1,':team_id'=>(int)$teamId,':tournament_id'=>$tournamentId]);
+                if($seed->rowCount()!==1)throw new InvalidArgumentException('A selected team does not belong to this tournament.');
+            }
+            $this->db->prepare("UPDATE tournaments SET seeding_type='manual' WHERE id=:tournament_id")
+                ->execute([':tournament_id'=>$tournamentId]);
+            $this->db->commit();
+        }catch(Throwable $error){
+            if($this->db->inTransaction())$this->db->rollBack();
+            throw $error;
+        }
+    }
+
     public function getAll(): array {
-        $sql = "SELECT tm.*, u.full_name as coach_name, t.name as tournament_name, s.name as sport_name, d.name AS division_name, 18 AS max_roster_size,
+        $sql = "SELECT tm.*, u.full_name as coach_name, manager.full_name AS assistant_coach_name, t.name as tournament_name, s.name as sport_name, d.name AS division_name, COALESCE(d.max_roster_size,18) AS max_roster_size,
                 (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players,
                 (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
                 (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
                 (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed' AND (m.winner_team_id IS NULL OR m.winner_team_id<>tm.id)) AS losses
                 FROM teams tm
                 JOIN users u ON tm.coach_user_id = u.id
+                LEFT JOIN users manager ON tm.manager_user_id = manager.id AND manager.role='assistant_coach'
                 JOIN tournaments t ON tm.tournament_id = t.id
                 JOIN sports s ON t.sport_id = s.id
                 LEFT JOIN divisions d ON d.id = tm.division_id
@@ -42,7 +60,7 @@ class Team {
     }
 
     public function getForCoach(int $userId): array {
-        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, t.registration_deadline, t.roster_locked_at, s.name AS sport_name, d.name AS division_name, 18 AS max_roster_size,
+        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, t.registration_deadline, t.roster_locked_at, s.name AS sport_name, d.name AS division_name, COALESCE(d.max_roster_size,18) AS max_roster_size,
                        (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id = tm.id AND tp.eligibility_status = 'verified') AS total_players,
                        (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
                        (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
@@ -60,14 +78,14 @@ class Team {
     }
 
     public function getForTournamentManager(int $userId): array {
-        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name, 18 AS max_roster_size,
+        $sql = "SELECT tm.*, u.full_name AS coach_name, t.name AS tournament_name, s.name AS sport_name, d.name AS division_name, COALESCE(d.max_roster_size,18) AS max_roster_size,
                        (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified') AS total_players,
                        (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed') AS games_played,
                        (SELECT COUNT(*) FROM matches m WHERE m.winner_team_id=tm.id AND m.status='completed') AS wins,
                        (SELECT COUNT(*) FROM matches m WHERE (m.team1_id=tm.id OR m.team2_id=tm.id) AND m.status='completed' AND (m.winner_team_id IS NULL OR m.winner_team_id<>tm.id)) AS losses
                 FROM teams tm JOIN users u ON u.id=tm.coach_user_id JOIN tournaments t ON t.id=tm.tournament_id
                 JOIN sports s ON s.id=t.sport_id LEFT JOIN divisions d ON d.id=tm.division_id
-                WHERE t.created_by=:user_id ORDER BY tm.id DESC";
+                WHERE EXISTS (SELECT 1 FROM tournament_staff_assignments tsa WHERE tsa.tournament_id=t.id AND tsa.user_id=:user_id) ORDER BY tm.id DESC";
         $stmt=$this->db->prepare($sql);$stmt->execute([':user_id'=>$userId]);return$stmt->fetchAll();
     }
 
@@ -89,9 +107,10 @@ class Team {
     }
 
     public function getById(int $id): ?array {
-        $sql = "SELECT tm.*, u.full_name as coach_name, t.name as tournament_name
+        $sql = "SELECT tm.*, u.full_name as coach_name, manager.full_name AS assistant_coach_name, t.name as tournament_name
                 FROM teams tm
                 JOIN users u ON tm.coach_user_id = u.id
+                LEFT JOIN users manager ON tm.manager_user_id = manager.id AND manager.role='assistant_coach'
                 JOIN tournaments t ON tm.tournament_id = t.id
                 WHERE tm.id = :id LIMIT 1";
         $stmt = $this->db->prepare($sql);
@@ -136,7 +155,8 @@ class Team {
 
     public function update(int $id, array $data): bool {
         $sql = "UPDATE teams SET tournament_id = :tournament_id, division_id = :division_id,
-                team_name = :team_name, short_name = :short_name, primary_color = :primary_color
+                team_name = :team_name, short_name = :short_name, primary_color = :primary_color,
+                manager_user_id = :manager_user_id
                 WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
@@ -145,6 +165,7 @@ class Team {
             ':team_name' => $data['team_name'],
             ':short_name' => $data['short_name'] ?? null,
             ':primary_color' => $data['primary_color'] ?? '#F97316',
+            ':manager_user_id' => !empty($data['manager_user_id']) ? (int)$data['manager_user_id'] : null,
             ':id' => $id
         ]);
     }

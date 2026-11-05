@@ -22,7 +22,7 @@ const Login = () => {
       const homeByRole = {
         platform_admin: '/platform', admin: '/platform',
         organization_admin: '/organizer', tournament_organizer: '/organizer',
-        coach: '/coach', coach_manager: '/coach', player: '/player',
+        coach: '/coach', assistant_coach: '/coach', coach_manager: '/coach', player: '/player',
         official: '/official', statistician: '/dashboard',
       };
       navigate(homeByRole[account.role] || '/dashboard', { replace: true });

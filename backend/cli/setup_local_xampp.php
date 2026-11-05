@@ -16,6 +16,7 @@ $schema = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT NULL",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS coach_team_name VARCHAR(150) NULL",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS coaching_experience_years SMALLINT NULL",
+    "ALTER TABLE users MODIFY COLUMN role ENUM('platform_admin','admin','organization_admin','tournament_organizer','coach','assistant_coach','coach_manager','finance_officer','player','official','statistician') NOT NULL DEFAULT 'player'",
     "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS address TEXT NULL",
     "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS contact_designation VARCHAR(100) NULL",
     "ALTER TABLE venues ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) NOT NULL DEFAULT 'approved'",

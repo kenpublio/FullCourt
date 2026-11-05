@@ -44,10 +44,10 @@ const NotificationsView = () => {
     <div className="container-fluid p-0 ops-page notifications-page">
       <div className="ops-page-head">
         <div>
-          <span className="ops-eyebrow">FULLCOURT INBOX · {unreadCount} UNREAD</span><h3 className="fw-bold mb-1">
+          <span className="ops-eyebrow">FULLCOURT INBOX · {unreadCount} UNREAD</span><h1 className="h3 fw-bold mb-1">
             <i className="bi bi-bell-fill text-evsu-primary me-2" />
             Notifications
-          </h3>
+          </h1>
           <p className="text-muted small mb-0">
             Schedule changes, eligibility, payments, assignments, results, and awards
           </p>

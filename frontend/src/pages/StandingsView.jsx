@@ -5,12 +5,14 @@ import eligibilityService from "../services/eligibilityService";
 import teamService from "../services/teamService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
+import { Link } from "react-router-dom";
 import "../styles/operations-polish.css";
 
 const StandingsView = () => {
   const { user } = useAuth();
   const isPlayer = user?.role === "player";
-  const isCoach = ["coach","coach_manager"].includes(user?.role);
+  const isCoach = ["coach","assistant_coach","coach_manager"].includes(user?.role);
+  const canOperateScoring = ["platform_admin","admin","statistician"].includes(user?.role);
   const [tournaments, setTournaments] = useState([]);
   const [tournamentId, setTournamentId] = useState("");
   const [standings, setStandings] = useState([]);
@@ -126,6 +128,7 @@ const StandingsView = () => {
           )) : <option value="">No tournaments available</option>}
         </select></div>}
       </div>
+      {canOperateScoring&&<section className="standings-scoring-hub" aria-label="Game scoring actions"><div><span className="standings-scoring-icon"><i className="bi bi-stopwatch-fill"/></span><span><small>COURTSIDE SCORING</small><strong>Run a game or share secure access</strong><p>Record team scores and player statistics, or send a protected scoring link to a trusted scorer.</p></span></div><div><Link className="btn btn-evsu" to="/statistician"><i className="bi bi-clipboard2-pulse me-2"/>Open Courtside Statistician</Link><Link className="btn btn-outline-secondary" to="/officials"><i className="bi bi-link-45deg me-2"/>Manage scoring links</Link></div></section>}
       {!loading&&activeTournament&&<section className="standings-overview-grid" aria-label="Tournament standings overview">
         <article><span className="standings-overview-icon"><i className="bi bi-people-fill"/></span><div><small>Teams ranked</small><strong>{standings.length}</strong></div></article>
         <article><span className="standings-overview-icon"><i className="bi bi-calendar2-check-fill"/></span><div><small>Games completed</small><strong>{completedGames}</strong></div></article>

@@ -23,11 +23,11 @@ const Dashboard = () => {
       ? 'Open assigned games and record the official team and player scores.'
       : 'Manage your team roster, documents, upcoming tournaments, and schedule.';
   const roleEyebrow = dashboardMode === 'admin' ? 'Administration overview' : dashboardMode === 'staff' ? 'Staff operations' : 'Coach workspace';
-  const primaryAction = dashboardMode === 'admin' ? ['/tournaments','Manage tournaments'] : dashboardMode === 'staff' ? ['/scorekeeper','Open scoring console'] : ['/teams','Manage my team'];
+  const primaryAction = dashboardMode === 'admin' ? ['/tournaments','Manage tournaments'] : dashboardMode === 'staff' ? ['/officials','Open staff operations'] : ['/teams','Manage my team'];
   const quickActions = dashboardMode === 'admin' ? [
     ['Tournaments','/tournaments','bi-trophy-fill'],['Users & Roles','/users','bi-shield-lock-fill'],['Eligibility','/eligibility','bi-patch-check-fill'],['System Reports','/reports','bi-file-earmark-bar-graph-fill'],
   ] : dashboardMode === 'staff' ? [
-    ['My Tournaments','/tournaments','bi-trophy-fill'],['Team Applications','/teams','bi-people-fill'],['Build Bracket','/brackets','bi-diagram-3-fill'],['Live Scores','/scorekeeper','bi-broadcast-pin'],
+    ['Tournaments','/tournaments','bi-trophy-fill'],['Coach Registrations','/teams','bi-people-fill'],['Brackets','/brackets','bi-diagram-3-fill'],['Schedules','/schedules','bi-calendar2-event-fill'],['Scoring Links','/officials','bi-link-45deg'],['Scoring Console','/scorekeeper','bi-broadcast-pin'],
   ] : [
     ['My Team','/teams','bi-people-fill'],['Upcoming Tournaments','/tournaments','bi-trophy-fill'],['My Schedule','/schedules','bi-calendar2-event-fill'],['Notifications','/notifications','bi-bell-fill'],
   ];
@@ -162,7 +162,7 @@ const Dashboard = () => {
     ? (adminAttention.find(item=>item.count>0) || { title:'Review tournament readiness', detail:'Open the tournament command center and verify the next competition.', path:'/tournaments', icon:'bi-clipboard2-check-fill', tone:'clear' })
     : dashboardMode === 'staff'
       ? (staffPending>0
-          ? { title:'Accept your game assignment', detail:`${staffPending} assignment${staffPending===1?' is':'s are'} waiting for your response.`, path:'/scorekeeper', icon:'bi-person-check-fill', tone:'warning' }
+          ? { title:'Accept your game assignment', detail:`${staffPending} assignment${staffPending===1?' is':'s are'} waiting for your response.`, path:'/officials', icon:'bi-person-check-fill', tone:'warning' }
           : staffAccepted>0
             ? { title:'Prepare the scoring console', detail:`${staffAccepted} accepted game${staffAccepted===1?' is':'s are'} ready for lineup and score entry.`, path:'/scorekeeper', icon:'bi-clipboard-data-fill', tone:'clear' }
             : { title:'Review your tournaments', detail:'Check tournament setup, brackets, and upcoming game assignments.', path:'/tournaments', icon:'bi-trophy-fill', tone:'clear' })
@@ -332,7 +332,7 @@ const Dashboard = () => {
       </div>}
 
       {/* ── Charts Row ── */}
-      <div className="row g-4 mb-4">
+      {role !== 'statistician' && <div className="row g-4 mb-4">
         <div className="col-12">
           <div className="card-custom dashboard-activity-card h-100">
             <div className="dashboard-section-head">
@@ -346,11 +346,11 @@ const Dashboard = () => {
               </div>
               <div className="dashboard-section-total"><i className="bi bi-people-fill" /><div><strong>{activityTotal}</strong>{' '}<span>{role === 'player' ? 'Active team' : 'Registered teams'}</span></div></div>
             </div>
-            {activityTotal > 0 ? <div className="competition-activity-visual"><div className="competition-sport-mark"><span><i className="bi bi-dribbble" /></span><div><small>ACTIVE SPORT</small><h3>Basketball</h3><p>100% of FullCourt competition activity</p></div></div><div className="competition-meter"><div><span>Competition coverage</span><b>100%</b></div><div className="competition-meter-track"><i /></div><small>All registered teams are competing in basketball tournaments.</small></div><div className="competition-mini-stats"><div><strong>{activityTotal}</strong><span>Teams</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.active_tournaments||0)}</strong><span>Active tournaments</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.verified_players||0)}</strong><span>Verified players</span></div></div></div> : <div className="dashboard-empty-state compact"><span><i className="bi bi-dribbble" /></span><div><h3>Competition activity will appear here</h3><p>Add teams to an active tournament to begin tracking basketball participation.</p></div>{dashboardMode!=='player'&&<Link to="/teams">Manage teams <i className="bi bi-arrow-right" /></Link>}</div>}
+            {activityTotal > 0 ? <div className="competition-activity-visual"><div className="competition-sport-mark"><span><i className="bi bi-trophy-fill" /></span><div><small>LEAGUE OVERVIEW</small><h3>Competition activity</h3><p>Teams, tournaments, and verified rosters in one view.</p></div></div><div className="competition-mini-stats"><div><strong>{activityTotal}</strong><span>League teams</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.active_tournaments||0)}</strong><span>Active tournaments</span></div><div><strong>{role==='player'?(membership?.has_team?1:0):(analytics?.metrics?.verified_players||0)}</strong><span>Verified players</span></div></div></div> : <div className="dashboard-empty-state compact"><span><i className="bi bi-dribbble" /></span><div><h3>Competition activity will appear here</h3><p>Add teams to an active tournament to begin tracking basketball participation.</p></div>{dashboardMode!=='player'&&<Link to="/teams">Manage teams <i className="bi bi-arrow-right" /></Link>}</div>}
           </div>
         </div>
 
-      </div>
+      </div>}
 
       {role === 'player' && hasTeamAccess && upcomingMatch && (
         <div className="mb-4"><MatchupPrediction matchId={upcomingMatch.id} title="Your Next Matchup" /></div>

@@ -42,6 +42,13 @@ const LegalPage = lazy(() => import('../pages/LegalPage'));
 const PublicGameDetails = lazy(() => import('../pages/PublicGameDetails'));
 const PublicDailySchedule = lazy(() => import('../pages/PublicDailySchedule'));
 const GuestScoringConsole = lazy(() => import('../pages/GuestScoringConsole'));
+const GymScoreboard = lazy(() => import('../pages/GymScoreboard'));
+const OrganizationManagement = lazy(() => import('../pages/OrganizationManagement'));
+const PlayerAnalytics = lazy(() => import('../pages/PlayerAnalytics'));
+const PlayerDocuments = lazy(() => import('../pages/PlayerDocuments'));
+const SportsHistory = lazy(() => import('../pages/SportsHistory'));
+const SportsCategories = lazy(() => import('../pages/SportsCategories'));
+const PublicOrganizationPortal = lazy(() => import('../pages/PublicOrganizationPortal'));
 
 // Guard
 import ProtectedRoute from './ProtectedRoute';
@@ -81,35 +88,46 @@ const AppRoutes = () => {
         <Route path="/share-cards" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><ShareCards /></ProtectedRoute>} />
         <Route path="/teams/:teamId/stats" element={<TeamAnalytics />} />
         <Route path="/platform" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><Dashboard /></ProtectedRoute>} />
-        <Route path="/coach" element={<ProtectedRoute allowedRoles={['coach']}><CoachDashboard /></ProtectedRoute>} />
+        <Route path="/coach" element={<ProtectedRoute allowedRoles={['coach','assistant_coach']}><CoachDashboard /></ProtectedRoute>} />
         <Route path="/statistician" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BasketballStatistician /></ProtectedRoute>} />
         <Route path="/games/:gameId/live" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><LiveScoringView /></ProtectedRoute>} />
         
         <Route path="/tournaments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><TournamentManagement /></ProtectedRoute>} />
         <Route path="/teams" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><TeamManagement /></ProtectedRoute>} />
-        <Route path="/eligibility" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><EligibilityVerification /></ProtectedRoute>} />
+        <Route path="/eligibility" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><EligibilityVerification /></ProtectedRoute>} />
         <Route path="/brackets" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BracketEngineView /></ProtectedRoute>} />
-        <Route path="/schedules" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><ScheduleOptimizerView /></ProtectedRoute>} />
-        <Route path="/venues" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><VenueManagement /></ProtectedRoute>} />
+        <Route path="/schedules" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><ScheduleOptimizerView /></ProtectedRoute>} />
+        <Route path="/venues" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><VenueManagement /></ProtectedRoute>} />
         <Route path="/live-scoring" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><LiveScoringView /></ProtectedRoute>} />
         <Route path="/scorekeeper" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BasketballStatistician /></ProtectedRoute>} />
-        <Route path="/standings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><StandingsView /></ProtectedRoute>} />
+        <Route path="/standings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><StandingsView /></ProtectedRoute>} />
         <Route path="/payments" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><PaymentVerificationView /></ProtectedRoute>} />
-        <Route path="/qr-attendance" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><QRAttendanceView /></ProtectedRoute>} />
-        <Route path="/game-day" element={<ProtectedRoute allowedRoles={['platform_admin','admin']}><GameDayOperations /></ProtectedRoute>} />
+        <Route path="/qr-attendance" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><QRAttendanceView /></ProtectedRoute>} />
+        <Route path="/game-day" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><GameDayOperations /></ProtectedRoute>} />
         <Route path="/notifications" element={<NotificationsView />} />
-        <Route path="/reports" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><ReportsAnalyticsView /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach']}><SettingsView /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach']}><ReportsAnalyticsView /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><SettingsView /></ProtectedRoute>} />
+
+        {/* Player Portal Routes */}
+        <Route path="/my-documents" element={<ProtectedRoute allowedRoles={['coach','platform_admin','admin','statistician']}><PlayerDocuments /></ProtectedRoute>} />
+        <Route path="/my-history" element={<ProtectedRoute allowedRoles={['coach','platform_admin','admin','statistician']}><SportsHistory /></ProtectedRoute>} />
+        <Route path="/players/:id/stats" element={<PlayerAnalytics />} />
+        <Route path="/my-stats" element={<PlayerAnalytics />} />
+
+        {/* Organization Routes */}
+        <Route path="/organizations" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><OrganizationManagement /></ProtectedRoute>} />
       </Route>
 
       {/* Root & Fallback */}
       <Route path="/" element={<Home />} />
       <Route path="/sports" element={<PublicSportsPortal />} />
       <Route path="/sports/schedule" element={<PublicDailySchedule />} />
-      <Route path="/sports/categories" element={<PublicSportsPortal />} />
+      <Route path="/sports/categories" element={<SportsCategories />} />
       <Route path="/sports/tournaments/:id" element={<PublicTournamentDetails />} />
       <Route path="/sports/games/:gameId" element={<PublicGameDetails />} />
+      <Route path="/org/:slug" element={<PublicOrganizationPortal />} />
       <Route path="/score/:token" element={<GuestScoringConsole />} />
+      <Route path="/scoreboard/:matchId" element={<GymScoreboard />} />
       <Route path="/overlay/game/:gameId" element={<BroadcastOverlay />} />
       <Route path="/legal/:document" element={<LegalPage />} />
       <Route path="*" element={<NotFound />} />

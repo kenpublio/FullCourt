@@ -63,6 +63,22 @@ class TeamPlayer {
         return $stmt->fetchAll();
     }
 
+    public function getForStaffAdmin(int $userId): array {
+        $sql = "SELECT DISTINCT tp.*, tm.team_name, t.name AS tournament_name, s.name AS sport_name,
+                       COALESCE(tp.player_name,u.full_name) AS user_full_name, u.email AS user_email, u.phone_number AS user_phone
+                FROM tournament_staff_assignments tsa
+                JOIN tournaments t ON t.id=tsa.tournament_id
+                JOIN teams tm ON tm.tournament_id=t.id
+                JOIN team_players tp ON tp.team_id=tm.id
+                JOIN sports s ON s.id=t.sport_id
+                LEFT JOIN users u ON u.id=tp.user_id
+                WHERE tsa.user_id=:user_id
+                  AND NOT (tp.eligibility_status='pending' AND tp.user_id IS NOT NULL AND EXISTS
+                    (SELECT 1 FROM team_players verified WHERE verified.team_id=tp.team_id AND verified.user_id=tp.user_id AND verified.eligibility_status='verified'))
+                ORDER BY t.start_date,tm.team_name,tp.created_at";
+        $stmt=$this->db->prepare($sql);$stmt->execute([':user_id'=>$userId]);return$stmt->fetchAll();
+    }
+
     public function getForOrganizationUser(int $userId): array {
         $sql = "SELECT DISTINCT tp.*,tm.team_name,t.name AS tournament_name,s.name AS sport_name,
                        u.full_name AS user_full_name,u.email AS user_email,u.phone_number AS user_phone
@@ -164,7 +180,7 @@ class TeamPlayer {
     }
 
     public function rosterCapacity(int $teamId): array {
-        $stmt = $this->db->prepare("SELECT 18 AS roster_limit,
+        $stmt = $this->db->prepare("SELECT COALESCE(d.max_roster_size,18) AS roster_limit,
             (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status<>'rejected') AS roster_count
             FROM teams tm LEFT JOIN divisions d ON d.id=tm.division_id
             WHERE tm.id=:team_id LIMIT 1");
@@ -221,9 +237,9 @@ class TeamPlayer {
             $birthRecord->execute([':id'=>$id]);$birthRow=$birthRecord->fetch();
             if(!$birthRow||$birthRow['status']!=='verified')throw new InvalidArgumentException('Verification blocked: Admin must verify the Birth Certificate or PSA first.');
             if($birthRow['birthdate_match']!==true&&$birthRow['birthdate_match']!==1)throw new InvalidArgumentException('Verification blocked: the roster and document birth dates do not match.');
-            $permit=$this->db->prepare("SELECT status FROM eligibility_documents WHERE team_player_id=:id AND document_type='Parent Permit' ORDER BY created_at DESC LIMIT 1");
+            $permit=$this->db->prepare("SELECT status FROM eligibility_documents WHERE team_player_id=:id AND document_type IN ('Parent Waiver','Parent Permit') ORDER BY created_at DESC LIMIT 1");
             $permit->execute([':id'=>$id]);$permitRow=$permit->fetch();
-            if(!$permitRow||$permitRow['status']!=='verified')throw new InvalidArgumentException('Verification blocked: Admin must verify the Parent Permit first.');
+            if(!$permitRow||$permitRow['status']!=='verified')throw new InvalidArgumentException('Verification blocked: Admin must verify the Parent Waiver first.');
             $eligibility = $this->ageEligibility($id);
             if (!$eligibility['qualified']) {
                 throw new InvalidArgumentException($eligibility['message']);

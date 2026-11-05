@@ -4,37 +4,40 @@ import { useAuth } from '../hooks/useAuth';
 
 const menuItems = [
   { section: 'Main', items: [
-    { title: 'Dashboard', path: '/dashboard', icon: 'bi-grid-1x2-fill', roles: ['platform_admin','admin','coach','statistician'] },
+    { title: 'Dashboard', path: '/dashboard', icon: 'bi-grid-1x2-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
   ]},
   { section: 'Management', items: [
     { title: 'Accounts & Staff', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin'] },
+    { title: 'Organizations', path: '/organizations', icon: 'bi-building', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
     { title: 'Tournaments', path: '/tournaments', icon: 'bi-trophy-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Teams & Players', path: '/teams', icon: 'bi-people-fill', roles: ['platform_admin','admin','coach','statistician'] },
-    { title: 'Eligibility', path: '/eligibility', icon: 'bi-patch-check-fill', roles: ['platform_admin','admin','coach'] },
+    { title: 'Eligibility', path: '/eligibility', icon: 'bi-patch-check-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Brackets', path: '/brackets', icon: 'bi-diagram-3-fill', roles: ['platform_admin','admin','statistician'] },
   ]},
   { section: 'Live Ops', items: [
-    { title: 'Staff Assignments', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin'] },
-    { title: 'Schedules & Venues', path: '/schedules', icon: 'bi-calendar-event-fill', roles: ['platform_admin','admin','coach','statistician'] },
-    { title: 'Venues & Courts', path: '/venues', icon: 'bi-geo-alt-fill', roles: ['platform_admin','admin'] },
+    { title: 'Scoring Access', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin','statistician'] },
+    { title: 'Schedules & Venues', path: '/schedules', icon: 'bi-calendar-event-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
+    { title: 'Venues & Courts', path: '/venues', icon: 'bi-geo-alt-fill', roles: ['platform_admin','admin','statistician'] },
     { title: 'Score Review', path: '/live-scoring', icon: 'bi-broadcast-pin', roles: ['platform_admin','admin'] },
-    { title: 'Scoring Console', path: '/scorekeeper', icon: 'bi-clipboard-data-fill', roles: ['statistician'] },
-    { title: 'Standings', path: '/standings', icon: 'bi-list-ol', roles: ['platform_admin','admin','coach','statistician'] },
+    { title: 'Standings', path: '/standings', icon: 'bi-list-ol', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
   ]},
   { section: 'Insights', items: [
     { title: 'Awards', path: '/awards', icon: 'bi-award-fill', roles: ['platform_admin','admin'] },
     { title: 'Share Cards', path: '/share-cards', icon: 'bi-image-fill', roles: ['platform_admin','admin'] },
-    { title: 'Reports', path: '/reports', icon: 'bi-file-earmark-bar-graph-fill', roles: ['platform_admin','admin','coach'] },
+    { title: 'Reports', path: '/reports', icon: 'bi-file-earmark-bar-graph-fill', roles: ['platform_admin','admin','coach','assistant_coach'] },
   ]},
   { section: 'Operations', items: [
     { title: 'Payments', path: '/payments', icon: 'bi-credit-card-fill', roles: ['platform_admin','admin','coach'] },
-    { title: 'QR Game Access', path: '/qr-attendance', icon: 'bi-qr-code-scan', roles: ['platform_admin','admin','coach'] },
-    { title: 'Game-Day Control', path: '/game-day', icon: 'bi-clipboard2-pulse-fill', roles: ['platform_admin','admin'] },
+    { title: 'QR Game Access', path: '/qr-attendance', icon: 'bi-qr-code-scan', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
+    { title: 'Incident Reports', path: '/game-day', icon: 'bi-shield-exclamation', roles: ['platform_admin','admin','statistician'] },
   ]},
   { section: 'Account', items: [
-    { title: 'Notifications', path: '/notifications', icon: 'bi-bell-fill', roles: ['platform_admin','admin','coach','statistician'] },
-    { title: 'My Profile', path: '/profile', icon: 'bi-person-circle', roles: ['platform_admin','admin','coach','statistician'] },
-    { title: 'Settings', path: '/settings', icon: 'bi-gear-fill', roles: ['platform_admin','admin','coach'] },
+    { title: 'Notifications', path: '/notifications', icon: 'bi-bell-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
+    { title: 'My Documents', path: '/my-documents', icon: 'bi-person-vcard-fill', roles: ['coach','statistician'] },
+    { title: 'My Sports History', path: '/my-history', icon: 'bi-clock-history', roles: ['coach','statistician'] },
+    { title: 'My Stats', path: '/my-stats', icon: 'bi-graph-up-arrow', roles: ['coach','statistician'] },
+    { title: 'My Profile', path: '/profile', icon: 'bi-person-circle', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
+    { title: 'Settings', path: '/settings', icon: 'bi-gear-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
   ]},
 ];
 
@@ -46,9 +49,9 @@ const Sidebar = ({ open = false, onClose }) => {
     ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : 'U';
 
-  const roleLabel = role === 'platform_admin' || role === 'admin' ? 'Administrator' : role === 'statistician' ? 'Staff Admin' : role.replaceAll('_', ' ');
+  const roleLabel = role === 'platform_admin' || role === 'admin' ? 'Administrator' : role === 'statistician' ? 'Staff Admin' : role === 'assistant_coach' ? 'Assistant Coach' : role.replaceAll('_', ' ');
   const roleHome = ['platform_admin','admin'].includes(role) ? '/platform'
-    : role === 'coach' ? '/coach' : '/dashboard';
+    : ['coach','assistant_coach'].includes(role) ? '/coach' : '/dashboard';
 
   return (
     <aside className={`sidebar-wrapper${open ? ' is-open' : ''}`} aria-label="Primary navigation">
@@ -86,7 +89,7 @@ const Sidebar = ({ open = false, onClose }) => {
               </li>
               {visible.map((item, idx) => {
                 const destination = item.title === 'Dashboard' ? roleHome : item.path;
-                const label = item.title === 'Dashboard' ? (role === 'coach' ? 'Coach Workspace' : item.title) : item.title;
+                const label = item.title === 'Dashboard' ? (role === 'assistant_coach' ? 'Assistant Coach Home' : role === 'coach' ? 'Coach Workspace' : item.title) : item.title;
                 return (
                 <li key={idx} className="sidebar-item">
                   <NavLink

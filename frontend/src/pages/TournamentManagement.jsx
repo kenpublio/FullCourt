@@ -9,6 +9,7 @@ import venueService from "../services/venueService";
 import LocationMapPicker from "../components/LocationMapPicker";
 import { Link } from "react-router-dom";
 import userService from "../services/userService";
+import ConfirmActionDialog from "../components/ConfirmActionDialog";
 import "../styles/operations-polish.css";
 
 const divisionPresets = {
@@ -26,6 +27,17 @@ const courtWeekdays = [
   ["mon", "Monday"], ["tue", "Tuesday"], ["wed", "Wednesday"], ["thu", "Thursday"],
   ["fri", "Friday"], ["sat", "Saturday"], ["sun", "Sunday"],
 ];
+
+const readinessActions = {
+  court: { path: "/venues", label: "Attach court", icon: "bi-geo-alt-fill" },
+  teams: { path: "/teams", label: "Review teams", icon: "bi-people-fill" },
+  bracket: { path: "/brackets", label: "Build bracket", icon: "bi-diagram-3-fill" },
+  schedule: { path: "/schedules", label: "Schedule games", icon: "bi-calendar2-check-fill" },
+  deadline: { path: "/tournaments", label: "Set deadline", icon: "bi-calendar-lock" },
+  players: { path: "/eligibility", label: "Review players", icon: "bi-person-check-fill" },
+  staff: { path: "/users", label: "Manage staff", icon: "bi-person-badge-fill" },
+  payment: { path: "/payments", label: "Review payments", icon: "bi-receipt-cutoff" },
+};
 
 const ageRangeLabel = (division) => {
   if (division.min_age === null && division.max_age === null) return "Open age · no age restriction";
@@ -52,6 +64,7 @@ const TournamentManagement = () => {
   const { user } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [staffAdmins, setStaffAdmins] = useState([]);
+  const [staffDrafts, setStaffDrafts] = useState({});
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -65,9 +78,7 @@ const TournamentManagement = () => {
   const [selectedMapPlace, setSelectedMapPlace] = useState(null);
   const [showVenueMapPicker, setShowVenueMapPicker] = useState(false);
   const [availabilitySaved, setAvailabilitySaved] = useState(false);
-  const [creatingVenue, setCreatingVenue] = useState(false);
   const [venueDraftMsg, setVenueDraftMsg] = useState("");
-  const [venueDraft, setVenueDraft] = useState({ name: "", location: "" });
   const [joinTournament, setJoinTournament] = useState(null);
   const [joinLogo, setJoinLogo] = useState(null);
   const [joinForm, setJoinForm] = useState({ team_name: '', short_name: '', primary_color: 'red' });
@@ -77,6 +88,7 @@ const TournamentManagement = () => {
   const [detailData, setDetailData] = useState({ divisions: [], teams: [], matches: [], readiness: null, history: [] });
   const [detailLoading, setDetailLoading] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
+  const [pendingVenueDelete, setPendingVenueDelete] = useState(null);
   const [divisions, setDivisions] = useState([]);
   const [divisionForm, setDivisionForm] = useState({
     name: "",
@@ -343,9 +355,9 @@ const TournamentManagement = () => {
     upcoming: tournaments.filter((t) => t.status === "upcoming").length,
     teams: tournaments.reduce((sum, t) => sum + Number(t.registered_teams_count || 0), 0),
   };
-  const canCreateTournaments = ["platform_admin", "admin", "statistician"].includes(user?.role);
+  const canCreateTournaments = ["platform_admin", "admin"].includes(user?.role);
   const canReviewTournaments = false;
-  const canViewTournamentOperations = canCreateTournaments || canReviewTournaments;
+  const canViewTournamentOperations = canCreateTournaments || user?.role === "statistician";
   const selectedCourtCount = formData.court_ids.length;
   const bookableCourtCount = venues.reduce((count, venue) => count + (venue.courts || []).filter((court) => Boolean(Number(court.is_available))).length, 0);
   const selectedVenueCount = new Set(
@@ -375,23 +387,15 @@ const TournamentManagement = () => {
     setSelectedMapPlace(place);
     setVenueSearch(place.label);
     setLocationSuggestions([]);
-    setVenueDraft((current) => ({
-      ...current,
-      name: current.name || place.name,
-      location: place.label,
-    }));
-    setVenueDraftMsg("Address selected from location search. Confirm the venue details, then attach it.");
+    setShowVenueMapPicker(true);
+    setVenueDraftMsg("Location selected and centered on the map. Choose the matching registered venue, or manage venues first if it is new.");
   };
   const chooseMapPoint = (place) => {
     setSelectedMapPlace({ label: place.address, name: place.name, coordinates: place.coordinates });
     setVenueSearch(place.address);
     setLocationSuggestions([]);
-    setVenueDraft((current) => ({ ...current, name: current.name || place.name, location: place.address }));
-    setVenueDraftMsg("Map location selected. Confirm the venue details, then attach it.");
-    requestAnimationFrame(() => {
-      document.getElementById("new-venue-fields")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      document.getElementById("new-venue-name")?.focus({ preventScroll: true });
-    });
+    setShowVenueMapPicker(true);
+    setVenueDraftMsg("Map location selected. Choose the matching registered venue below.");
   };
   const toggleTournamentCourt = (courtId) => {
     const id = String(courtId);
@@ -440,36 +444,6 @@ const TournamentManagement = () => {
       court_ids: allSelected ? [] : (courtId ? [courtId] : []),
     }));
   };
-  const createBundledVenue = async () => {
-    if (!venueDraft.name.trim() || !venueDraft.location.trim()) {
-      setVenueDraftMsg("Enter the venue name and complete address.");
-      return;
-    }
-    try {
-      setCreatingVenue(true);
-      setVenueDraftMsg("");
-      const venueResponse = await venueService.createVenue({ name: venueDraft.name.trim(), location: venueDraft.location.trim() });
-      const venueId = venueResponse?.data?.id;
-      const courtResponse = await venueService.createCourt({ venue_id: venueId, court_name: "Main Court", sport_id: formData.sport_id || null, is_available: true });
-      const courtIds = [String(courtResponse?.data?.id)];
-      const refreshed = await venueService.getVenues();
-      const usableVenues = (refreshed.venues || []).filter((venue) => !["rejected", "suspended"].includes(venue.approval_status));
-      const createdVenue = usableVenues.find((venue) => String(venue.id) === String(venueId));
-      const refreshedCourtIds = (createdVenue?.courts || []).filter((court) => Boolean(Number(court.is_available))).map((court) => String(court.id));
-      const attachedCourtIds = refreshedCourtIds.length ? refreshedCourtIds : courtIds.filter((id) => id && id !== "undefined");
-      setVenues(usableVenues);
-      setPreviewVenueId(String(venueId));
-      setPreviewCourtId(attachedCourtIds[0] || "");
-      setFormData((current) => ({ ...current, court_ids: attachedCourtIds.slice(0, 1) }));
-      setVenueDraft({ name: "", location: "" });
-      setShowVenueMapPicker(false);
-      setVenueDraftMsg("Venue created with one Main Court and selected for this tournament.");
-    } catch (error) {
-      setVenueDraftMsg(error.response?.data?.message || "Could not add this venue. Try again.");
-    } finally {
-      setCreatingVenue(false);
-    }
-  };
   const editVenueFromPicker = async (venue) => {
     const name = window.prompt("Edit venue name", venue.name || "");
     if (name === null) return;
@@ -491,7 +465,6 @@ const TournamentManagement = () => {
     }
   };
   const deleteVenueFromPicker = async (venue) => {
-    if (!window.confirm(`Delete ${venue.name}? Its Main Court will also be removed.`)) return;
     const venueCourtIds = (venue.courts || []).map((court) => String(court.id));
     try {
       setVenueDraftMsg("");
@@ -509,7 +482,7 @@ const TournamentManagement = () => {
       setVenueDraftMsg("Venue and its Main Court deleted.");
     } catch (error) {
       setVenueDraftMsg(error.response?.data?.message || "Could not delete this venue. It may already be used by a tournament.");
-    }
+    } finally { setPendingVenueDelete(null); }
   };
 
   return (
@@ -575,7 +548,7 @@ const TournamentManagement = () => {
                   <div className={`tournament-readiness-mini ${Number(t.readiness_courts)===1&&Number(t.readiness_matches)>0&&Number(t.readiness_unscheduled)===0?'is-ready':'needs-work'}`}>
                     <span><i className={`bi ${Number(t.readiness_courts)===1&&Number(t.readiness_matches)>0&&Number(t.readiness_unscheduled)===0?'bi-shield-check':'bi-clipboard2-check'}`}/></span><div><small>TOURNAMENT READINESS</small><b>{Number(t.readiness_courts)===1&&Number(t.readiness_matches)>0&&Number(t.readiness_unscheduled)===0?'Core setup ready':'Setup still in progress'}</b><em>{Number(t.readiness_courts)||0} court · {Number(t.readiness_matches)||0} games · {Number(t.readiness_unscheduled)||0} unscheduled</em></div>
                   </div>
-                  {['platform_admin','admin'].includes(user?.role)&&<label className="tournament-staff-assignment"><span><i className="bi bi-person-badge-fill"/> Primary Staff Admin</span><select className="form-select form-select-sm" value={t.assigned_staff_id||''} disabled={reviewingId===t.id} onChange={event=>assignTournamentStaff(t,event.target.value)}><option value="">Unassigned</option>{staffAdmins.map(account=><option value={account.id} key={account.id}>{account.full_name}</option>)}</select><small>{t.assigned_staff_name?`${t.assigned_staff_name} can manage this tournament.`:'Assign a handler for schedule and game-day operations.'}</small></label>}
+                  {['platform_admin','admin'].includes(user?.role)&&<div className="tournament-staff-assignment"><span><i className="bi bi-person-badge-fill"/> Primary Staff Admin</span><div className="d-flex gap-2"><select className="form-select form-select-sm" aria-label={`Primary Staff Admin for ${t.name}`} value={staffDrafts[t.id]??t.assigned_staff_id??''} disabled={reviewingId===t.id} onChange={event=>setStaffDrafts(current=>({...current,[t.id]:event.target.value}))}><option value="">Unassigned</option>{staffAdmins.map(account=><option value={account.id} key={account.id}>{account.full_name}</option>)}</select><button type="button" className="btn btn-sm btn-evsu" disabled={reviewingId===t.id||String(staffDrafts[t.id]??t.assigned_staff_id??'')===String(t.assigned_staff_id??'')} onClick={()=>assignTournamentStaff(t,staffDrafts[t.id]??t.assigned_staff_id??'')}><i className="bi bi-check2"/> Save</button></div><small>{t.assigned_staff_name?`${t.assigned_staff_name} handles this tournament’s schedule, scoring links, and game-day operations.`:'Choose and save the Staff Admin who will handle this tournament.'}</small></div>}
                 </div>
 
                 {canViewTournamentOperations && (
@@ -646,7 +619,7 @@ const TournamentManagement = () => {
           <div className="modal-body tournament-detail-body">
             {detailLoading?<LoadingSpinner message="Loading tournament contents..."/>:<>
               <div className="tournament-detail-stats"><div><i className="bi bi-people-fill"/><strong>{detailData.teams.length}</strong><span>Registered teams</span></div><div><i className="bi bi-layers-fill"/><strong>{detailData.divisions.length}</strong><span>Divisions</span></div><div><i className="bi bi-calendar2-event-fill"/><strong>{detailData.matches.length}</strong><span>Scheduled games</span></div><div><i className="bi bi-cash-stack"/><strong>₱{Number(detailTournament.registration_fee||0).toLocaleString()}</strong><span>Registration fee</span></div></div>
-              {detailData.readiness&&<section className="tournament-command-center"><header><div><small>TOURNAMENT COMMAND CENTER</small><h5>{detailData.readiness.ready_count}/{detailData.readiness.total_count} readiness checks complete</h5></div><strong className={detailData.readiness.publish_ready?'is-ready':'needs-work'}>{detailData.readiness.publish_ready?'READY':'SETUP'}</strong></header><div>{detailData.readiness.checks.map(check=><article className={check.ready?'is-ready':''} key={check.key}><i className={`bi ${check.ready?'bi-check-circle-fill':'bi-circle'}`}/><span><b>{check.label}</b><small>{check.ready?'Complete':'Needs attention'}</small></span></article>)}</div><footer><span><i className="bi bi-person-badge"/> {detailTournament.assigned_staff_name||'No primary Staff Admin assigned'}</span><span><i className="bi bi-calendar-lock"/> Roster deadline: {detailTournament.registration_deadline||'Not set'}</span><span><i className="bi bi-clock-history"/> {detailData.history.length} schedule changes recorded</span></footer></section>}
+              {detailData.readiness&&<section className="tournament-command-center"><header><div><small>GUIDED TOURNAMENT SETUP</small><h5>{detailData.readiness.ready_count}/{detailData.readiness.total_count} readiness steps complete</h5><p>{detailData.readiness.publish_ready?'Every required setup step is complete. This tournament is ready to publish.':'Complete the highlighted steps in order before publishing the tournament.'}</p></div><strong className={detailData.readiness.publish_ready?'is-ready':'needs-work'}>{detailData.readiness.publish_ready?'READY':'SETUP'}</strong></header><div className="tournament-readiness-progress" aria-label={`${detailData.readiness.ready_count} of ${detailData.readiness.total_count} tournament setup steps complete`}><i style={{width:`${Math.round((Number(detailData.readiness.ready_count)/Math.max(1,Number(detailData.readiness.total_count)))*100)}%`}}/></div><div className="tournament-readiness-steps">{detailData.readiness.checks.map((check,index)=>{const action=readinessActions[check.key]||readinessActions.teams;return <article className={check.ready?'is-ready':'needs-action'} key={check.key}><span className="tournament-readiness-number">{check.ready?<i className="bi bi-check-lg"/>:index+1}</span><span><b>{check.label}</b><small>{check.ready?'Complete and verified':'Required before publishing'}</small></span>{check.ready?<i className="bi bi-check-circle-fill tournament-readiness-state"/>:<Link to={action.path} title={action.label}><i className={`bi ${action.icon}`}/><span>{action.label}</span><i className="bi bi-arrow-right"/></Link>}</article>})}</div><footer><span><i className="bi bi-person-badge"/> {detailTournament.assigned_staff_name||'No primary Staff Admin assigned'}</span><span><i className="bi bi-calendar-lock"/> Roster deadline: {detailTournament.registration_deadline||'Not set'}</span><span><i className="bi bi-clock-history"/> {detailData.history.length} schedule changes recorded</span></footer></section>}
               <section className="tournament-change-timeline"><header><div><small>SCHEDULE AUDIT</small><h5>Recent schedule changes</h5></div><Link to="/schedules">{['coach','coach_manager'].includes(user?.role)?'View':'Manage'} schedule <i className="bi bi-arrow-up-right"/></Link></header>{detailData.history.length?<div>{detailData.history.slice(0,5).map(change=><article key={change.id}><span><i className="bi bi-arrow-left-right"/></span><div><b>{change.home_team||'TBD'} vs {change.away_team||'TBD'}</b><p>{change.previous_start?new Date(change.previous_start).toLocaleString():'Unscheduled'} <i className="bi bi-arrow-right"/> {new Date(change.new_start).toLocaleString()}</p><small>{change.reason} · Changed by {change.changed_by_name} · {change.coaches_notified} Coach notification{Number(change.coaches_notified)===1?'':'s'}</small></div></article>)}</div>:<div className="tournament-change-empty"><i className="bi bi-clock-history"/><span><b>No manual schedule changes</b><small>Rescheduling history and Coach notifications will appear here.</small></span></div>}</section>
               <div className="row g-4 mt-1"><div className="col-lg-7"><section className="tournament-content-panel"><header><div><small>PARTICIPANTS</small><h5>Registered Teams</h5></div><Link to="/teams">Manage teams <i className="bi bi-arrow-up-right"/></Link></header><div className="tournament-team-grid">{detailData.teams.map(team=><article key={team.id}><span style={{background:team.primary_color||'#cd2d17'}}>{team.logo_url?<img src={team.logo_url} alt=""/>:team.team_name.slice(0,2).toUpperCase()}</span><div><b>{team.team_name}</b><small>{team.division_name||'Open division'} · {team.status}</small></div></article>)}{!detailData.teams.length&&<p className="tournament-detail-empty">No registered teams yet.</p>}</div></section></div><div className="col-lg-5"><section className="tournament-content-panel"><header><div><small>COMPETITION STRUCTURE</small><h5>Divisions</h5></div></header><div className="tournament-division-list">{detailData.divisions.map(division=><div key={division.id}><span><i className="bi bi-layers"/></span><div><b>{division.name}</b><small>{division.age_group||'Open age'} · {division.gender_category} · {division.team_count} teams</small></div></div>)}{!detailData.divisions.length&&<p className="tournament-detail-empty">No divisions created yet.</p>}</div></section></div></div>
             </>}
@@ -662,7 +635,7 @@ const TournamentManagement = () => {
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable tournament-create-dialog">
             <div className="modal-content card-custom border-0">
               <div className="modal-header border-bottom">
-                <div><h5 className="fw-bold mb-0">Create Tournament</h5><small className="text-muted">Save a draft or run a private practice tournament.</small></div>
+                <div><h5 className="fw-bold mb-0">Create Tournament</h5><small className="text-muted">Enter the official competition details and select its venue.</small></div>
                 <button
                   type="button"
                   className="btn-close"
@@ -687,14 +660,6 @@ const TournamentManagement = () => {
                       }
                       placeholder="e.g. Barangay Summer Basketball League 2026"
                     />
-                  </div>
-                  <div className="mb-3">
-                      <label className="form-label small fw-semibold">Tournament mode</label>
-                      <select className="form-select" value={formData.operation_mode} onChange={e=>setFormData({...formData,operation_mode:e.target.value})}>
-                        <option value="official">Official · readiness required before publishing</option>
-                        <option value="practice">Practice / test · private, no official standings</option>
-                      </select>
-                      <div className="form-text">Practice mode lets the team rehearse scoring and game-day operations safely.</div>
                   </div>
                   <div className="mb-3">
                       <label className="form-label small fw-semibold">
@@ -773,15 +738,7 @@ const TournamentManagement = () => {
                       </div>
                       {locationSuggestions.length > 0 && <div id="tournament-location-results" className="tournament-location-results" role="listbox">{locationSuggestions.map((place, index) => <button type="button" role="option" key={`${place.label}-${index}`} onClick={() => chooseLocationSuggestion(place)}><i className="bi bi-geo-alt-fill"/><span><b>{place.name || place.label.split(",")[0]}</b><small>{place.label}</small></span><i className="bi bi-arrow-return-left"/></button>)}</div>}
                     </div>
-                    <details className="tournament-inline-venue" open>
-                      <summary><span><i className="bi bi-plus-circle"/> Add a new game venue</span><small>Managed by Admin</small></summary>
-                      <div id="new-venue-fields" className="tournament-inline-venue-fields">
-                        <label><span>Venue name</span><input id="new-venue-name" className="form-control" value={venueDraft.name} onChange={(e) => { setVenueDraft({...venueDraft,name:e.target.value}); setVenueDraftMsg(""); }} placeholder="e.g. Ormoc City Sports Complex"/></label>
-                        <label><span>Complete address</span><input id="new-venue-address" className="form-control" value={venueDraft.location} onChange={(e) => { setVenueDraft({...venueDraft,location:e.target.value}); setVenueDraftMsg(""); }} placeholder="Street, barangay, city"/></label>
-                        <button type="button" className="btn btn-outline-danger" disabled={creatingVenue} onClick={createBundledVenue}>{creatingVenue ? <><span className="spinner-border spinner-border-sm me-1"/>Adding…</> : <><i className="bi bi-plus-lg me-1"/>Attach venue</>}</button>
-                      </div>
-                      {venueDraftMsg && <div className={`tournament-inline-message ${venueDraftMsg.startsWith("Venue created") || venueDraftMsg.startsWith("Address added") ? "is-success" : ""}`}>{venueDraftMsg}</div>}
-                    </details>
+                    {venueDraftMsg && <div className="tournament-inline-message">{venueDraftMsg}</div>}
                     {bookableCourtCount === 0 ? (
                       <div className="tournament-empty-location-grid">
                         <div className="tournament-venue-empty"><i className="bi bi-info-circle"/><span>No court is attached yet. Search the map, enter the venue details above, then attach it. FullCourt will create its Main Court automatically.</span></div>
@@ -798,7 +755,7 @@ const TournamentManagement = () => {
                               <div><strong><i className="bi bi-geo-alt-fill"/> {venue.name}</strong><small>{venue.location}</small></div>
                               <div className="tournament-venue-card-actions">
                                 <button type="button" className="tournament-venue-icon-action" aria-label={`Edit venue ${venue.name}`} title="Edit venue" onClick={(event) => { event.stopPropagation(); editVenueFromPicker(venue); }}><i className="bi bi-pencil"/></button>
-                                <button type="button" className="tournament-venue-icon-action is-danger" aria-label={`Delete venue ${venue.name}`} title="Delete venue" onClick={(event) => { event.stopPropagation(); deleteVenueFromPicker(venue); }}><i className="bi bi-trash3"/></button>
+                                <button type="button" className="tournament-venue-icon-action is-danger" aria-label={`Delete venue ${venue.name}`} title="Delete venue" onClick={(event) => { event.stopPropagation(); setPendingVenueDelete(venue); }}><i className="bi bi-trash3"/></button>
                                 <button type="button" className="tournament-select-all" onClick={(event) => { event.stopPropagation(); toggleVenueCourts(venue); }}>{selectedInVenue ? "Clear" : "Use venue"}</button>
                               </div>
                             </div>
@@ -829,7 +786,7 @@ const TournamentManagement = () => {
                       })}</div>
                       <div className="tournament-time-grid">
                         <label><span>Courts open</span><input type="time" className="form-control" required value={formData.schedule_start_time} onChange={(e) => {setAvailabilitySaved(false);setFormData({...formData, schedule_start_time:e.target.value});}}/></label>
-                        <label><span>Courts close</span><input type="time" className="form-control" required value={formData.schedule_end_time} onChange={(e) => {setAvailabilitySaved(false);setFormData({...formData, schedule_end_time:e.target.value});}}/></label>
+                        <input type="hidden" value={formData.schedule_end_time} />
                       </div>
                       <div className="tournament-availability-actions"><button type="button" className={`btn ${availabilitySaved ? "btn-success" : "btn-evsu"}`} onClick={saveCourtAvailability}><i className={`bi ${availabilitySaved ? "bi-check-circle-fill" : "bi-save"} me-1`}/>{availabilitySaved ? "Availability saved" : "Save availability"}</button></div>
                     </section>
@@ -1021,6 +978,7 @@ const TournamentManagement = () => {
           </div>
         </div>
       )}
+      <ConfirmActionDialog open={Boolean(pendingVenueDelete)} eyebrow="VENUE REMOVAL" title="Delete this venue?" message={pendingVenueDelete ? <><b>{pendingVenueDelete.name}</b> and its Main Court will be removed. Games using this court may need a new venue assignment.</> : null} confirmLabel="Delete venue" confirmIcon="bi-trash3-fill" onCancel={()=>setPendingVenueDelete(null)} onConfirm={()=>deleteVenueFromPicker(pendingVenueDelete)}/>
     </div>
   );
 };

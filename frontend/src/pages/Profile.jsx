@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import userService from '../services/userService';
 import eligibilityService from '../services/eligibilityService';
 import '../styles/admin-profile.css';
+import '../styles/profile-polish.css';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -67,7 +68,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="container-fluid p-0 page-enter" style={{ maxWidth: '900px' }}>
+    <div className="container-fluid p-0 page-enter account-profile-page">
       <section className="profile-avatar-card mb-4">
         <div className="profile-avatar-img position-relative">
           {photoUrl
@@ -105,8 +106,8 @@ const Profile = () => {
         </div>
       )}
 
-      <div className="card-custom p-4 mb-4">
-        <div className="d-flex justify-content-between align-items-center mb-3"><h4 className="fw-bold text-dark mb-0"><i className="bi bi-person-circle text-evsu-primary me-2"></i>User Profile</h4>{!isEditing&&<button type="button" className="btn btn-evsu rounded-pill px-4 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2" onClick={()=>setIsEditing(true)}><i className="bi bi-pencil-square"/>Edit Profile</button>}</div>
+      <div className="card-custom p-4 mb-4 account-profile-form-card">
+        <div className="account-profile-section-head"><div><span>ACCOUNT DETAILS</span><h4><i className="bi bi-person-circle"></i> Profile information</h4><p>Keep your contact details current for tournament communication.</p></div>{!isEditing&&<button type="button" className="btn btn-evsu" onClick={()=>setIsEditing(true)}><i className="bi bi-pencil-square"/>Edit profile</button>}</div>
 
         {message && <div className="alert alert-success py-2 px-3 small rounded-3">{message}</div>}
 
@@ -141,7 +142,7 @@ const Profile = () => {
             </div>
           </div>}
 
-          {!isPlatformAdmin&&<><div className="mb-3"><label htmlFor="profile-address" className="form-label small fw-semibold text-secondary">Complete Address</label><textarea id="profile-address" className="form-control" rows="2" value={address} onChange={(e) => setAddress(e.target.value)} disabled={!isEditing} /></div><div className="mb-4"><label htmlFor="profile-phone-number" className="form-label small fw-semibold text-secondary">Phone Number</label><input id="profile-phone-number" type="text" className="form-control" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} disabled={!isEditing} /></div></>}
+          {!isPlatformAdmin&&<><div className="mb-3"><label htmlFor="profile-address" className="form-label small fw-semibold text-secondary">Complete Address</label><textarea id="profile-address" className="form-control compact-address-field" rows="1" value={address} onChange={(e) => setAddress(e.target.value)} disabled={!isEditing} /></div><div className="mb-4"><label htmlFor="profile-phone-number" className="form-label small fw-semibold text-secondary">Phone Number</label><input id="profile-phone-number" type="text" className="form-control" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} disabled={!isEditing} /></div></>}
 
           {isEditing&&<div className="d-flex flex-wrap gap-2"><button type="submit" className="btn btn-evsu rounded-pill px-4 py-2 fw-semibold shadow-sm"><i className="bi bi-check2-circle me-2" />Save Changes</button><button type="button" className="btn btn-outline-secondary rounded-pill px-4 py-2 fw-semibold" onClick={cancelEditing}><i className="bi bi-x-lg me-2"/>Cancel</button></div>}
         </form>

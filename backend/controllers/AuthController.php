@@ -40,7 +40,7 @@ class AuthController {
             Response::error('Account is deactivated. Please contact the administrator.', 403);
         }
 
-        $activeRoles = ['platform_admin', 'admin', 'coach', 'statistician'];
+        $activeRoles = ['platform_admin', 'admin', 'coach', 'assistant_coach', 'statistician'];
         if (!in_array($user['role'], $activeRoles, true)) {
             Response::error('This legacy account type is no longer used. Ask the Administrator to assign an active FullCourt role.', 403);
         }
@@ -129,7 +129,7 @@ class AuthController {
         }
 
         // Allowed self-registration roles
-        $allowedRegistrationRoles = ['coach'];
+        $allowedRegistrationRoles = ['coach', 'assistant_coach'];
         if (!in_array($role, $allowedRegistrationRoles, true)) {
             $role = 'coach';
         }
@@ -163,9 +163,11 @@ class AuthController {
 
     public function requestEmailCode(): void {
         $input=json_decode(file_get_contents('php://input'),true); $contact=strtolower(trim($input['email']??'')); $purpose=trim($input['purpose']??'registration');
+        $phone=$this->normalizeContact(trim($input['phone_number']??''));
         RateLimiter::hit('contact_code',5,600,$contact);
         if(!$this->isValidEmail($contact)) Response::error('Enter a valid email address.',400);
         if($purpose==='registration' && $this->userModel->findByEmail($contact)) Response::error('This email address is already registered.',409);
+        if($purpose==='registration' && $phone!=='' && $this->userModel->findByPhone($phone)) Response::error('This mobile number is already registered. Use another number before requesting a code.',409);
         $this->issueCode($contact,$purpose);
     }
 

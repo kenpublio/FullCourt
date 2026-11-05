@@ -9,15 +9,15 @@ require_once __DIR__ . '/../utils/response.php';
 class AttendanceController {
     private QRAttendance $model;
     private AuditLog $audit;
-    private const MANAGERS=['platform_admin','admin','organization_admin','tournament_organizer'];
-    private const OPERATORS=['organization_admin','tournament_organizer'];
+    private const MANAGERS=['platform_admin','admin','organization_admin','tournament_organizer','statistician'];
+    private const OPERATORS=['organization_admin','tournament_organizer','statistician'];
 
     public function __construct(){$this->model=new QRAttendance();$this->audit=new AuditLog();}
 
     public function teamQr(int $teamId):void{
-        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['coach','coach_manager']));
+        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['coach','assistant_coach','coach_manager']));
         $tournamentId=$this->model->teamTournamentId($teamId);if($tournamentId===null)Response::error('Team not found.',404);
-        if(in_array($user['role'],['coach','coach_manager'],true)){
+        if(in_array($user['role'],['coach','assistant_coach','coach_manager'],true)){
             $db=(new Database())->getConnection();$stmt=$db->prepare('SELECT id FROM teams WHERE id=:team_id AND (coach_user_id=:coach_id OR manager_user_id=:manager_id)');
             $stmt->execute([':team_id'=>$teamId,':coach_id'=>(int)$user['user_id'],':manager_id'=>(int)$user['user_id']]);
             if(!$stmt->fetchColumn())Response::forbidden('You can only access the QR pass for your assigned team.');

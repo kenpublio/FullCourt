@@ -18,7 +18,13 @@ class Tournament {
                 (SELECT su.full_name FROM tournament_staff_assignments tsa JOIN users su ON su.id=tsa.user_id WHERE tsa.tournament_id=t.id ORDER BY CASE WHEN tsa.assignment_role='primary' THEN 0 ELSE 1 END,tsa.created_at LIMIT 1) AS assigned_staff_name,
                 (SELECT COUNT(*) FROM tournament_courts tc WHERE tc.tournament_id=t.id) AS readiness_courts,
                 (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id) AS readiness_matches,
-                (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id AND rm.team1_id IS NOT NULL AND rm.team2_id IS NOT NULL AND (rm.scheduled_start_time IS NULL OR rm.court_id IS NULL)) AS readiness_unscheduled
+                (SELECT COUNT(*) FROM matches rm WHERE rm.tournament_id=t.id AND rm.team1_id IS NOT NULL AND rm.team2_id IS NOT NULL AND (rm.scheduled_start_time IS NULL OR rm.court_id IS NULL)) AS readiness_unscheduled,
+                (SELECT sc.daily_start_time FROM schedule_constraints sc WHERE sc.tournament_id=t.id LIMIT 1) AS schedule_start_time,
+                (SELECT sc.daily_end_time FROM schedule_constraints sc WHERE sc.tournament_id=t.id LIMIT 1) AS schedule_end_time,
+                (SELECT sc.max_games_per_team_per_day FROM schedule_constraints sc WHERE sc.tournament_id=t.id LIMIT 1) AS max_games_per_team_per_day,
+                (SELECT tc.court_id FROM tournament_courts tc WHERE tc.tournament_id=t.id ORDER BY tc.court_id LIMIT 1) AS schedule_court_id,
+                (SELECT c.court_name FROM tournament_courts tc JOIN courts c ON c.id=tc.court_id WHERE tc.tournament_id=t.id ORDER BY tc.court_id LIMIT 1) AS schedule_court_name,
+                (SELECT v.name FROM tournament_courts tc JOIN courts c ON c.id=tc.court_id JOIN venues v ON v.id=c.venue_id WHERE tc.tournament_id=t.id ORDER BY tc.court_id LIMIT 1) AS schedule_venue_name
                 FROM tournaments t
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON t.created_by = u.id
@@ -37,19 +43,41 @@ class Tournament {
     public function getAvailableForCoach(int $userId): array {
         $sql = "SELECT t.*, s.name AS sport_name, s.category AS sport_category, u.full_name AS organizer_name,
                 (SELECT COUNT(*) FROM teams rt WHERE rt.tournament_id=t.id AND rt.status='registered') AS registered_teams_count,
-                coach_team.id AS application_team_id, coach_team.team_name AS application_team_name,
-                coach_team.status AS application_status
+                (SELECT ct.id FROM teams ct
+                  WHERE ct.tournament_id=t.id
+                    AND (ct.coach_user_id=:application_coach_id OR ct.manager_user_id=:application_manager_id)
+                  ORDER BY ct.id DESC LIMIT 1) AS application_team_id,
+                (SELECT ct.team_name FROM teams ct
+                  WHERE ct.tournament_id=t.id
+                    AND (ct.coach_user_id=:name_coach_id OR ct.manager_user_id=:name_manager_id)
+                  ORDER BY ct.id DESC LIMIT 1) AS application_team_name,
+                (SELECT ct.status FROM teams ct
+                  WHERE ct.tournament_id=t.id
+                    AND (ct.coach_user_id=:status_coach_id OR ct.manager_user_id=:status_manager_id)
+                  ORDER BY ct.id DESC LIMIT 1) AS application_status
                 FROM tournaments t
                 JOIN sports s ON t.sport_id=s.id
                 JOIN users u ON t.created_by=u.id
-                LEFT JOIN teams coach_team ON coach_team.tournament_id=t.id
-                  AND (coach_team.coach_user_id=:coach_id OR coach_team.manager_user_id=:manager_id)
                 WHERE LOWER(s.name)='basketball' AND t.archived_at IS NULL
                   AND t.approval_status='approved'
-                  AND (t.status IN ('upcoming','ongoing') OR coach_team.id IS NOT NULL)
-                ORDER BY CASE WHEN coach_team.id IS NOT NULL THEN 0 ELSE 1 END, t.start_date ASC";
+                  AND (t.status IN ('upcoming','ongoing') OR EXISTS (
+                    SELECT 1 FROM teams access_team
+                    WHERE access_team.tournament_id=t.id
+                      AND (access_team.coach_user_id=:access_coach_id OR access_team.manager_user_id=:access_manager_id)
+                  ))
+                ORDER BY CASE WHEN EXISTS (
+                    SELECT 1 FROM teams sort_team
+                    WHERE sort_team.tournament_id=t.id
+                      AND (sort_team.coach_user_id=:sort_coach_id OR sort_team.manager_user_id=:sort_manager_id)
+                  ) THEN 0 ELSE 1 END, t.start_date ASC";
         $stmt=$this->db->prepare($sql);
-        $stmt->execute([':coach_id'=>$userId,':manager_id'=>$userId]);
+        $stmt->execute([
+            ':application_coach_id'=>$userId, ':application_manager_id'=>$userId,
+            ':name_coach_id'=>$userId, ':name_manager_id'=>$userId,
+            ':status_coach_id'=>$userId, ':status_manager_id'=>$userId,
+            ':access_coach_id'=>$userId, ':access_manager_id'=>$userId,
+            ':sort_coach_id'=>$userId, ':sort_manager_id'=>$userId,
+        ]);
         return $stmt->fetchAll();
     }
 
@@ -209,23 +237,32 @@ class Tournament {
     }
 
     public function readiness(int $tournamentId): array {
-        $stmt=$this->db->prepare("SELECT
+        $stmt=$this->db->prepare("SELECT t.registration_deadline,t.registration_fee,
             (SELECT COUNT(*) FROM tournament_courts WHERE tournament_id=:t1) courts,
             (SELECT COUNT(*) FROM teams WHERE tournament_id=:t2 AND status='registered') teams,
             (SELECT COUNT(*) FROM matches WHERE tournament_id=:t3) matches,
             (SELECT COUNT(*) FROM matches WHERE tournament_id=:t4 AND team1_id IS NOT NULL AND team2_id IS NOT NULL AND (scheduled_start_time IS NULL OR court_id IS NULL)) unscheduled,
             (SELECT COUNT(*) FROM tournament_staff_assignments WHERE tournament_id=:t5) assigned_staff,
-            (SELECT COUNT(*) FROM team_players tp JOIN teams tm ON tm.id=tp.team_id WHERE tm.tournament_id=:t6 AND tp.eligibility_status='verified') verified_players");
-        $stmt->execute([':t1'=>$tournamentId,':t2'=>$tournamentId,':t3'=>$tournamentId,':t4'=>$tournamentId,':t5'=>$tournamentId,':t6'=>$tournamentId]);
+            (SELECT COUNT(*) FROM team_players tp JOIN teams tm ON tm.id=tp.team_id WHERE tm.tournament_id=:t6 AND tp.eligibility_status='verified') verified_players,
+            (SELECT COUNT(*) FROM teams tm WHERE tm.tournament_id=:t7 AND tm.status='registered' AND (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified')>=5) eligible_teams,
+            (SELECT COUNT(*) FROM teams tm WHERE tm.tournament_id=:t8 AND tm.status='registered' AND (SELECT COALESCE(SUM(p.amount),0) FROM payments p WHERE p.team_id=tm.id AND p.tournament_id=tm.tournament_id AND p.status='approved')>=t.registration_fee) paid_teams
+            FROM tournaments t WHERE t.id=:t0 LIMIT 1");
+        $stmt->execute([':t0'=>$tournamentId,':t1'=>$tournamentId,':t2'=>$tournamentId,':t3'=>$tournamentId,':t4'=>$tournamentId,':t5'=>$tournamentId,':t6'=>$tournamentId,':t7'=>$tournamentId,':t8'=>$tournamentId]);
         $row=$stmt->fetch() ?: [];
+        $teamCount=(int)($row['teams']??0);
+        $registrationFee=(float)($row['registration_fee']??0);
         $checks=[
             ['key'=>'court','label'=>'Main Court attached','ready'=>(int)($row['courts']??0)===1],
             ['key'=>'teams','label'=>'At least two approved teams','ready'=>(int)($row['teams']??0)>=2],
             ['key'=>'bracket','label'=>'Bracket generated','ready'=>(int)($row['matches']??0)>0],
             ['key'=>'schedule','label'=>'All playable games have time and court','ready'=>(int)($row['matches']??0)>0 && (int)($row['unscheduled']??0)===0],
-            ['key'=>'players','label'=>'Eligible players recorded','ready'=>(int)($row['verified_players']??0)>0],
+            ['key'=>'deadline','label'=>'Roster deadline configured','ready'=>!empty($row['registration_deadline'])],
+            ['key'=>'players','label'=>'Every team has at least five eligible players','ready'=>$teamCount>=2 && (int)($row['eligible_teams']??0)===$teamCount],
             ['key'=>'staff','label'=>'Primary Staff Admin assigned','ready'=>(int)($row['assigned_staff']??0)>0],
         ];
+        if($registrationFee>0){
+            $checks[]=['key'=>'payment','label'=>'Every team registration fee approved','ready'=>$teamCount>=2 && (int)($row['paid_teams']??0)===$teamCount];
+        }
         $ready=count(array_filter($checks,fn($check)=>$check['ready']));
         return ['checks'=>$checks,'ready_count'=>$ready,'total_count'=>count($checks),'publish_ready'=>$ready===count($checks),'counts'=>$row];
     }

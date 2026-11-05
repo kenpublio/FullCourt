@@ -16,7 +16,7 @@ class ReportController {
 
     public function getAnalytics(): void {
         $user=AuthMiddleware::authenticate();
-        if (in_array($user['role'], ['coach','coach_manager'], true)) {
+        if (in_array($user['role'], ['coach','assistant_coach','coach_manager'], true)) {
             $userId=(int)$user['user_id'];
             $teamId=isset($_GET['team_id'])?(int)$_GET['team_id']:0;
             if($teamId>0){
@@ -126,7 +126,7 @@ class ReportController {
     // POST /reports/generate  { report_type, format, tournament_id?, filters? }
     // Logs an exportable report request to reports_log for audit trail.
     public function generateReport(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','assistant_coach','coach_manager']);
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $type = trim($input['report_type'] ?? 'analytics');
         $format = in_array($input['format'] ?? 'csv', ['pdf','excel','csv','print'], true) ? $input['format'] : 'csv';
@@ -148,8 +148,8 @@ class ReportController {
 
     // GET /reports/log
     public function reportLog(): void {
-        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','coach_manager']);
-        $coach=in_array($user['role'],['coach','coach_manager'],true);$organizer=in_array($user['role'],['organization_admin','tournament_organizer'],true);
+        $user = AuthMiddleware::authorizeRoles(['platform_admin','admin','organization_admin','tournament_organizer','coach','assistant_coach','coach_manager']);
+        $coach=in_array($user['role'],['coach','assistant_coach','coach_manager'],true);$organizer=in_array($user['role'],['organization_admin','tournament_organizer'],true);
         $sql="
             SELECT rl.id, rl.tournament_id, t.name AS tournament_name, rl.report_type, rl.filters_json, rl.file_url, rl.format, rl.created_at, u.full_name AS generated_by
             FROM reports_log rl

@@ -42,6 +42,21 @@
 .court-hero-art img{height:auto;object-fit:contain}
 .court-art-stamp{position:static;display:block;transform:none;margin-top:12px;text-align:center;border-radius:6px;box-shadow:none}
 .court-hero-art figcaption{flex-wrap:wrap;gap:8px}
+/* Top Match Ticker Bar */
+.court-ticker-bar{background:#08080a;border-bottom:1px solid #232328;padding:8px 0;font-size:12px;overflow:hidden}
+.court-ticker-inner{display:flex;align-items:center;gap:14px;overflow-x:auto;scrollbar-width:none}
+.court-ticker-inner::-webkit-scrollbar{display:none}
+.court-ticker-label{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:4px;background:#e3372025;color:#f15a3b;font-weight:900;letter-spacing:.8px;text-transform:uppercase;font-size:10px;white-space:nowrap}
+.court-ticker-label.live-indicator::before{content:'';width:6px;height:6px;border-radius:50%;background:#f15a3b;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.2)}}
+.court-ticker-items{display:flex;align-items:center;gap:12px}
+.court-ticker-card{display:inline-flex;align-items:center;gap:10px;padding:5px 12px;background:#141418;border:1px solid #282830;border-radius:6px;color:#dedee4;text-decoration:none;white-space:nowrap;transition:border-color .15s,background .15s}
+.court-ticker-card:hover{border-color:#e33720;background:#1a1a20;color:#fff}
+.court-ticker-team{font-weight:700}
+.court-ticker-score{font-weight:900;color:var(--court-gold);letter-spacing:.5px}
+.court-ticker-status{font-size:10px;padding:2px 5px;border-radius:3px;background:#24242c;color:#9999a4;text-transform:uppercase;font-weight:800}
+.court-ticker-status.live{background:#e33720;color:#fff}
+
 /* Fit the desktop introduction within the available browser height. */
 .court-home-top{min-height:calc(100svh - 52px);display:flex;flex-direction:column}
 .court-home-top .court-nav{flex-shrink:0}
@@ -183,7 +198,7 @@
 }
 
 /* Public showcase: bold basketball energy with FullCourt's own visual identity. */
-.court-hero-showcase{position:relative;display:grid;justify-items:end}.court-hero-metrics{position:absolute;right:-24px;top:50%;z-index:3;display:grid;gap:8px;transform:translateY(-50%)}.court-hero-metrics article{display:grid;min-width:94px;padding:12px 14px;border:1px solid #ffffff20;border-radius:12px;background:#111116e8;box-shadow:0 10px 30px #0006}.court-hero-metrics strong{color:var(--court-gold);font:950 1.55rem/1 var(--font-display,Arial,sans-serif)}.court-hero-metrics span{margin-top:4px;color:#aaaab4;font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.court-section-heading p{max-width:620px;margin:10px 0 0;color:var(--court-muted);font-size:.82rem;line-height:1.6}.court-player-search{display:flex;width:min(330px,100%);min-height:46px;align-items:center;gap:10px;padding:0 14px;border:1px solid #dedee5;border-radius:11px;background:#fff;color:#777782}.court-player-search input{width:100%;border:0;outline:0;background:transparent}.court-player-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.court-player-grid article{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:17px 19px;border:1px solid #e0e0e6;border-radius:13px;background:#fff}.court-player-rank{display:grid;width:42px;height:42px;place-items:center;border-radius:10px;background:#17171b;color:var(--court-gold);font-weight:900}.court-player-grid h3{margin:0;font-size:.92rem;font-weight:900}.court-player-grid p{margin:4px 0 0;color:var(--court-muted);font-size:.7rem}.court-player-grid dl{display:flex;gap:16px;margin:0}.court-player-grid dl div{display:grid;text-align:center}.court-player-grid dt{color:var(--court-muted);font-size:.54rem;letter-spacing:.08em}.court-player-grid dd{margin:2px 0 0;font-weight:900;font-variant-numeric:tabular-nums}
+.court-hero-showcase{position:relative;display:grid;justify-items:end}.court-hero-metrics{position:absolute;right:-24px;top:50%;z-index:3;display:grid;gap:8px;transform:translateY(-50%)}.court-hero-metrics article{display:grid;min-width:94px;padding:12px 14px;border:1px solid #ffffff20;border-radius:12px;background:#111116e8;box-shadow:0 10px 30px #0006}.court-hero-metrics strong{color:var(--court-gold);font:950 1.55rem/1 var(--font-display,Arial,sans-serif)}.court-hero-metrics span{margin-top:4px;color:#aaaab4;font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.court-section-heading p{max-width:620px;margin:10px 0 0;color:var(--court-muted);font-size:.82rem;line-height:1.6}.court-player-tools{display:grid;width:min(360px,100%);gap:8px}.court-player-tournament-select,.court-player-search{display:flex;width:100%;min-height:46px;align-items:center;gap:10px;padding:0 14px;border:1px solid #dedee5;border-radius:11px;background:#fff;color:#777782}.court-player-tournament-select select,.court-player-search input{width:100%;border:0;outline:0;background:transparent;color:#17171b}.court-player-search input:disabled{cursor:not-allowed;opacity:.52}.court-player-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.court-player-grid article{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:17px 19px;border:1px solid #e0e0e6;border-radius:13px;background:#fff}.court-player-rank{display:grid;width:42px;height:42px;place-items:center;border-radius:10px;background:#17171b;color:var(--court-gold);font-weight:900}.court-player-grid h3{margin:0;font-size:.92rem;font-weight:900}.court-player-grid p{margin:4px 0 0;color:var(--court-muted);font-size:.7rem}.court-player-grid dl{display:flex;gap:16px;margin:0}.court-player-grid dl div{display:grid;text-align:center}.court-player-grid dt{color:var(--court-muted);font-size:.54rem;letter-spacing:.08em}.court-player-grid dd{margin:2px 0 0;font-weight:900;font-variant-numeric:tabular-nums}
 @media(max-width:800px){.court-hero-metrics{position:static;grid-template-columns:repeat(3,1fr);width:100%;margin-top:12px;transform:none}.court-hero-metrics article{min-width:0}.court-player-grid{grid-template-columns:1fr}.court-player-spotlight .court-section-heading{align-items:stretch;flex-direction:column}.court-player-search{width:100%}}
 @media(max-width:480px){.court-player-grid article{grid-template-columns:auto minmax(0,1fr)}.court-player-grid dl{grid-column:1/-1;justify-content:space-around;padding-top:10px;border-top:1px solid #eee}}
 /* Game center — public broadcast desk */
@@ -196,8 +211,171 @@
 @media(max-width:900px){.court-game-center .court-center-title{grid-template-columns:1fr;gap:2rem}.court-center-scoreboard{max-width:620px}.court-directory-mark{display:none}}
 @media(max-width:600px){.court-game-center .court-center-header{padding:3rem 0}.court-center-copy h1{font-size:3.55rem}.court-center-copy>p{font-size:.96rem}.court-center-actions{align-items:flex-start;flex-direction:column}.court-center-scoreboard{border-radius:15px}.court-game-center .court-center-count b{font-size:1.65rem}.court-game-center .court-center-count span{font-size:.57rem}.court-section-heading h2 br{display:none}.court-results-line{margin-top:.5rem}}
 
+/* Game Center directory: keep the tournament cards crisp on the light surface. */
+.court-game-center .court-tournament,
+.court-game-center .court-tournament:visited {
+  color: #111827 !important;
+}
+
+.court-game-center .court-tournament h3 {
+  color: #111827 !important;
+  font-size: 1.14rem;
+  line-height: 1.18;
+}
+
+.court-game-center .court-tournament p {
+  color: #596579 !important;
+}
+
+.court-game-center .court-tournament-date {
+  color: #596579 !important;
+}
+
+.court-game-center .court-tournament-link {
+  color: #a92210 !important;
+}
+
+.court-game-center .court-directory-mark {
+  min-width: 176px;
+  padding: .75rem .9rem;
+  background: #fff;
+  border-color: #d7dce5;
+  box-shadow: 0 8px 24px rgba(17,24,39,.07);
+}
+
+.court-game-center .court-directory-mark span {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: .12rem;
+}
+
+.court-game-center .court-directory-mark small {
+  color: #596579;
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.court-game-center .court-directory-mark b {
+  color: #111827;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.court-home-dark .court-tournament,
+.court-home-dark .court-tournament:visited,
+.court-home-dark .court-tournament h3 {
+  color: #111827 !important;
+}
+
+.court-home-dark .court-tournament p,
+.court-home-dark .court-tournament-facts {
+  color: #596579 !important;
+}
+
+.court-home-dark .court-tournament-link {
+  color: #a92210 !important;
+}
+
+.court-home-dark .court-tournament-cover .court-status {
+  border: 1px solid rgba(255,255,255,.16);
+  background: #fff;
+  color: #273247;
+  box-shadow: 0 5px 18px rgba(0,0,0,.2);
+}
+
+.court-player-tournament {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  margin-top: .35rem;
+  color: #a92210 !important;
+  font-size: .6rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.court-player-tournament i {
+  flex: 0 0 auto;
+  color: #b47d0d;
+}
+
+.court-player-tournament:hover,
+.court-player-tournament:focus-visible {
+  color: #731408 !important;
+  text-decoration: underline;
+}
+
 /* Accessibility contrast polish for public result and player surfaces. */
 .court-home-top .court-section-heading p{color:#b8b8c1}
 .court-home-dark .court-section-heading p{color:#b8b8c1}
 .court-player-grid article,.court-player-grid h3{color:#131316}
 .court-results-line{color:#6b6972}
+.court-home-dark .court-section-heading p.text-muted{color:#aeb0ba!important}
+
+/* Clean public-home hierarchy inspired by modern community league portals. */
+.court-home-dark>main{display:flex;flex-direction:column}.court-home-dark .court-home-top{order:1;min-height:auto}.court-home-dark .court-home-games{order:2;padding-top:56px!important}.court-home-dark .court-home-tournaments{order:3;padding-top:12px}.court-home-dark .court-player-spotlight{order:4}.court-home-dark .court-home-community-section{order:5}.court-home-dark .court-home-news{order:6}.court-home-dark .court-home-community{box-shadow:none}.court-home-top .court-hero{min-height:650px;padding-block:34px 58px}.court-home-top .court-hero h1{font-size:clamp(48px,5.5vw,76px);line-height:1;letter-spacing:-3px}.court-home-top .court-hero-art{transform:none;box-shadow:0 18px 50px rgba(0,0,0,.42)}.court-home-dark .court-section{padding-block:52px}.court-home-dark .court-section-heading{margin-bottom:22px}.court-home-dark .court-section-heading h2{font-size:clamp(28px,2.7vw,38px)}.court-home-dark .court-match,.court-home-dark .court-tournament{border-radius:16px;box-shadow:none}.court-player-grid article{position:relative;grid-template-columns:auto auto 1fr}.court-player-photo{display:grid;width:58px;height:58px;place-items:center;overflow:hidden;border-radius:50%;background:linear-gradient(145deg,#28282d,#111);color:#e3b956;font-size:.82rem;font-weight:900}.court-player-photo img{width:100%;height:100%;object-fit:cover}.court-player-grid article>dl{grid-column:1/-1}@media(max-width:650px){.court-home-dark .court-home-games{padding-top:34px!important}.court-home-top .court-hero{min-height:auto;padding-block:26px 38px}.court-home-top .court-hero h1{font-size:clamp(40px,12vw,58px)}.court-home-dark .court-section{padding-block:38px}.court-player-grid article{grid-template-columns:auto 1fr}.court-player-rank{position:absolute;top:12px;right:12px}}
+
+/* Tournament leaders: approved portraits first, polished basketball artwork as fallback. */
+.court-player-grid article{
+  grid-template-columns:88px minmax(0,1fr);
+  min-height:142px;
+  padding:14px;
+  overflow:hidden;
+  border-color:#e6e2df;
+  border-radius:18px;
+  box-shadow:0 12px 34px rgba(17,17,22,.07);
+}
+.court-player-photo{
+  grid-row:1 / span 2;
+  width:88px;
+  height:112px;
+  align-self:stretch;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  background:#17171b;
+  box-shadow:0 8px 20px rgba(0,0,0,.16);
+}
+.court-player-photo img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center top;
+}
+.court-player-photo img.is-placeholder{object-position:center}
+.court-player-rank{
+  position:absolute;
+  top:22px;
+  left:80px;
+  width:34px;
+  height:34px;
+  border:3px solid #fff;
+  border-radius:50%;
+  background:#d92d1c;
+  color:#fff;
+  box-shadow:0 5px 14px rgba(217,45,28,.3);
+  font-size:.72rem;
+}
+.court-player-grid article>div{padding:5px 4px 0 10px}
+.court-player-grid h3{font-size:1rem;line-height:1.2}
+.court-player-grid p{font-size:.73rem}
+.court-player-grid article>dl{
+  grid-column:2;
+  align-self:end;
+  justify-content:flex-start;
+  gap:24px;
+  margin-left:10px;
+  padding-top:10px;
+  border-top:1px solid #ece9e6;
+}
+.court-player-grid dt{font-size:.56rem;font-weight:800}
+.court-player-grid dd{font-size:1rem}
+@media(max-width:650px){
+  .court-player-grid article{grid-template-columns:76px minmax(0,1fr);min-height:128px;padding:12px}
+  .court-player-photo{width:76px;height:100px}
+  .court-player-rank{top:18px;left:68px;width:32px;height:32px}
+  .court-player-grid article>div{padding-left:8px;padding-right:24px}
+  .court-player-grid article>dl{grid-column:2;margin-left:8px;gap:20px;padding-top:8px}
+}

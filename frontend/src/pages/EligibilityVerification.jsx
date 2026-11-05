@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import eligibilityService from '../services/eligibilityService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
@@ -18,12 +19,17 @@ const EligibilityVerification = () => {
   const [documentBirthDate,setDocumentBirthDate]=useState('');
   const [searchQuery,setSearchQuery]=useState('');
   const [statusFilter,setStatusFilter]=useState('all');
+  const [tournamentFilter,setTournamentFilter]=useState('');
   const [loadError,setLoadError]=useState('');
+  const [savingRoster,setSavingRoster]=useState(false);
+  const [documentPreview,setDocumentPreview]=useState(null);
 
   const filteredPlayers=useMemo(()=>{
+    if(!isCoach&&!tournamentFilter)return [];
     const query=searchQuery.trim().toLowerCase();
     return players.filter(player=>{
       if(statusFilter!=='all'&&player.eligibility_status!==statusFilter)return false;
+      if(tournamentFilter&&String(player.tournament_name)!==tournamentFilter)return false;
       if(!query)return true;
       return [
       player.user_full_name,
@@ -36,7 +42,8 @@ const EligibilityVerification = () => {
       player.eligibility_status,
       ].some(value=>String(value??'').toLowerCase().includes(query));
     });
-  },[players,searchQuery,statusFilter]);
+  },[players,searchQuery,statusFilter,tournamentFilter,isCoach]);
+  const tournamentOptions=useMemo(()=>[...new Set(players.map(player=>player.tournament_name).filter(Boolean))].sort(),[players]);
 
   const loadData = async () => {
     setLoadError('');
@@ -75,17 +82,23 @@ const EligibilityVerification = () => {
     setRemarks(player.remarks ?? '');
     setDocuments(await eligibilityService.documents(player.id));
   };
+  const previewDocument=async(doc)=>{try{if(documentPreview?.url)URL.revokeObjectURL(documentPreview.url);const url=await eligibilityService.privateImage(doc.id);setDocumentPreview({url,mime:doc.mime_type,title:doc.document_type});}catch(err){alert(err.response?.data?.message||'Document preview is unavailable.');}};
+  const closeDocumentPreview=()=>{if(documentPreview?.url)URL.revokeObjectURL(documentPreview.url);setDocumentPreview(null);};
   const upload=async()=>{if(!documentFile)return;try{await eligibilityService.uploadDocument(selectedPlayer.id,documentType,documentFile,documentType==='Birth Certificate / PSA'?documentBirthDate:'');setDocuments(await eligibilityService.documents(selectedPlayer.id));setDocumentFile(null);setDocumentBirthDate('');}catch(err){alert(err.response?.data?.message||'Document upload failed.');}};
   const reviewDocument=async(id,status)=>{await eligibilityService.reviewDocument(id,status,remarks);setDocuments(await eligibilityService.documents(selectedPlayer.id));};
 
   const saveRosterDetails = async () => {
+    if (!selectedPlayer || savingRoster) return;
     try {
+      setSavingRoster(true);
       await eligibilityService.updateRoster(selectedPlayer.id, jerseyNumber, position);
       await loadData();
       setSelectedPlayer(current => ({ ...current, jersey_number: jerseyNumber, position }));
-      alert('Jersey number and position saved.');
+      alert('Roster details saved.');
     } catch (err) {
       alert(err.response?.data?.message || 'Unable to update roster details.');
+    } finally {
+      setSavingRoster(false);
     }
   };
 
@@ -117,6 +130,7 @@ const EligibilityVerification = () => {
       ) : (
         <div className="card-custom p-3 p-md-4 eligibility-workspace-card">
           <div className="coach-eligibility-section-heading eligibility-page-section-heading"><div><span className="eligibility-section-kicker">PLAYER RECORDS</span><h2>{isCoach ? 'Assigned roster' : 'Eligibility review queue'}</h2><p>{isCoach ? 'Only players connected to your team appear here.' : 'Search and review submitted player records across the platform.'}</p></div><span className="coach-eligibility-count">{filteredPlayers.length} shown</span></div>
+          {!isCoach&&<label className="eligibility-tournament-filter"><span><i className="bi bi-trophy-fill"/> Select tournament</span><select className="form-select" value={tournamentFilter} onChange={event=>setTournamentFilter(event.target.value)}><option value="">Choose a tournament</option>{tournamentOptions.map(name=><option value={name} key={name}>{name}</option>)}</select></label>}
           <div className="eligibility-searchbar mb-3">
             <div className="eligibility-search-input">
               <i className="bi bi-search" aria-hidden="true"></i>
@@ -134,7 +148,7 @@ const EligibilityVerification = () => {
           <div className="eligibility-status-filters" role="group" aria-label="Filter eligibility status">
             {[['all','All players',players.length],['pending','Needs review',statusCounts.pending||0],['verified','Verified',statusCounts.verified||0],['rejected','Needs correction',statusCounts.rejected||0]].map(([value,label,count])=><button type="button" key={value} className={statusFilter===value?'active':''} onClick={()=>setStatusFilter(value)} aria-pressed={statusFilter===value}>{label}<span>{count}</span></button>)}
           </div>
-          <div className="table-responsive">
+          <div className="table-responsive" role="region" aria-label="Player eligibility records" tabIndex={0}>
             <table className="table table-hover align-middle mb-0 eligibility-records-table">
               <thead className="table-light">
                 <tr>
@@ -148,7 +162,7 @@ const EligibilityVerification = () => {
               </thead>
               <tbody>
                 {filteredPlayers.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-4 text-muted">{searchQuery||statusFilter!=='all'?'No roster records match these filters.':isCoach?'Your assigned team has no roster players yet.':'No player eligibility records found.'}</td></tr>
+                  <tr><td colSpan="6" className="text-center py-4 text-muted">{!isCoach&&!tournamentFilter?'Select a tournament above to load its player eligibility records.':searchQuery||statusFilter!=='all'?'No roster records match these filters.':isCoach?'Your assigned team has no roster players yet.':'No player eligibility records found.'}</td></tr>
                 ) : (
                   filteredPlayers.map(p => (
                     <tr key={p.id}>
@@ -175,13 +189,13 @@ const EligibilityVerification = () => {
         </div>
       )}
 
-      {selectedPlayer && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered modal-xl">
+      {selectedPlayer && createPortal(
+        <div className="modal show d-block eligibility-review-backdrop" role="dialog" aria-modal="true" aria-labelledby="eligibility-review-title">
+          <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
             <div className="modal-content card-custom border-0">
               <div className="modal-header border-bottom">
-                <h5 className="fw-bold text-dark mb-0">Review Eligibility: {selectedPlayer.user_full_name || selectedPlayer.student_id_number}</h5>
-                <button type="button" className="btn-close" onClick={() => setSelectedPlayer(null)}></button>
+                <h5 id="eligibility-review-title" className="fw-bold mb-0">Review Eligibility: {selectedPlayer.user_full_name || selectedPlayer.student_id_number}</h5>
+                <button type="button" className="btn-close" aria-label="Close player review" onClick={() => setSelectedPlayer(null)}></button>
               </div>
               <div className="modal-body">
                 <div className="alert alert-light border mb-3 small">
@@ -199,25 +213,31 @@ const EligibilityVerification = () => {
                   <label className="form-label small fw-semibold">Review Remarks</label>
                   <textarea className="form-control" rows="2" value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Add remarks or rejection reason..."></textarea>
                 </div>
-                <div className="border rounded-3 p-3"><h6 className="fw-bold">Protected Documents</h6>{isCoach?<p className="small text-muted">Upload the Birth Certificate/PSA and Parent Permit. Admin performs the final review.</p>:<p className="small text-muted">Documents are submitted by the assigned Coach. Review the birth-date match and supporting file before deciding.</p>}{documents.map(doc=><div className="eligibility-document-row" key={doc.id}><div><b className="small">{doc.document_type}</b><span className={`badge ms-2 ${doc.status==='verified'?'bg-success':doc.status==='rejected'?'bg-danger':'bg-warning text-dark'}`}>{doc.status}</span>{doc.declared_birth_date&&<small className="d-block text-muted">Document birth date: {doc.declared_birth_date}</small>}{doc.birthdate_match!==null&&<small className={`d-block fw-semibold ${doc.birthdate_match?'text-success':'text-danger'}`}>{doc.birthdate_match?'Roster and document birth dates match':'Birth date mismatch — admin review required'}</small>}</div><div className="d-flex gap-1 flex-wrap">{!isCoach&&<><button className="btn btn-success btn-sm" onClick={()=>reviewDocument(doc.id,'verified')}>Verify</button><button className="btn btn-outline-danger btn-sm" onClick={()=>reviewDocument(doc.id,'rejected')}>Reject</button></>}</div></div>)}{!documents.length&&<p className="small text-muted">No documents uploaded yet.</p>}{isCoach&&<div className="row g-2 mt-2"><div className="col-md-4"><select className="form-select" value={documentType} onChange={e=>setDocumentType(e.target.value)}><option>Birth Certificate / PSA</option><option>Parent Permit</option></select></div>{documentType==='Birth Certificate / PSA'&&<div className="col-md-3"><input type="date" className="form-control" value={documentBirthDate} onChange={e=>setDocumentBirthDate(e.target.value)} aria-label="Birth date shown on document" /></div>}<div className="col"><div className="input-group"><input type="file" accept=".pdf,.jpg,.jpeg,.png" className="form-control" onChange={e=>setDocumentFile(e.target.files?.[0]||null)}/><button type="button" className="btn btn-outline-dark" onClick={upload} disabled={!documentFile||(documentType==='Birth Certificate / PSA'&&!documentBirthDate)}>Upload</button></div></div></div>}</div>
+                <div className="eligibility-protected-documents"><div className="eligibility-documents-heading"><span><i className="bi bi-shield-lock-fill"/></span><div><h6>Protected Documents</h6><p>{isCoach ? 'Upload the Birth Certificate/PSA and Parent Waiver. Admin or assigned Staff Admin performs the final review.' : 'Open each protected file before verifying or rejecting it.'}</p></div></div>{documents.map(doc=><div className="eligibility-document-row" key={doc.id}><div><b className="small">{doc.document_type}</b><span className={`badge ms-2 ${doc.status==='verified'?'bg-success':doc.status==='rejected'?'bg-danger':'bg-warning text-dark'}`}>{doc.status}</span>{doc.declared_birth_date&&<small className="d-block text-muted">Document birth date: {doc.declared_birth_date}</small>}{doc.birthdate_match!==null&&<small className={`d-block fw-semibold ${doc.birthdate_match?'text-success':'text-danger'}`}>{doc.birthdate_match?'Roster and document birth dates match':'Birth date mismatch — reviewer decision required'}</small>}</div><div className="eligibility-document-actions"><button type="button" className="btn btn-outline-primary btn-sm" onClick={()=>previewDocument(doc)}><i className="bi bi-eye-fill me-1"/>View file</button>{!isCoach&&<><button className="btn btn-success btn-sm" onClick={()=>reviewDocument(doc.id,'verified')}>Verify</button><button className="btn btn-outline-danger btn-sm" onClick={()=>reviewDocument(doc.id,'rejected')}>Reject</button></>}</div></div>)}{!documents.length&&<p className="small text-muted">No Birth Certificate/PSA or Parent Waiver has been uploaded yet.</p>}{isCoach&&<div className="row g-2 mt-2"><div className="col-md-4"><select className="form-select" value={documentType} onChange={e=>setDocumentType(e.target.value)}><option>Birth Certificate / PSA</option><option>Parent Waiver</option></select></div>{documentType==='Birth Certificate / PSA'&&<div className="col-md-3"><input type="date" className="form-control" value={documentBirthDate} onChange={e=>setDocumentBirthDate(e.target.value)} aria-label="Birth date shown on document" /></div>}<div className="col"><div className="input-group"><input type="file" accept=".pdf,.jpg,.jpeg,.png" className="form-control" onChange={e=>setDocumentFile(e.target.files?.[0]||null)}/><button type="button" className="btn btn-outline-dark" onClick={upload} disabled={!documentFile||(documentType==='Birth Certificate / PSA'&&!documentBirthDate)}>Upload</button></div></div></div>}</div>
               </div>
-              <div className="modal-footer border-top d-flex flex-wrap justify-content-between gap-2">
+              <div className={`modal-footer border-top gap-2 ${isCoach ? 'eligibility-roster-footer' : 'd-flex flex-wrap justify-content-between'}`}>
                 {!isCoach&&<button type="button" className="btn btn-danger btn-sm" onClick={() => handleDecision('rejected')}>
                   <i className="bi bi-x-circle me-1"></i> Reject Eligibility
                 </button>}
-                <div className="d-flex flex-column gap-2">
-                  {isCoach&&<button type="button" className="btn btn-primary btn-sm" onClick={saveRosterDetails}>
-                    <i className="bi bi-floppy-fill me-1" /> Save Jersey &amp; Position
-                  </button>}
-                </div>
+                {isCoach&&<>
+                  <div className="eligibility-roster-footer-copy">
+                    <b>Roster details</b>
+                    <small>This saves the jersey number and playing position only.</small>
+                  </div>
+                  <button type="button" className="btn btn-primary eligibility-roster-save" onClick={saveRosterDetails} disabled={savingRoster}>
+                    <i className={`bi ${savingRoster ? 'bi-arrow-repeat spin' : 'bi-floppy-fill'} me-2`} />
+                    {savingRoster ? 'Saving...' : 'Save roster details'}
+                  </button>
+                </>}
                 {!isCoach&&<button type="button" className="btn btn-success btn-sm" onClick={() => handleDecision('verified')}>
                   <i className="bi bi-check-circle me-1"></i> Approve Eligibility
                 </button>}
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
+      {documentPreview&&createPortal(<div className="eligibility-preview-backdrop" role="dialog" aria-modal="true" aria-label={`${documentPreview.title} preview`}><section><header><div><small>PROTECTED DOCUMENT</small><h2>{documentPreview.title}</h2></div><button type="button" onClick={closeDocumentPreview} aria-label="Close document preview"><i className="bi bi-x-lg"/></button></header>{documentPreview.mime?.startsWith('image/')?<img src={documentPreview.url} alt={documentPreview.title}/>:<iframe src={documentPreview.url} title={documentPreview.title}/>}<footer><button type="button" className="btn btn-light" onClick={closeDocumentPreview}>Close preview</button><a className="btn btn-evsu" href={documentPreview.url} target="_blank" rel="noreferrer"><i className="bi bi-box-arrow-up-right me-1"/>Open full size</a></footer></section></div>,document.body)}
     </div>
   );
 };

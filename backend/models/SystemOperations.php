@@ -24,4 +24,41 @@ class SystemOperations {
         $files=glob($this->backupDir.'/fullcourt-backup-*.json.gz')?:[];usort($files,fn($a,$b)=>filemtime($b)<=>filemtime($a));foreach(array_slice($files,30) as $old)@unlink($old);
         return['file'=>$filename,'size_bytes'=>filesize($path),'tables'=>count($snapshot['tables']),'created_at'=>$snapshot['created_at']];
     }
+    public function restore(string $filename,int $userId):array{
+        $safe=basename($filename);
+        if($safe!==$filename||!preg_match('/^fullcourt-backup-\d{8}-\d{6}\.json\.gz$/',$safe))throw new InvalidArgumentException('Select a valid FullCourt backup filename.');
+        $path=$this->backupDir.'/'.$safe;
+        if(!is_file($path))throw new RuntimeException('The selected backup file does not exist.');
+        $decoded=gzdecode((string)file_get_contents($path));
+        $snapshot=is_string($decoded)?json_decode($decoded,true):null;
+        if(!is_array($snapshot)||($snapshot['format']??'')!=='fullcourt-json-backup-v1'||!is_array($snapshot['tables']??null))throw new RuntimeException('Backup validation failed.');
+        foreach(array_keys($snapshot['tables']) as $table){if(!in_array($table,self::TABLES,true))throw new RuntimeException("Backup contains an unsupported table: {$table}.");}
+        $preRestore=$this->backup($userId);
+        $driver=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $tables=array_values(array_intersect(self::TABLES,array_keys($snapshot['tables'])));
+        $inserted=[];
+        try{
+            if($driver==='mysql')$this->db->exec('SET FOREIGN_KEY_CHECKS=0');
+            $this->db->beginTransaction();
+            foreach(array_reverse($tables) as $table)$this->db->exec('DELETE FROM '.$this->quoteIdentifier($table,$driver));
+            foreach($tables as $table){
+                $rows=$snapshot['tables'][$table];$inserted[$table]=0;
+                foreach($rows as $row){
+                    if(!is_array($row)||$row===[])continue;
+                    $columns=array_keys($row);$quoted=array_map(fn($column)=>$this->quoteIdentifier((string)$column,$driver),$columns);
+                    $params=array_map(fn($column)=>':'.preg_replace('/[^a-zA-Z0-9_]/','_',strval($column)),$columns);
+                    $stmt=$this->db->prepare('INSERT INTO '.$this->quoteIdentifier($table,$driver).' ('.implode(',',$quoted).') VALUES ('.implode(',',$params).')');
+                    $values=[];foreach($columns as $index=>$column)$values[$params[$index]]=$row[$column];
+                    $stmt->execute($values);$inserted[$table]++;
+                }
+            }
+            $this->db->commit();
+        }catch(Throwable $error){if($this->db->inTransaction())$this->db->rollBack();throw $error;}
+        finally{if($driver==='mysql')$this->db->exec('SET FOREIGN_KEY_CHECKS=1');}
+        return['restored_from'=>$safe,'pre_restore_backup'=>$preRestore['file'],'tables'=>count($tables),'records'=>array_sum($inserted),'record_counts'=>$inserted,'restored_at'=>date(DATE_ATOM)];
+    }
+    private function quoteIdentifier(string $identifier,string $driver):string{
+        if(!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/',$identifier))throw new InvalidArgumentException('Invalid database identifier.');
+        return $driver==='pgsql'?'"'.$identifier.'"':'`'.$identifier.'`';
+    }
 }

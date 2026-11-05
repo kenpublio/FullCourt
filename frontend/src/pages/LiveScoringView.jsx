@@ -73,7 +73,7 @@ const LiveScoringView = () => {
           team1_score:    Number(sc.team1_score)    || 0,
           team2_score:    Number(sc.team2_score)    || 0,
           current_period: sc.current_period || 'Q1',
-          timer_seconds:  sc.timer_seconds  || 600,
+          timer_seconds:  sc.timer_seconds === null || sc.timer_seconds === undefined ? 600 : Number(sc.timer_seconds),
         };
         setScoreData(loadedScore);
         setScoreSnapshot({ team1_score: loadedScore.team1_score, team2_score: loadedScore.team2_score });
