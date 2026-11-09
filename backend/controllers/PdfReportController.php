@@ -44,6 +44,50 @@ class PdfReportController {
         $this->send($pdf->output(),'match-'.$matchId.'-score-sheet.pdf',null,'FIBA_SCORE_SHEET',(int)$m['tournament_id']);
     }
 
+    public function gameDayPack(int $id):void{
+        $user=AuthMiddleware::authorizeRoles(['platform_admin','admin','statistician','coach','assistant_coach','coach_manager']);
+        OrganizationAccess::requireTournament($id,$user);
+        $base=$this->tournamentRow($id);
+        $pdf=new SimplePdf();
+        $pdf->heading('FullCourt','Game-Day Operations Pack',$base['name'].' | Generated '.date('F j, Y g:i A'));
+        $pdf->section('Competition Contact Sheet');
+        $pdf->row(['Tournament','Format','Dates','Roster Deadline'],[185,105,120,90],true);
+        $pdf->row([$base['name'],str_replace('_',' ',$base['format']),$base['start_date'].' to '.$base['end_date'],$base['registration_deadline']?:'Not set'],[185,105,120,90]);
+
+        $games=$this->query("SELECT m.scheduled_start_time,m.stage_name,h.team_name home_team,a.team_name away_team,
+            COALESCE(v.name,'Venue TBA') venue_name,COALESCE(c.court_name,'Court TBA') court_name,m.status
+            FROM matches m LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id
+            LEFT JOIN courts c ON c.id=m.court_id LEFT JOIN venues v ON v.id=c.venue_id
+            WHERE m.tournament_id=:id AND m.status<>'cancelled'
+            ORDER BY CASE WHEN m.scheduled_start_time IS NULL THEN 1 ELSE 0 END,m.scheduled_start_time,m.round_number,m.id",$id);
+        $pdf->section('Official Game Schedule');
+        $pdf->row(['Date / Time','Match','Teams','Venue / Court','Status'],[105,75,145,115,60],true);
+        foreach($games as $game)$pdf->row([
+            $game['scheduled_start_time']?:'To be assigned',$game['stage_name']?:'Match',
+            ($game['home_team']?:'TBD').' vs '.($game['away_team']?:'TBD'),$game['venue_name'].' - '.$game['court_name'],$game['status']
+        ],[105,75,145,115,60]);
+
+        $teams=$this->query("SELECT tm.id,tm.team_name,u.full_name coach_name,u.phone_number mobile_number,
+            (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id) roster_count,
+            (SELECT COUNT(*) FROM team_players tp WHERE tp.team_id=tm.id AND tp.eligibility_status='verified') verified_count
+            FROM teams tm LEFT JOIN users u ON u.id=tm.coach_user_id WHERE tm.tournament_id=:id ORDER BY tm.team_name",$id);
+        $pdf->section('Team Contacts and Roster Status');
+        $pdf->row(['Team','Coach','Mobile','Roster','Verified'],[145,140,90,60,65],true);
+        foreach($teams as $team)$pdf->row([$team['team_name'],$team['coach_name']?:'Unassigned',$team['mobile_number']?:'Not provided',$team['roster_count'],$team['verified_count']],[145,140,90,60,65]);
+
+        foreach($teams as $team){
+            $players=$this->query("SELECT COALESCE(tp.player_name,u.full_name) player_name,tp.jersey_number,tp.position,tp.eligibility_status
+                FROM team_players tp LEFT JOIN users u ON u.id=tp.user_id WHERE tp.team_id=:id ORDER BY CAST(tp.jersey_number AS UNSIGNED),player_name",(int)$team['id']);
+            $pdf->section($team['team_name'].' Roster');
+            $pdf->row(['#','Player','Position','Eligibility','Present'],[35,205,100,100,60],true);
+            foreach($players as $player)$pdf->row([$player['jersey_number']?:'-',$player['player_name'],$player['position']?:'Player',str_replace('_',' ',$player['eligibility_status']),'[  ]'],[35,205,100,100,60]);
+        }
+
+        $pdf->section('Manual Score and Incident Backup');
+        $pdf->paragraph("Game: ______________________________   Court: ______________________________\nHome team: __________________________   Away team: _________________________\nQuarter scores: Q1 ____-____  Q2 ____-____  Q3 ____-____  Q4 ____-____  OT ____-____  FINAL ____-____\n\nIncident / injury summary:\n________________________________________________________________________________\n________________________________________________________________________________\nImmediate action taken:\n________________________________________________________________________________\n\nStaff Admin / scorer: ____________________   First-aid contact: ____________________\nSignatures: Home coach __________________  Away coach __________________  Official __________________");
+        $this->send($pdf->output(),'tournament-'.$id.'-game-day-pack.pdf',(int)$user['user_id'],'GAME_DAY_PACK',$id);
+    }
+
     private function tournamentRow(int $id):array{$stmt=$this->db->prepare("SELECT t.*,o.name organization_name FROM tournaments t LEFT JOIN organizations o ON o.id=t.organization_id WHERE t.id=:id");$stmt->execute([':id'=>$id]);$row=$stmt->fetch();if(!$row)Response::error('Tournament not found.',404);return $row;}
     private function query(string $sql,int $id):array{$stmt=$this->db->prepare($sql);$stmt->execute([':id'=>$id]);return $stmt->fetchAll();}
     private function send(string $bytes,string $filename,?int $userId,string $type,int $tournamentId):void{

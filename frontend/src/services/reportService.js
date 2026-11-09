@@ -25,6 +25,10 @@ export const reportService = {
     const res = await api.get(`/reports/matches/${matchId}/score-sheet.pdf`, { responseType: 'blob' });
     return res.data;
   }
+  ,async downloadGameDayPack(tournamentId) {
+    const res = await api.get(`/reports/tournaments/${tournamentId}/game-day-pack.pdf`, { responseType: 'blob' });
+    return res.data;
+  }
 };
 
 export default reportService;

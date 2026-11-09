@@ -4,6 +4,7 @@ import tournamentService from "../services/tournamentService";
 import eligibilityService from "../services/eligibilityService";
 import teamService from "../services/teamService";
 import venueService from "../services/venueService";
+import reportService from "../services/reportService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
 import "../styles/schedule-optimizer.css";
@@ -40,9 +41,28 @@ const ScheduleOptimizerView = () => {
   const [optimizerCourtId, setOptimizerCourtId] = useState("");
   const [optimizerLocation, setOptimizerLocation] = useState("");
   const [showOptimizerSetup, setShowOptimizerSetup] = useState(false);
+  const [packBusy, setPackBusy] = useState(false);
   const activeTournament = tournaments.find(
     (t) => String(t.id) === String(selectedTournament),
   );
+
+  const downloadGameDayPack = async () => {
+    if (!selectedTournament || packBusy) return;
+    setPackBusy(true);
+    try {
+      const blob = await reportService.downloadGameDayPack(selectedTournament);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `FullCourt_${String(activeTournament?.name || "Tournament").replace(/[^a-z0-9]+/gi, "_")}_Game_Day_Pack.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setLoadError(error.response?.data?.message || "The Game-Day Pack could not be generated.");
+    } finally {
+      setPackBusy(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -471,6 +491,15 @@ const ScheduleOptimizerView = () => {
           </label>
         )}
       </header>
+
+      {selectedTournament && !isPlayer && (
+        <div className="schedule-pack-action">
+          <div><i className="bi bi-file-earmark-pdf-fill"/><span><b>Game-Day Pack</b><small>Schedule, team contacts, rosters, score backup, and incident form in one printable PDF.</small></span></div>
+          <button type="button" className="btn btn-outline-danger" onClick={downloadGameDayPack} disabled={packBusy}>
+            <i className="bi bi-download me-2"/>{packBusy ? "Preparing…" : "Download PDF"}
+          </button>
+        </div>
+      )}
 
       {!isCoach && (
         <section className="schedule-ops-stats">

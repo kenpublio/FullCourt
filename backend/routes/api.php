@@ -230,6 +230,7 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/reports/generate' && $method === 'POST') { (new ReportController())->generateReport(); return; }
     if ($path === '/reports/log' && $method === 'GET') { (new ReportController())->reportLog(); return; }
     if (preg_match('#^/reports/tournaments/(\d+)\.pdf$#', $path, $m) && $method === 'GET') { (new PdfReportController())->tournament((int)$m[1]); return; }
+    if (preg_match('#^/reports/tournaments/(\d+)/game-day-pack\.pdf$#', $path, $m) && $method === 'GET') { (new PdfReportController())->gameDayPack((int)$m[1]); return; }
     if (preg_match('#^/reports/matches/(\d+)/score-sheet\.pdf$#', $path, $m) && $method === 'GET') { (new PdfReportController())->scoreSheet((int)$m[1]); return; }
 
     // 12. Venue & Court Management Routes
