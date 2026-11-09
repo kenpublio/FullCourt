@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Layouts
 import MainLayout from '../layouts/MainLayout';
@@ -31,7 +31,6 @@ const NotificationsView = lazy(() => import('../pages/NotificationsView'));
 const SettingsView = lazy(() => import('../pages/SettingsView'));
 const PublicSportsPortal = lazy(() => import('../pages/PublicSportsPortal'));
 const PublicTournamentDetails = lazy(() => import('../pages/PublicTournamentDetails'));
-const VenueManagement = lazy(() => import('../pages/VenueManagement'));
 const OfficialsWorkspace = lazy(() => import('../pages/OfficialsWorkspace'));
 const AwardsManagement = lazy(() => import('../pages/AwardsManagement'));
 const ShareCards = lazy(() => import('../pages/ShareCards'));
@@ -43,12 +42,8 @@ const PublicGameDetails = lazy(() => import('../pages/PublicGameDetails'));
 const PublicDailySchedule = lazy(() => import('../pages/PublicDailySchedule'));
 const GuestScoringConsole = lazy(() => import('../pages/GuestScoringConsole'));
 const GymScoreboard = lazy(() => import('../pages/GymScoreboard'));
-const OrganizationManagement = lazy(() => import('../pages/OrganizationManagement'));
 const PlayerAnalytics = lazy(() => import('../pages/PlayerAnalytics'));
-const PlayerDocuments = lazy(() => import('../pages/PlayerDocuments'));
-const SportsHistory = lazy(() => import('../pages/SportsHistory'));
 const SportsCategories = lazy(() => import('../pages/SportsCategories'));
-const PublicOrganizationPortal = lazy(() => import('../pages/PublicOrganizationPortal'));
 
 // Guard
 import ProtectedRoute from './ProtectedRoute';
@@ -97,7 +92,7 @@ const AppRoutes = () => {
         <Route path="/eligibility" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','statistician']}><EligibilityVerification /></ProtectedRoute>} />
         <Route path="/brackets" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BracketEngineView /></ProtectedRoute>} />
         <Route path="/schedules" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><ScheduleOptimizerView /></ProtectedRoute>} />
-        <Route path="/venues" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><VenueManagement /></ProtectedRoute>} />
+        <Route path="/venues" element={<Navigate to="/schedules" replace />} />
         <Route path="/live-scoring" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><LiveScoringView /></ProtectedRoute>} />
         <Route path="/scorekeeper" element={<ProtectedRoute allowedRoles={['platform_admin','admin','statistician']}><BasketballStatistician /></ProtectedRoute>} />
         <Route path="/standings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><StandingsView /></ProtectedRoute>} />
@@ -109,13 +104,13 @@ const AppRoutes = () => {
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['platform_admin','admin','coach','assistant_coach','statistician']}><SettingsView /></ProtectedRoute>} />
 
         {/* Player Portal Routes */}
-        <Route path="/my-documents" element={<ProtectedRoute allowedRoles={['coach','platform_admin','admin','statistician']}><PlayerDocuments /></ProtectedRoute>} />
-        <Route path="/my-history" element={<ProtectedRoute allowedRoles={['coach','platform_admin','admin','statistician']}><SportsHistory /></ProtectedRoute>} />
+        <Route path="/my-documents" element={<Navigate to="/eligibility" replace />} />
+        <Route path="/my-history" element={<Navigate to="/coach" replace />} />
         <Route path="/players/:id/stats" element={<PlayerAnalytics />} />
-        <Route path="/my-stats" element={<PlayerAnalytics />} />
+        <Route path="/my-stats" element={<Navigate to="/coach" replace />} />
 
-        {/* Organization Routes */}
-        <Route path="/organizations" element={<ProtectedRoute allowedRoles={['platform_admin','admin','organization_admin','tournament_organizer']}><OrganizationManagement /></ProtectedRoute>} />
+        {/* Retired organization workspace: Admin now owns tournaments directly. */}
+        <Route path="/organizations" element={<Navigate to="/platform" replace />} />
       </Route>
 
       {/* Root & Fallback */}
@@ -125,7 +120,7 @@ const AppRoutes = () => {
       <Route path="/sports/categories" element={<SportsCategories />} />
       <Route path="/sports/tournaments/:id" element={<PublicTournamentDetails />} />
       <Route path="/sports/games/:gameId" element={<PublicGameDetails />} />
-      <Route path="/org/:slug" element={<PublicOrganizationPortal />} />
+      <Route path="/org/:slug" element={<Navigate to="/sports" replace />} />
       <Route path="/score/:token" element={<GuestScoringConsole />} />
       <Route path="/scoreboard/:matchId" element={<GymScoreboard />} />
       <Route path="/overlay/game/:gameId" element={<BroadcastOverlay />} />

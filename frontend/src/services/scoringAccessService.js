@@ -15,6 +15,7 @@ const scoringAccessService={
   async undoStat(session,eventId){return(await guest.delete(`/scoring-session/stats/${eventId}`,sessionConfig(session))).data;},
   async updateClock(session,payload){return(await guest.put('/scoring-session/clock',payload,sessionConfig(session))).data?.data;},
   async substitute(session,payload){return(await guest.post('/scoring-session/substitutions',payload,sessionConfig(session))).data;},
+  async reportIncident(session,payload){return(await guest.post('/scoring-session/incidents',payload,sessionConfig(session))).data;},
   async submitFinal(session){return(await guest.post('/scoring-session/submit-final',{},sessionConfig(session))).data?.data;},
 };
 export default scoringAccessService;

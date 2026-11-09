@@ -27,6 +27,16 @@
   opacity: .82;
 }
 
+/* Dark homepage navigation: text remains white; gold is reserved for the active underline. */
+html body .court-home-dark .court-home-top .court-nav .court-nav-links a,
+html body .court-home-dark .court-home-top .court-nav .court-nav-links a:link,
+html body .court-home-dark .court-home-top .court-nav .court-nav-links a:visited,
+html body .court-home-dark .court-home-top .court-nav .court-nav-links a:hover,
+html body .court-home-dark .court-home-top .court-nav .court-nav-links a:focus-visible,
+html body .court-home-dark .court-home-top .court-nav .court-nav-links a.active {
+  color: #fff !important;
+}
+
 /* Keep the public header legible even when the global dark-theme link color wins. */
 html body .court-home-top .court-nav-account .court-signin,
 html body .court-home-top .court-nav-account .court-signin:link,
@@ -38,6 +48,24 @@ html body .court-home-top .court-nav-account .court-signin > span:last-child {
 }
 
 .court-join-label-mobile {
+  display: none;
+}
+
+/* Keep the registration action secondary and compact on every public page. */
+html body .court-site > .court-nav .court-join-button {
+  min-height: 38px;
+  padding: 4px 9px 4px 5px;
+  gap: 5px;
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+html body .court-site > .court-nav .court-join-button > .court-join-icon {
+  width: 26px;
+  height: 26px;
+}
+
+html body .court-site > .court-nav .court-join-button > .court-join-arrow {
   display: none;
 }
 

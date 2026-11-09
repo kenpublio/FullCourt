@@ -33,6 +33,14 @@ async function uploadEligibility(playerId, type, birthDate = '') {
 
 (async () => {
   const stamp = Date.now();
+  const isoDate = (offsetDays) => {
+    const value = new Date();
+    value.setDate(value.getDate() + offsetDays);
+    return value.toISOString().slice(0, 10);
+  };
+  const registrationDeadline = isoDate(7);
+  const tournamentDate = isoDate(8);
+  const tournamentDay = ['sun','mon','tue','wed','thu','fri','sat'][new Date(`${tournamentDate}T12:00:00`).getDay()];
   const createdTournamentIds = [];
   try {
     const venuePayload = await api(admin, 'GET', '/venues');
@@ -43,9 +51,9 @@ async function uploadEligibility(playerId, type, birthDate = '') {
     const createTournament = async (mode, suffix) => {
       const created = await api(admin, 'POST', '/tournaments', {
         name: `FullCourt ${suffix} ${stamp}`, operation_mode: mode, format: 'single_elimination',
-        description: 'Automated three-role launch rehearsal. Safe to delete.', start_date: '2026-11-08', end_date: '2026-11-08',
-        registration_deadline: '2026-11-07', registration_fee: 0, court_ids: [Number(court.id)],
-        schedule_start_time: '08:00', schedule_end_time: '20:00', available_days: ['sun'],
+        description: 'Automated three-role launch rehearsal. Safe to delete.', start_date: tournamentDate, end_date: tournamentDate,
+        registration_deadline: registrationDeadline, registration_fee: 0, court_ids: [Number(court.id)],
+        schedule_start_time: '08:00', schedule_end_time: '20:00', available_days: [tournamentDay],
       });
       createdTournamentIds.push(Number(created.data.id));
       return Number(created.data.id);
@@ -64,7 +72,7 @@ async function uploadEligibility(playerId, type, birthDate = '') {
     });
 
     const teamIds = [];
-    for (const [index, name] of ['Red Falcons', 'Blue Waves', 'Gold Lions', 'Black Knights'].entries()) {
+    for (const [index, name] of ['Red Falcons', 'Blue Waves'].entries()) {
       const team = await api(admin, 'POST', '/teams', {
         tournament_id: officialId, division_id: Number(division.data.id), team_name: `${name} ${stamp}`,
         short_name: `${name.split(' ')[0].slice(0, 3).toUpperCase()}${index}`, primary_color: ['#cd2d17', '#2563eb', '#d4a72c', '#18181b'][index],
@@ -75,17 +83,19 @@ async function uploadEligibility(playerId, type, birthDate = '') {
 
     const playerIds = [];
     for (const [teamIndex, teamId] of teamIds.entries()) {
-      const player = await api(coach, 'POST', '/eligibility/add-player', {
-        team_id: teamId, player_name: `Rehearsal Player ${stamp}-${teamIndex + 1}`, birth_date: '2005-01-01', jersey_number: teamIndex + 1, position: 'Guard',
-      });
-      playerIds.push(Number(player.data.id));
-      await uploadEligibility(Number(player.data.id), 'Birth Certificate / PSA', '2005-01-01');
-      await uploadEligibility(Number(player.data.id), 'Parent Permit');
-      await api(admin, 'PUT', `/eligibility/${player.data.id}`, { status: 'verified', remarks: 'Automated rehearsal record.' });
+      for (let playerIndex = 0; playerIndex < 5; playerIndex += 1) {
+        const player = await api(coach, 'POST', '/eligibility/add-player', {
+          team_id: teamId, player_name: `Rehearsal Player ${stamp}-${teamIndex + 1}-${playerIndex + 1}`, birth_date: '2005-01-01', jersey_number: playerIndex + 1, position: 'Guard',
+        });
+        playerIds.push(Number(player.data.id));
+        await uploadEligibility(Number(player.data.id), 'Birth Certificate / PSA', '2005-01-01');
+        await uploadEligibility(Number(player.data.id), 'Parent Permit');
+        await api(admin, 'PUT', `/eligibility/${player.data.id}`, { status: 'verified', remarks: 'Automated rehearsal record.' });
+      }
     }
 
     await api(admin, 'POST', `/tournaments/${officialId}/bracket/generate`, { format: 'single_elimination', shuffle: false });
-    await api(admin, 'POST', `/tournaments/${officialId}/schedule/auto`, { start_date: '2026-11-08', start_time: '08:00:00' });
+    await api(admin, 'POST', `/tournaments/${officialId}/schedule/auto`, { start_date: tournamentDate, start_time: '08:00:00' });
     const conflictPayload = await api(admin, 'POST', `/tournaments/${officialId}/schedule/conflicts`, {});
     const conflictCount = ['court_clashes', 'team_clashes', 'venue_violations'].reduce((count, key) => count + (conflictPayload.data?.[key]?.length || 0), 0);
     if (conflictCount === 0) await api(admin, 'POST', `/tournaments/${officialId}/schedule/publish`, {});

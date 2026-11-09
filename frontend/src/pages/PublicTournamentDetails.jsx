@@ -51,6 +51,7 @@ export default function PublicTournamentDetails() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [scheduleView, setScheduleView] = useState("cards");
   const [teamFilter, setTeamFilter] = useState("all");
+  const [shareMessage, setShareMessage] = useState("");
   useEffect(() => {
     localStorage.setItem("fullcourt_public_tournament", String(id));
     let active = true;
@@ -95,6 +96,30 @@ export default function PublicTournamentDetails() {
     [data],
   );
   const tournament = data?.tournament;
+  const nextGame = schedule
+    .filter((match) =>
+      ["scheduled", "starting_soon", "in_progress"].includes(match.status),
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.scheduled_start_time || "2999-12-31") -
+        new Date(b.scheduled_start_time || "2999-12-31"),
+    )[0];
+  const shareTournament = async () => {
+    const payload = {
+      title: tournament?.name || "FullCourt Tournament",
+      text: `Follow ${tournament?.name || "this tournament"} on FullCourt.`,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) await navigator.share(payload);
+      else await navigator.clipboard.writeText(window.location.href);
+      setShareMessage(navigator.share ? "Shared" : "Link copied");
+      window.setTimeout(() => setShareMessage(""), 2200);
+    } catch (shareError) {
+      if (shareError?.name !== "AbortError") setShareMessage("Unable to share");
+    }
+  };
   const roundLabel = (round) => {
     const position = rounds.indexOf(round),
       remaining = rounds.length - position;
@@ -181,8 +206,9 @@ export default function PublicTournamentDetails() {
                     <CourtStatus status={tournament.status} />
                     <span>
                       <i className="bi bi-calendar3" />{" "}
-                      {courtDate(tournament.start_date)} –{" "}
-                      {courtDate(tournament.end_date)}
+                      {tournament.status === "completed"
+                        ? `Completed ${courtDate(tournament.end_date || tournament.start_date)}`
+                        : `Starts ${courtDate(tournament.start_date)}`}
                     </span>
                     <span>
                       <i className="bi bi-diagram-3" />{" "}
@@ -191,6 +217,25 @@ export default function PublicTournamentDetails() {
                         " ",
                       )}
                     </span>
+                  </div>
+                  <div className="hub-title-actions">
+                    {nextGame && (
+                      <Link
+                        to={`/sports/games/${nextGame.id}?tournament=${tournament.id}`}
+                        className="hub-next-game"
+                      >
+                        <i className={`bi ${nextGame.status === "in_progress" ? "bi-broadcast-pin" : "bi-calendar-event"}`} />
+                        <span>
+                          <small>{nextGame.status === "in_progress" ? "LIVE NOW" : "NEXT GAME"}</small>
+                          <b>{nextGame.team1_name || "TBD"} vs {nextGame.team2_name || "TBD"}</b>
+                          <em>{courtDate(nextGame.scheduled_start_time, true)} · {nextGame.court_name || "Court TBA"}</em>
+                        </span>
+                        <i className="bi bi-arrow-right" />
+                      </Link>
+                    )}
+                    <button type="button" className="hub-share-button" onClick={shareTournament}>
+                      <i className="bi bi-share-fill" /> {shareMessage || "Share tournament"}
+                    </button>
                   </div>
                 </div>
                 <div className="hub-emblem" aria-hidden="true">

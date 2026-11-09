@@ -15,6 +15,7 @@ class EligibilityDocumentController {
     private const ALLOWED_DOC_TYPES = [
         'Birth Certificate / PSA',
         'Parent Waiver',
+        'Parent Permit',
     ];
 
     public function upload(int $teamPlayerId):void{
@@ -27,6 +28,7 @@ class EligibilityDocumentController {
         if(!in_array($type,self::ALLOWED_DOC_TYPES,true)){
             Response::error('Only Birth Certificate / PSA and Parent Waiver are accepted document types.',422);
         }
+        if($type==='Parent Permit')$type='Parent Waiver';
         $dir=__DIR__.'/../uploads/eligibility';if(!is_dir($dir)&&!mkdir($dir,0750,true)&&!is_dir($dir))Response::error('Document storage is unavailable.',500);
         $name=bin2hex(random_bytes(20)).'.'.$allowed[$mime];$path=$dir.'/'.$name;if(!move_uploaded_file($file['tmp_name'],$path))Response::error('Document could not be stored.',500);
         $identity=[];

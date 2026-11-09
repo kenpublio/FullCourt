@@ -21,7 +21,11 @@ class TournamentController {
         $user=AuthMiddleware::authenticate();
         $tournaments = in_array($user['role'], ['coach','assistant_coach','coach_manager'], true)
             ? $this->tournamentModel->getAvailableForCoach((int)$user['user_id'])
-            : $this->tournamentModel->getAll((int)$user['user_id'],OrganizationAccess::isPlatform($user));
+            : $this->tournamentModel->getAll(
+                (int)$user['user_id'],
+                OrganizationAccess::isPlatform($user),
+                $user['role']==='statistician'
+            );
         $sports = $this->tournamentModel->getSports();
         Response::success('Tournaments retrieved', [
             'tournaments' => $tournaments,

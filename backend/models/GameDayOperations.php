@@ -42,7 +42,14 @@ class GameDayOperations {
         $sql="INSERT INTO game_incidents(match_id,incident_type,severity,description,action_taken,reported_by) VALUES(:match_id,:type,:severity,:description,:action,:user_id)";
         if($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)!=='mysql')$sql.=' RETURNING id';
         $stmt=$this->db->prepare($sql);
-        $stmt->execute([':match_id'=>$matchId,':type'=>$data['incident_type'],':severity'=>$data['severity'],':description'=>trim($data['description']),':action'=>trim((string)($data['action_taken']??''))?:null,':user_id'=>$userId]);return(int)($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?$this->db->lastInsertId():$stmt->fetchColumn());
+        $stmt->execute([':match_id'=>$matchId,':type'=>$data['incident_type'],':severity'=>$data['severity'],':description'=>trim($data['description']),':action'=>trim((string)($data['action_taken']??''))?:null,':user_id'=>$userId]);
+        $id=(int)($this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?$this->db->lastInsertId():$stmt->fetchColumn());
+        $recipients=$this->db->prepare("SELECT DISTINCT u.id FROM users u LEFT JOIN tournament_staff_assignments tsa ON tsa.user_id=u.id LEFT JOIN matches assigned_match ON assigned_match.tournament_id=tsa.tournament_id AND assigned_match.id=:match_id WHERE u.is_active=1 AND (u.role IN ('platform_admin','admin') OR assigned_match.id IS NOT NULL)");
+        $recipients->execute([':match_id'=>$matchId]);
+        $notify=$this->db->prepare("INSERT INTO notifications(user_id,notification_type,title,message,action_url) VALUES(:user_id,'game_incident','Game incident reported',:message,'/game-day')");
+        $message=ucfirst((string)$data['incident_type'])." incident (".(string)$data['severity'].") was reported for game #{$matchId}.";
+        foreach($recipients->fetchAll(PDO::FETCH_COLUMN) as $recipientId)$notify->execute([':user_id'=>(int)$recipientId,':message'=>$message]);
+        return $id;
     }
     public function incidentTournamentId(int $id):?int{$stmt=$this->db->prepare("SELECT m.tournament_id FROM game_incidents gi JOIN matches m ON m.id=gi.match_id WHERE gi.id=:id");$stmt->execute([':id'=>$id]);$value=$stmt->fetchColumn();return$value===false?null:(int)$value;}
     public function resolveIncident(int $id,int $userId):bool{$stmt=$this->db->prepare("UPDATE game_incidents SET status='resolved',resolved_by=:user_id,resolved_at=NOW() WHERE id=:id AND status='open'");$stmt->execute([':user_id'=>$userId,':id'=>$id]);return$stmt->rowCount()>0;}

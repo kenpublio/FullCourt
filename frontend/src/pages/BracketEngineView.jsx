@@ -4,6 +4,7 @@ import bracketService from '../services/bracketService';
 import tournamentService from '../services/tournamentService';
 import teamService from '../services/teamService';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ConfirmActionDialog from '../components/ConfirmActionDialog';
 import '../styles/bracket-engine.css';
 
 const hasTeam = teamId => teamId !== null && teamId !== undefined && teamId !== '' && Number(teamId) > 0;
@@ -34,6 +35,7 @@ const BracketEngineView = () => {
   const [seedOrder, setSeedOrder] = useState([]);
   const [editingSeeds, setEditingSeeds] = useState(false);
   const [savingSeeds, setSavingSeeds] = useState(false);
+  const [notice, setNotice] = useState(null);
   const activeTournament = tournaments.find(t => String(t.id) === String(selectedTournament));
   const registeredTeamCount = Number(activeTournament?.registered_teams_count || 0);
   const canGenerate = selectedTournament && registeredTeamCount >= 2;
@@ -112,7 +114,7 @@ const BracketEngineView = () => {
       setSavingSeeds(true);
       const data=await bracketService.saveTeamPlacement(selectedTournament,seedOrder.map(team=>Number(team.id)));
       setBracketData(data);setEditingSeeds(false);
-    }catch(error){alert(error.response?.data?.message||'Team placement could not be updated.');}
+    }catch(error){setNotice(error.response?.data?.message||'Team placement could not be updated.');}
     finally{setSavingSeeds(false);}
   };
 
@@ -122,7 +124,7 @@ const BracketEngineView = () => {
       await bracketService.generateBracket(selectedTournament);
       fetchBracket();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to generate bracket');
+      setNotice(err.response?.data?.message || 'Failed to generate bracket');
       setLoading(false);
     }
   };
@@ -152,7 +154,7 @@ const BracketEngineView = () => {
         </section>
       )}
 
-      {loading ? (
+      {notice&&<ConfirmActionDialog open eyebrow="BRACKET UPDATE" title="Bracket changes are unavailable" message={notice} confirmLabel="Got it" confirmIcon="bi-check2" danger={false} hideCancel onCancel={()=>setNotice(null)} onConfirm={()=>setNotice(null)}/>}      {loading ? (
         <LoadingSpinner message="Building bracket hierarchy..." />
       ) : bracketData?.matches?.length > 0 ? (
         <section className="bracket-engine-board">

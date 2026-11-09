@@ -20,6 +20,7 @@ const EligibilityVerification = () => {
   const [searchQuery,setSearchQuery]=useState('');
   const [statusFilter,setStatusFilter]=useState('all');
   const [tournamentFilter,setTournamentFilter]=useState('');
+  const [teamFilter,setTeamFilter]=useState('');
   const [loadError,setLoadError]=useState('');
   const [savingRoster,setSavingRoster]=useState(false);
   const [documentPreview,setDocumentPreview]=useState(null);
@@ -30,6 +31,7 @@ const EligibilityVerification = () => {
     return players.filter(player=>{
       if(statusFilter!=='all'&&player.eligibility_status!==statusFilter)return false;
       if(tournamentFilter&&String(player.tournament_name)!==tournamentFilter)return false;
+      if(teamFilter&&String(player.team_name)!==teamFilter)return false;
       if(!query)return true;
       return [
       player.user_full_name,
@@ -42,8 +44,9 @@ const EligibilityVerification = () => {
       player.eligibility_status,
       ].some(value=>String(value??'').toLowerCase().includes(query));
     });
-  },[players,searchQuery,statusFilter,tournamentFilter,isCoach]);
+  },[players,searchQuery,statusFilter,tournamentFilter,teamFilter,isCoach]);
   const tournamentOptions=useMemo(()=>[...new Set(players.map(player=>player.tournament_name).filter(Boolean))].sort(),[players]);
+  const teamOptions=useMemo(()=>[...new Set(players.filter(player=>!tournamentFilter||player.tournament_name===tournamentFilter).map(player=>player.team_name).filter(Boolean))].sort(),[players,tournamentFilter]);
 
   const loadData = async () => {
     setLoadError('');
@@ -130,7 +133,7 @@ const EligibilityVerification = () => {
       ) : (
         <div className="card-custom p-3 p-md-4 eligibility-workspace-card">
           <div className="coach-eligibility-section-heading eligibility-page-section-heading"><div><span className="eligibility-section-kicker">PLAYER RECORDS</span><h2>{isCoach ? 'Assigned roster' : 'Eligibility review queue'}</h2><p>{isCoach ? 'Only players connected to your team appear here.' : 'Search and review submitted player records across the platform.'}</p></div><span className="coach-eligibility-count">{filteredPlayers.length} shown</span></div>
-          {!isCoach&&<label className="eligibility-tournament-filter"><span><i className="bi bi-trophy-fill"/> Select tournament</span><select className="form-select" value={tournamentFilter} onChange={event=>setTournamentFilter(event.target.value)}><option value="">Choose a tournament</option>{tournamentOptions.map(name=><option value={name} key={name}>{name}</option>)}</select></label>}
+          {!isCoach&&<div className="eligibility-review-scope"><label className="eligibility-tournament-filter"><span><i className="bi bi-trophy-fill"/> 1. Select tournament</span><select className="form-select" value={tournamentFilter} onChange={event=>{setTournamentFilter(event.target.value);setTeamFilter('');}}><option value="">Choose a tournament</option>{tournamentOptions.map(name=><option value={name} key={name}>{name}</option>)}</select></label><label className="eligibility-tournament-filter"><span><i className="bi bi-people-fill"/> 2. Select team</span><select className="form-select" value={teamFilter} onChange={event=>setTeamFilter(event.target.value)} disabled={!tournamentFilter}><option value="">{tournamentFilter?'All teams in tournament':'Choose tournament first'}</option>{teamOptions.map(name=><option value={name} key={name}>{name}</option>)}</select></label></div>}
           <div className="eligibility-searchbar mb-3">
             <div className="eligibility-search-input">
               <i className="bi bi-search" aria-hidden="true"></i>
@@ -162,7 +165,7 @@ const EligibilityVerification = () => {
               </thead>
               <tbody>
                 {filteredPlayers.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-4 text-muted">{!isCoach&&!tournamentFilter?'Select a tournament above to load its player eligibility records.':searchQuery||statusFilter!=='all'?'No roster records match these filters.':isCoach?'Your assigned team has no roster players yet.':'No player eligibility records found.'}</td></tr>
+                  <tr><td colSpan="6" className="text-center py-4 text-muted">{!isCoach&&!tournamentFilter?'Select a tournament, then optionally choose a team to load its player records.':searchQuery||statusFilter!=='all'||teamFilter?'No roster records match these filters.':isCoach?'Your assigned team has no roster players yet.':'No player eligibility records found.'}</td></tr>
                 ) : (
                   filteredPlayers.map(p => (
                     <tr key={p.id}>

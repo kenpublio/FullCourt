@@ -5,8 +5,8 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const base = process.env.APP_URL || 'http://127.0.0.1:5180';
 const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd: root, encoding: 'utf8' }));
-const manager = sessions.find(({ user }) => ['organization_admin', 'tournament_organizer'].includes(user.role));
-if (!manager) throw new Error('No active organizer demo account is available for this browser check.');
+const manager = sessions.find(({ user }) => user.role === 'statistician') || sessions.find(({ user }) => user.role === 'platform_admin');
+if (!manager) throw new Error('No active Staff Admin or Administrator account is available for this browser check.');
 
 (async () => {
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
@@ -17,7 +17,7 @@ if (!manager) throw new Error('No active organizer demo account is available for
   }, manager);
   const page = await context.newPage();
   await page.route('**/api/tournaments', (route) => route.fulfill({ json: { data: { tournaments: [{ id: 9901, name: 'Clipboard UI Test' }] } } }));
-  await page.route('**/api/tournaments/9901/schedule', (route) => route.fulfill({ json: { data: { schedule: [{ id: 9902, team1_name: 'Test Home', team2_name: 'Test Away' }] } } }));
+  await page.route('**/api/tournaments/9901/schedule*', (route) => route.fulfill({ json: { data: { schedule: [{ id: 9902, team1_name: 'Test Home', team2_name: 'Test Away' }] } } }));
   await page.route('**/api/matches/9902/scoring-link', (route) => route.fulfill({ json: { data: { access: {
     id: 9903,
     token: 'a'.repeat(64),
@@ -29,6 +29,7 @@ if (!manager) throw new Error('No active organizer demo account is available for
   try {
     await page.goto(`${base}/officials`);
     await page.getByLabel('1. Tournament').selectOption('9901');
+    await page.getByLabel('2. Scheduled game').selectOption('9902');
     await page.getByLabel('Scorer name').fill('Clipboard Test Scorer');
     await page.getByRole('button', { name: /Generate secure link/ }).click();
     await page.getByRole('button', { name: /Copy invitation/ }).click();

@@ -7,7 +7,6 @@ import '../styles/share-cards.css';
 const CARD_TYPES = [
   { value: 'final_score', label: 'Final score', icon: 'bi-trophy' },
   { value: 'standings', label: 'Tournament standings', icon: 'bi-bar-chart-line' },
-  { value: 'player', label: 'Player spotlight', icon: 'bi-person-bounding-box' },
   { value: 'player_of_game', label: 'Player of the Game', icon: 'bi-stars' },
   { value: 'award', label: 'Award winner', icon: 'bi-award' },
 ];
@@ -22,6 +21,7 @@ const ShareCards = () => {
   const [boxScore, setBoxScore] = useState([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [potgPhoto, setPotgPhoto] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -43,11 +43,11 @@ const ShareCards = () => {
   const finalMatches = useMemo(() => tournamentMatches.filter(isFinal), [tournamentMatches]);
   const selectedMatch = finalMatches.find((match) => String(match.id) === matchId);
   const tournamentStandings = useMemo(() => data.standings.filter((row) => row.tournament_name === tournament?.name || String(row.tournament_id) === tournamentId), [data.standings, tournament, tournamentId]);
-  const confirmedAwards = useMemo(() => awards.filter((award) => award.status === 'confirmed' && award.user_id), [awards]);
+  const confirmedAwards = useMemo(() => awards.filter((award) => award.status === 'confirmed' && award.team_player_id), [awards]);
   const selectedAward = confirmedAwards[0];
-  const selectedPlayer = type === 'player_of_game' ? pickPlayerOfGame(boxScore) : boxScore[0];
-  const needsFinalMatch = ['final_score', 'player', 'player_of_game'].includes(type);
-  const ready = Boolean(tournament && (needsFinalMatch ? selectedMatch && (!['player', 'player_of_game'].includes(type) || selectedPlayer) : type === 'standings' ? tournamentStandings.length : type === 'award' ? selectedAward : selectedPlayer));
+  const selectedPlayer = type === 'player_of_game' ? pickPlayerOfGame(boxScore) : null;
+  const needsFinalMatch = ['final_score', 'player_of_game'].includes(type);
+  const ready = Boolean(tournament && (needsFinalMatch ? selectedMatch && (type !== 'player_of_game' || selectedPlayer) : type === 'standings' ? tournamentStandings.length : selectedAward));
 
   useEffect(() => {
     if (!tournamentId) { setAwards([]); return undefined; }
@@ -67,8 +67,8 @@ const ShareCards = () => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx) return;
-    drawCard(ctx, { type, tournament, match: selectedMatch, standings: tournamentStandings, award: selectedAward, player: selectedPlayer });
-  }, [type, tournament, selectedMatch, tournamentStandings, selectedAward, selectedPlayer]);
+    drawCard(ctx, { type, tournament, match: selectedMatch, standings: tournamentStandings, award: selectedAward, player: selectedPlayer, potgPhoto });
+  }, [type, tournament, selectedMatch, tournamentStandings, selectedAward, selectedPlayer, potgPhoto]);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -121,6 +121,7 @@ const ShareCards = () => {
           {needsFinalMatch && <label className="share-field"><span>Completed game</span><select className="form-select" aria-label="Select completed game for share card" value={matchId} onChange={(event) => setMatchId(event.target.value)}>
             {finalMatches.length ? finalMatches.map((match) => <option value={match.id} key={match.id}>{match.team1_name} vs {match.team2_name}</option>) : <option value="">No completed games yet</option>}
           </select></label>}
+          {type==='player_of_game'&&<label className="share-field"><span>Player photo <small>(optional)</small></span><input className="form-control" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload Player of the Game photo" onChange={event=>{const file=event.target.files?.[0];if(!file){setPotgPhoto(null);return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>setPotgPhoto(image);image.src=reader.result;};reader.readAsDataURL(file);}}/><small>Use a clear portrait. The photo appears only on the downloaded Player of the Game graphic.</small></label>}
           <div className="share-data-note"><i className="bi bi-patch-check-fill" /><span><b>Official data only</b><small>{type === 'player_of_game' ? 'Finalized game stats determine the performance leader.' : 'Scores, standings and confirmed honors.'}</small></span></div>
           <div className="share-editor-actions"><button className="btn share-download-btn" disabled={!ready} onClick={download}><i className="bi bi-download" /> Download PNG</button><button className="btn share-facebook-btn" disabled={!ready} onClick={shareOnFacebook}><i className="bi bi-facebook" /> Share on Facebook</button></div>
           {!ready && <p className="share-unavailable"><i className="bi bi-info-circle" />{unavailableMessage(type, data.tournaments.length, finalMatches.length, tournamentStandings.length, confirmedAwards.length, boxScore.length)}</p>}
@@ -145,9 +146,8 @@ function unavailableMessage(type, tournaments, games, standings, awards, players
   if (type === 'final_score' && !games) return 'A card becomes available when a game has an official final score.';
   if (type === 'standings' && !standings) return 'Standings will appear after teams have recorded results.';
   if (type === 'award' && !awards) return 'Only confirmed award recipients can be published.';
-  if (['player', 'player_of_game'].includes(type) && !games) return 'Player cards are available after an official game is finalized.';
+  if (type === 'player_of_game' && !games) return 'Player of the Game becomes available after an official game is finalized.';
   if (type === 'player_of_game' && !players) return 'The Player of the Game card needs official player statistics from the selected final.';
-  if (type === 'player') return 'Player spotlight will be available when official game stats are recorded.';
   return 'Select available official tournament data to continue.';
 }
 
@@ -162,7 +162,7 @@ function fitText(ctx, value, x, y, maxWidth, maxSize, color = '#fff', weight = 7
   do { ctx.font = `${weight} ${size}px Arial, sans-serif`; size -= 2; } while (ctx.measureText(String(value)).width > maxWidth && size > 24);
   ctx.fillStyle = color; ctx.fillText(String(value), x, y);
 }
-function drawCard(ctx, { type, tournament, match, standings, award, player }) {
+function drawCard(ctx, { type, tournament, match, standings, award, player, potgPhoto }) {
   const red = '#e13722'; const gold = '#f1c65b';
   ctx.clearRect(0, 0, 1080, 1080);
   const bg = ctx.createLinearGradient(0, 0, 1080, 1080); bg.addColorStop(0, '#111114'); bg.addColorStop(.58, '#1c1b1d'); bg.addColorStop(1, '#101012');
@@ -184,8 +184,7 @@ function drawCard(ctx, { type, tournament, match, standings, award, player }) {
   if (type === 'final_score' && match) drawFinal(ctx, match, red, gold);
   else if (type === 'standings' && standings.length) drawStandings(ctx, standings, red, gold);
   else if (type === 'award' && award) drawAward(ctx, award, red, gold);
-  else if (type === 'player_of_game' && player) drawPlayerOfGame(ctx, player, match, red, gold);
-  else if (type === 'player' && player) drawPlayer(ctx, player, red, gold);
+  else if (type === 'player_of_game' && player) drawPlayerOfGame(ctx, player, match, red, gold, potgPhoto);
   else drawEmptyCard(ctx, type, red, gold);
 
   ctx.fillStyle = '#9b989e'; ctx.font = '600 16px Arial, sans-serif'; ctx.fillText('FULLCOURT · THE HOME OF EVERY GAME', 82, 982);
@@ -218,18 +217,6 @@ function drawAward(ctx, award, red, gold) {
   fitText(ctx, award.full_name || 'Official recipient', 140, 710, 800, 52, '#fff', 900);
   ctx.fillStyle = '#c3bdc2'; ctx.font = '700 22px Arial'; ctx.fillText(award.team_name || 'FullCourt tournament', 540, 762); ctx.textAlign = 'left';
 }
-function drawPlayer(ctx, player, red, gold) {
-  ctx.fillStyle = gold; ctx.font = '800 19px Arial'; ctx.fillText('PLAYER SPOTLIGHT  ·  OFFICIAL STATS', 82, 376);
-  fitText(ctx, player.full_name || 'Top performer', 82, 474, 900, 48, '#fff', 900);
-  ctx.fillStyle = '#aaa4a9'; ctx.font = '700 22px Arial'; ctx.fillText(player.team_name || 'Tournament player', 84, 520);
-  const metrics = [['PTS', player.points], ['REB', player.rebounds], ['AST', player.assists], ['STL', player.steals]];
-  metrics.forEach(([label, value], index) => {
-    const x = 82 + index * 232;
-    roundedRect(ctx, x, 590, 210, 190, 20, 'rgba(255,255,255,.055)', 'rgba(255,255,255,.1)');
-    ctx.fillStyle = red; ctx.font = '900 58px Arial'; ctx.fillText(String(value ?? 0), x + 22, 685);
-    ctx.fillStyle = '#c9c4c8'; ctx.font = '800 17px Arial'; ctx.fillText(label, x + 24, 737);
-  });
-}
 function pickPlayerOfGame(players) {
   return [...players].sort((a, b) => Number(b.points || 0) - Number(a.points || 0)
     || impactScore(b) - impactScore(a)
@@ -241,18 +228,20 @@ function impactScore(player) {
     + Number(player.assists || 0) * 1.5 + Number(player.steals || 0) * 2
     + Number(player.blocks || 0) * 2 - Number(player.turnovers || 0);
 }
-function drawPlayerOfGame(ctx, player, match, red, gold) {
+function drawPlayerOfGame(ctx, player, match, red, gold, photo) {
   ctx.fillStyle = gold; ctx.font = '800 19px Arial'; ctx.fillText('PLAYER OF THE GAME  ·  STATISTICAL LEADER', 82, 376);
   roundedRect(ctx, 82, 410, 916, 400, 24, 'rgba(255,255,255,.045)', 'rgba(241,198,91,.3)');
-  ctx.textAlign = 'center'; ctx.fillStyle = gold; ctx.font = '900 76px Arial'; ctx.fillText('★', 540, 510);
-  fitText(ctx, player.full_name || 'Game leader', 130, 585, 820, 48, '#fff', 900);
-  ctx.fillStyle = '#c3bdc2'; ctx.font = '700 22px Arial'; ctx.fillText(`${player.team_name || 'Tournament player'}  ·  #${player.jersey_number || '–'}`, 540, 630);
+  ctx.textAlign = 'center';
+  if(photo){ctx.save();ctx.beginPath();ctx.arc(540,505,78,0,Math.PI*2);ctx.clip();const scale=Math.max(156/photo.width,156/photo.height);const w=photo.width*scale,h=photo.height*scale;ctx.drawImage(photo,540-w/2,505-h/2,w,h);ctx.restore();ctx.strokeStyle=gold;ctx.lineWidth=7;ctx.beginPath();ctx.arc(540,505,81,0,Math.PI*2);ctx.stroke();}
+  else{ctx.fillStyle = gold; ctx.font = '900 76px Arial'; ctx.fillText('★', 540, 510);}
+  fitText(ctx, player.full_name || 'Game leader', 130, 620, 820, 48, '#fff', 900);
+  ctx.fillStyle = '#c3bdc2'; ctx.font = '700 22px Arial'; ctx.fillText(`${player.team_name || 'Tournament player'}  ·  #${player.jersey_number || '–'}`, 540, 655);
   const metrics = [['PTS', player.points], ['REB', player.rebounds], ['AST', player.assists], ['STL', player.steals]];
   metrics.forEach(([label, value], index) => {
     const x = 111 + index * 222;
-    roundedRect(ctx, x, 665, 194, 105, 16, 'rgba(255,255,255,.055)', 'rgba(255,255,255,.1)');
-    ctx.fillStyle = red; ctx.font = '900 40px Arial'; ctx.fillText(String(value ?? 0), x + 97, 716);
-    ctx.fillStyle = '#c9c4c8'; ctx.font = '800 14px Arial'; ctx.fillText(label, x + 97, 747);
+    roundedRect(ctx, x, 690, 194, 95, 16, 'rgba(255,255,255,.055)', 'rgba(255,255,255,.1)');
+    ctx.fillStyle = red; ctx.font = '900 38px Arial'; ctx.fillText(String(value ?? 0), x + 97, 735);
+    ctx.fillStyle = '#c9c4c8'; ctx.font = '800 14px Arial'; ctx.fillText(label, x + 97, 765);
   });
   ctx.textAlign = 'left'; ctx.fillStyle = '#aaa4a9'; ctx.font = '700 17px Arial';
   ctx.fillText(`${match?.team1_name || 'Home'}  ${match?.team1_score ?? 0}  —  ${match?.team2_score ?? 0}  ${match?.team2_name || 'Away'}`, 82, 862);

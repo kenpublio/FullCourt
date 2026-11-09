@@ -127,10 +127,9 @@ const UserManagement = () => {
   };
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          u.phone_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          u.address?.toLowerCase().includes(searchQuery.toLowerCase());
+    const query=searchQuery.trim().toLowerCase();
+    const matchesSearch = !query || [u.full_name,u.email,u.phone_number,u.address]
+      .some(value=>String(value||'').toLowerCase().includes(query));
     const matchesRole = roleFilter === 'all' || (roleFilter === 'administrator' ? ['platform_admin','admin'].includes(u.role) : u.role === roleFilter);
     return matchesSearch && matchesRole;
   });
@@ -262,7 +261,7 @@ const UserManagement = () => {
                         <td className="small">{u.email}</td>
                         <td>
                           <span className={`badge badge-role ${getRoleBadge(u.role)}`}>
-                            {u.role?.replace('_', ' ')}
+                            {({platform_admin:'Administrator',admin:'Administrator',coach:'Coach',assistant_coach:'Assistant Coach',statistician:'Staff Admin'}[u.role]||u.role?.replaceAll('_', ' '))}
                           </span>
                         </td>
                         <td className="small text-muted">{u.address || 'Not specified'}</td>

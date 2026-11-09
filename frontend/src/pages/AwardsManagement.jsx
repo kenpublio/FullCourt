@@ -32,7 +32,7 @@ const AwardsManagement = () => {
     return () => { active = false; };
   }, [selected]);
   const confirmedCount = awards.filter((award) => award.status === "confirmed").length;
-  const pendingCount = awards.filter((award) => award.user_id && award.status !== "confirmed").length;
+  const pendingCount = awards.filter((award) => award.team_player_id && award.status !== "confirmed").length;
   const categoryCount = new Set(awards.map((award) => award.name).filter(Boolean)).size;
   const recommend = async () => {
     setLoading(true);
@@ -110,7 +110,7 @@ const AwardsManagement = () => {
             <div className="col-md-6 col-xl-4" key={`${a.category_id}-${i}`}>
               <article className={`award-card award-profile h-100 ${a.name==='Tournament MVP'?'award-mvp':a.name.startsWith('Mythical Five')?'award-mythical':''}`}><span className="award-rank">{String(i+1).padStart(2,'0')}</span>
                 <div className="award-profile-top"><div className="award-avatar">{a.avatar_url?<img src={mediaUrl(a.avatar_url)} alt={`${a.full_name} profile`}/>:<i className="bi bi-person-fill"/>}</div><div><span className="award-type">{a.name==='Tournament MVP'?'MOST VALUABLE PLAYER':a.name.startsWith('Mythical Five')?'MYTHICAL FIVE':'STAT LEADER'}</span><h5 className="fw-bold mb-0">{a.name}</h5></div></div>
-                {a.user_id ? (
+                {a.team_player_id ? (
                   <>
                     <div className="fs-5 fw-semibold mt-3">{a.full_name}</div>
                     <div className="text-muted small">#{a.jersey_number || "—"} · {a.position || "Player"} · {a.team_name || "Team"}</div>

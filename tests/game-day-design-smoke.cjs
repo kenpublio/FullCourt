@@ -16,8 +16,8 @@ const sessions=JSON.parse(execFileSync('php',[path.join(__dirname,'BrowserAuditS
     const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+route,{waitUntil:'networkidle'});
     if(role==='platform_admin'){
-      await page.getByRole('button',{name:/Needs attention/i}).waitFor();
-      await page.getByLabel('Search game-day fixtures').fill('unlikely-no-match-value');
+      await page.getByRole('heading',{name:/Incident Report Desk/i}).waitFor();
+      await page.getByLabel('Search games for incident report').fill('unlikely-no-match-value');
       await page.getByText('No matching games').waitFor();
     }else{
       const readiness=await page.locator('.coach-readiness-board').textContent();

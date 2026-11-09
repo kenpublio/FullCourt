@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import gameOperationsService from "../services/gameOperationsService";
+import gameDayService from "../services/gameDayService";
 import "../styles/period-scores.css";
 import scorekeeperService from "../services/scorekeeperService";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -60,7 +61,10 @@ const BasketballStatistician = () => {
     [clockBusy,setClockBusy]=useState(false),
     [tournamentFilter, setTournamentFilter] = useState("all"),
     [recoveredDraft,setRecoveredDraft]=useState(false),
-    [lastSavedAt,setLastSavedAt]=useState(null);
+    [lastSavedAt,setLastSavedAt]=useState(null),
+    [incidentType,setIncidentType]=useState(""),
+    [incident,setIncident]=useState({severity:"medium",description:"",action_taken:""}),
+    [incidentBusy,setIncidentBusy]=useState(false);
   const isStatistician = user?.role === "statistician";
   const statisticianAssignments = useMemo(
     () => assignments.filter((assignment) => assignment.assignment_role === "statistician"),
@@ -213,6 +217,7 @@ const BasketballStatistician = () => {
     if(!match||clockBusy)return;const minutes=Number(clockDraft.minutes),seconds=Number(clockDraft.seconds);if(!Number.isInteger(minutes)||!Number.isInteger(seconds)||minutes<0||minutes>59||seconds<0||seconds>59)return setLoadError('Enter a valid game clock from 00:00 to 59:59.');
     setClockBusy(true);setLoadError('');try{await gameOperationsService.updateClock(match.match_id,{action,current_period:clockDraft.period,timer_seconds:minutes*60+seconds});setMessage(`${clockDraft.period} clock ${action==='pause'?'paused':action==='set'?'saved':'started'}.`);await refresh();}catch(error){setLoadError(error.response?.data?.message||'Unable to update the game clock.');}finally{setClockBusy(false);}
   };
+  const reportIncident=async()=>{if(!match||!incidentType||!incident.description.trim()||incidentBusy)return;setIncidentBusy(true);setLoadError("");try{const subject=selected?`#${selected.jersey_number||"—"} ${selected.full_name} · ${selected.team_name}`:"Game incident";await gameDayService.reportIncident(match.match_id,{incident_type:incidentType,severity:incident.severity,description:`${subject}: ${incident.description.trim()}`,action_taken:incident.action_taken.trim()});setMessage(`${incidentType==="injury"?"Injury":"Fight / misconduct"} report saved for tournament operations.`);setIncidentType("");setIncident({severity:"medium",description:"",action_taken:""});}catch(error){setLoadError(error.response?.data?.message||"Unable to save the incident report.");}finally{setIncidentBusy(false);}};
   if (loading)
     return <LoadingSpinner message="Loading courtside assignments..." />;
   if (!isStatistician) {
@@ -251,10 +256,10 @@ const BasketballStatistician = () => {
         <div>
           <h1 className="fw-bold mb-1">
             <i className="bi bi-clipboard-data-fill text-evsu-primary me-2" />
-            Courtside Statistician
+            Game Scoring
           </h1>
           <p className="text-muted small mb-0">
-            Record the official score and individual points, with optional rebounds and assists.
+            Choose a game, record the score and player stats, then submit the final result.
           </p>
         </div>
         {board && (
@@ -271,7 +276,7 @@ const BasketballStatistician = () => {
         {loadError && <div className="col-12"><div className="alert alert-danger d-flex justify-content-between align-items-center gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={loadAssignments}>Try again</button></div></div>}
         <div className="col-lg-3">
           <div className="card-custom p-3">
-            <h2 className="fw-bold fs-5">Assigned Games</h2>
+            <h2 className="fw-bold fs-5">Your assigned games</h2>
             {assignments.map((a) => (
               <button
                 className={`btn text-start w-100 border mb-2 ${match?.id === a.id ? "btn-evsu" : "btn-light"}`}
@@ -299,9 +304,9 @@ const BasketballStatistician = () => {
               <h2>{assignments.length ? "Choose your assigned game" : "Waiting for an Admin assignment"}</h2>
               <p>{assignments.length ? "Select a game from the assignment list to open the courtside scoring console." : "Once Admin assigns and publishes a game, it will appear here automatically."}</p>
               <div className="staff-courtside-flow" aria-label="Staff scoring workflow">
-                {[['bi-person-check-fill','1','Accept assignment'],['bi-people-fill','2','Confirm player lineups'],['bi-clipboard-data-fill','3','Record score & points'],['bi-check2-circle','4','Submit final score']].map(([icon,step,label])=><div key={step}><span><i className={`bi ${icon}`}/></span><b>{step}</b><small>{label}</small></div>)}
+                {[['bi-calendar-check-fill','1','Choose game'],['bi-clipboard-data-fill','2','Record score & stats'],['bi-check2-circle','3','Submit final score']].map(([icon,step,label])=><div key={step}><span><i className={`bi ${icon}`}/></span><b>{step}</b><small>{label}</small></div>)}
               </div>
-              <small className="staff-courtside-note"><i className="bi bi-info-circle"/> Rebounds and assists stay optional. Official team score and individual points are required.</small>
+              <small className="staff-courtside-note"><i className="bi bi-info-circle"/> Team score and individual points are required. Rebounds and assists remain optional.</small>
             </div>
           ) : (
             <>
@@ -416,6 +421,7 @@ const BasketballStatistician = () => {
                     </div>
                   ))}
                   </details>
+                  <div className="staff-incident-actions mt-3"><div><b><i className="bi bi-shield-exclamation me-2"/>Game incident</b><small>Selected player and game are attached automatically.</small></div><span><button type="button" onClick={()=>{setIncidentType("injury");setIncident({severity:"medium",description:"",action_taken:""});}}><i className="bi bi-bandaid-fill"/> Injury</button><button type="button" className="is-danger" onClick={()=>{setIncidentType("misconduct");setIncident({severity:"high",description:"",action_taken:""});}}><i className="bi bi-exclamation-octagon-fill"/> Fight</button></span></div>
                 </div>
               )}
               <section className="card-custom staff-recent-actions mt-3" aria-labelledby="recent-actions-title"><header><div><span>SCORING AUDIT</span><h2 id="recent-actions-title">Recent actions</h2></div><b>{recentActions.length} active</b></header>{recentActions.length?<div>{recentActions.map(event=><article key={event.id}><span className="staff-event-points">{{'2pt_made':'+2','3pt_made':'+3','ft_made':'+1'}[event.event_type]||'STAT'}</span><div><b>{String(event.event_type).replaceAll('_',' ')}</b><small>#{event.jersey_number||'—'} {event.player_name||event.team_name} · Q{event.period} · {Math.floor(Number(event.game_clock_seconds||0)/60)}:{String(Number(event.game_clock_seconds||0)%60).padStart(2,'0')}</small></div><button type="button" disabled={undoingId===event.id||!online} onClick={()=>setPendingUndo(event)}><i className="bi bi-arrow-counterclockwise"/> {undoingId===event.id?'Undoing…':'Undo'}</button></article>)}</div>:<div className="ops-empty border-0 py-4"><i className="bi bi-clock-history"/><strong>No scoring actions yet</strong><p>Recorded player points and optional stats will appear here.</p></div>}</section>
@@ -424,6 +430,7 @@ const BasketballStatistician = () => {
         </div>
       </div>
       {showFinalReview&&board&&<div className="modal show d-block game-modal" role="dialog" aria-modal="true" aria-labelledby="staff-final-title"><div className="modal-dialog modal-dialog-centered"><div className="modal-content"><header><div><span>FINAL SCORE REVIEW</span><h5 id="staff-final-title">Confirm before submitting</h5></div><button className="btn-close" onClick={()=>setShowFinalReview(false)} aria-label="Close"/></header><div className="modal-body staff-final-review"><p>Check the official team totals. After submission, only Admin can confirm and publish the result.</p><div><span><b>{board.score.team1_name}</b><strong>{board.score.team1_score}</strong></span><em>FINAL</em><span><b>{board.score.team2_name}</b><strong>{board.score.team2_score}</strong></span></div>{Number(board.score.team1_score)===Number(board.score.team2_score)&&<div className="alert alert-warning mb-0">A tied score cannot be submitted. Record overtime or correct the score first.</div>}</div><footer><button onClick={()=>setShowFinalReview(false)}>Continue scoring</button><button className="primary" disabled={submittingFinal||Number(board.score.team1_score)===Number(board.score.team2_score)} onClick={submitFinal}>{submittingFinal?'Submitting…':'Submit to Admin'}</button></footer></div></div></div>}
+      {incidentType&&<div className="modal show d-block game-modal" role="dialog" aria-modal="true" aria-labelledby="staff-incident-title"><div className="modal-dialog modal-dialog-centered"><div className="modal-content"><header><div><span>COURTSIDE SAFETY REPORT</span><h5 id="staff-incident-title">{incidentType==="injury"?"Player injury":"Fight / misconduct"}</h5></div><button className="btn-close" onClick={()=>setIncidentType("")} aria-label="Close"/></header><div className="modal-body incident-form"><div className="alert alert-warning wide py-2 mb-0"><b>{selected?`#${selected.jersey_number||"—"} ${selected.full_name} · ${selected.team_name}`:"Whole game incident"}</b></div><label>Severity<select value={incident.severity} onChange={event=>setIncident(current=>({...current,severity:event.target.value}))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical / emergency</option></select></label><label className="wide">What happened?<textarea rows="3" value={incident.description} onChange={event=>setIncident(current=>({...current,description:event.target.value}))}/></label><label className="wide">Immediate action taken<textarea rows="2" value={incident.action_taken} onChange={event=>setIncident(current=>({...current,action_taken:event.target.value}))}/></label></div><footer><button onClick={()=>setIncidentType("")}>Cancel</button><button className="primary" disabled={incidentBusy||!incident.description.trim()} onClick={reportIncident}>{incidentBusy?"Saving…":"Save incident report"}</button></footer></div></div></div>}
       <ConfirmActionDialog open={Boolean(pendingUndo)} eyebrow="SCORING CORRECTION" title="Undo this game action?" message={pendingUndo ? <><b>{String(pendingUndo.event_type).replaceAll('_',' ')}</b> for {pendingUndo.player_name||pendingUndo.team_name} will be voided. The official score and player statistics will be recalculated.</> : null} confirmLabel="Undo action" confirmIcon="bi-arrow-counterclockwise" onCancel={()=>setPendingUndo(null)} onConfirm={()=>undoAction(pendingUndo)}/>
     </div>
   );

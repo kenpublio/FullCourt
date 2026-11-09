@@ -147,7 +147,8 @@ class MatchScore {
 
     public function notifyFinalResult(int $matchId): array {
         $stmt = $this->db->prepare("SELECT m.id,ms.team1_score,ms.team2_score,h.team_name AS home_team,a.team_name AS away_team,
-                h.coach_user_id AS home_coach,a.coach_user_id AS away_coach
+                h.coach_user_id AS home_coach,a.coach_user_id AS away_coach,
+                h.manager_user_id AS home_assistant,a.manager_user_id AS away_assistant
             FROM matches m JOIN match_scores ms ON ms.match_id=m.id
             LEFT JOIN teams h ON h.id=m.team1_id LEFT JOIN teams a ON a.id=m.team2_id
             WHERE m.id=:match_id AND m.status='completed' LIMIT 1");
@@ -160,6 +161,8 @@ class MatchScore {
         $recipientIds = array_values(array_unique(array_filter(array_map('intval', [
             $match['home_coach'] ?? 0,
             $match['away_coach'] ?? 0,
+            $match['home_assistant'] ?? 0,
+            $match['away_assistant'] ?? 0,
         ]))));
         $driver = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME);
         $dedupe = $driver === 'mysql' ? 'ON DUPLICATE KEY UPDATE id=id' : 'ON CONFLICT (dedupe_key) DO NOTHING';

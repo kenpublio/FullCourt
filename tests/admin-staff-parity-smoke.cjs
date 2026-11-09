@@ -14,7 +14,6 @@ const shared = [
   ['/brackets', 'Automated Bracket Engine'],
   ['/officials', 'Scoring Access'],
   ['/schedules', 'Game Schedule & Venue Assignment'],
-  ['/venues', 'Venue & Court Management'],
   ['/standings', 'Tournament Standings'],
   ['/qr-attendance', 'QR'],
   ['/game-day', 'Incident'],

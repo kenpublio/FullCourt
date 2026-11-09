@@ -4,6 +4,7 @@ require_once __DIR__ . '/../models/ScoringAccess.php';
 require_once __DIR__ . '/../models/GameOperations.php';
 require_once __DIR__ . '/../models/Scorekeeper.php';
 require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../models/GameDayOperations.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../middleware/OrganizationAccess.php';
 require_once __DIR__ . '/../utils/jwt.php';
@@ -14,9 +15,10 @@ class ScoringAccessController {
     private GameOperations $operations;
     private Scorekeeper $scores;
     private AuditLog $audit;
+    private GameDayOperations $gameDay;
     private const MANAGERS=['platform_admin','admin','organization_admin','tournament_organizer','statistician'];
 
-    public function __construct(){ $this->links=new ScoringAccess();$this->operations=new GameOperations();$this->scores=new Scorekeeper();$this->audit=new AuditLog(); }
+    public function __construct(){ $this->links=new ScoringAccess();$this->operations=new GameOperations();$this->scores=new Scorekeeper();$this->audit=new AuditLog();$this->gameDay=new GameDayOperations(); }
 
     public function create(int $matchId):void{
         $user=AuthMiddleware::authorizeRoles(self::MANAGERS);OrganizationAccess::requireMatch($matchId,$user);$in=$this->input();
@@ -81,6 +83,18 @@ class ScoringAccessController {
         $access=$this->session();$in=$this->input();
         try{$this->operations->substitute((int)$access['match_id'],(int)($in['player_out_id']??0),(int)($in['player_in_id']??0),$this->periodNumber($in['current_period']??$in['period']??'Q1'),(int)($in['game_clock_seconds']??600),(int)$access['created_by']);}
         catch(InvalidArgumentException $e){Response::error($e->getMessage(),422);}Response::success('Substitution and minutes recorded.');
+    }
+
+    public function incident():void{
+        $access=$this->session();$in=$this->input();
+        $types=['injury','misconduct'];$severity=['low','medium','high','critical'];
+        $type=(string)($in['incident_type']??'');$level=(string)($in['severity']??'');$description=trim((string)($in['description']??''));
+        if(!in_array($type,$types,true)||!in_array($level,$severity,true)||$description==='')Response::error('Choose Injury or Fight / Misconduct, its severity, and enter the incident details.',422);
+        $subject=trim((string)($in['subject']??''));if($subject!=='')$description="{$subject}: {$description}";
+        $id=$this->gameDay->createIncident((int)$access['match_id'],['incident_type'=>$type,'severity'=>$level,'description'=>$description,'action_taken'=>trim((string)($in['action_taken']??''))],(int)$access['created_by']);
+        $operator=trim((string)($access['operator_name']??'Guest statistician'));
+        $this->audit->log((int)$access['created_by'],'REPORT_GAME_INCIDENT','LIVE_SCORING',"{$operator} reported {$type} incident {$id} in match {$access['match_id']}.");
+        Response::success('Incident saved and sent to tournament operations.',['id'=>$id],201);
     }
 
     public function submitFinal():void{

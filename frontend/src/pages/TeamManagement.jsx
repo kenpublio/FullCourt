@@ -355,7 +355,7 @@ const TeamManagement = () => {
                     </td>
                     <td className="small">{tm.tournament_name}<span className="d-block text-muted">{tm.division_name || 'Open division'}</span></td>
                     <td className="small d-none d-md-table-cell">{tm.coach_name}</td>
-                    <td className="small d-none d-md-table-cell"><span className="badge bg-light text-dark border">{tm.total_players || 0} players</span></td>
+                    <td className="d-none d-md-table-cell"><button type="button" className="team-roster-count-action" onClick={()=>viewRoster(tm)} aria-label={`View ${tm.total_players||0} players of ${tm.team_name}`}><i className="bi bi-people-fill"/><span><b>{tm.total_players||0}</b> players</span><i className="bi bi-chevron-right"/></button></td>
                     <td>
                       <span className={`badge ${statusClass(tm.status)}`}>
                         {statusLabel(tm.status)}

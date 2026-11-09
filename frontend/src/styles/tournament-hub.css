@@ -3,6 +3,14 @@
 @media(max-width:600px){.hub-emblem{display:none}.hub-header{padding-top:20px;padding-bottom:52px}.hub-title h1{letter-spacing:-1px}.hub-summary{grid-template-columns:repeat(2,1fr)}.hub-summary>div:nth-child(2){border-right:0}.hub-summary>div:nth-child(-n+2){border-bottom:1px solid #eee}.hub-summary b{font-size:25px}.hub-meta{gap:12px}.hub-meta>span{font-size:12px}.hub-section-title{align-items:start;flex-direction:column;gap:8px}.hub-section-title h2{font-size:25px}.hub-bracket{padding:15px}.hub-panel{padding-bottom:40px}}
 @media(prefers-reduced-motion:reduce){.hub-team-card{transition:none}.hub-team-card:hover{transform:none}}
 
+/* Tournament header actions */
+.hub-title-actions{display:flex;align-items:stretch;gap:10px;margin-top:22px;flex-wrap:wrap}
+.hub-next-game{display:flex;align-items:center;gap:12px;min-width:min(100%,430px);padding:12px 14px;border:1px solid #ffffff20;border-radius:12px;background:#ffffff08;color:#fff}
+.hub-next-game>i:first-child{display:grid;width:38px;height:38px;place-items:center;flex:0 0 38px;border-radius:10px;background:#cd2d17;color:#fff}
+.hub-next-game>span{display:grid;min-width:0;flex:1}.hub-next-game small{color:var(--court-gold);font-size:.55rem;font-weight:900;letter-spacing:.12em}.hub-next-game b,.hub-next-game em{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hub-next-game b{font-size:.78rem}.hub-next-game em{color:#a7a7b1;font-size:.63rem;font-style:normal}.hub-next-game:hover{background:#ffffff10;color:#fff}
+.hub-share-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 15px;border:1px solid #ffffff24;border-radius:12px;background:transparent;color:#fff;font-size:.7rem;font-weight:800}.hub-share-button:hover{border-color:var(--court-gold);color:var(--court-gold)}
+@media(max-width:600px){.hub-title-actions,.hub-next-game,.hub-share-button{width:100%}}
+
 /* Premium public tournament bracket */
 .hub-bracket{position:relative;overflow:hidden;padding:0;background:#121216;border:1px solid #303038;border-radius:18px;box-shadow:0 22px 55px #16161d18}
 .hub-bracket::before{content:'';position:absolute;width:420px;height:420px;right:-180px;top:-220px;border:1px solid #e3b95626;border-radius:50%;box-shadow:0 0 0 55px #e3b95608,0 0 0 110px #e3b95605;pointer-events:none}

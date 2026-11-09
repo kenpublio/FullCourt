@@ -606,3 +606,69 @@
   .possession-arrow-group{width:100%;min-width:0;justify-content:center;margin-left:0;padding:10px 0 0;border-top:1px solid rgba(220,233,243,.15);border-left:0}
   .possession-arrow-btn{min-width:0;padding-inline:8px}
 }
+
+.courtside-safety{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:18px;padding:16px 17px;border:1px solid rgba(255,99,84,.28);border-radius:12px;background:linear-gradient(135deg,rgba(255,99,84,.09),rgba(255,158,50,.04))}.courtside-safety h3{margin:3px 0;font-size:.95rem}.courtside-safety p{margin:0;color:var(--court-muted);font-size:.65rem}.courtside-safety>div:last-child{display:flex;gap:8px}.courtside-safety button{display:inline-flex;align-items:center;gap:6px;min-height:41px;padding:0 12px;border-radius:9px;font-size:.65rem;font-weight:900}.courtside-safety button.injury{border:1px solid rgba(255,158,50,.45);background:rgba(255,158,50,.11);color:#ffc17d}.courtside-safety button.fight{border:1px solid rgba(255,99,84,.5);background:rgba(255,99,84,.12);color:#ff897c}
+.courtside-incident-dialog{display:grid;gap:12px;width:min(560px,100%);max-height:calc(100vh - 36px);overflow:auto;padding:27px;border:1px solid rgba(255,99,84,.3);border-radius:20px;background:var(--court-panel-raised);box-shadow:0 30px 90px rgba(0,0,0,.58);color:#fff}.courtside-incident-dialog h2{margin:0;font-size:1.35rem}.courtside-incident-dialog>p{margin:-5px 0 3px;color:var(--court-muted);font-size:.72rem;line-height:1.55}.courtside-incident-dialog label{display:grid;gap:6px;color:#dce5ec;font-size:.65rem;font-weight:800}.courtside-incident-dialog select,.courtside-incident-dialog textarea{width:100%;padding:10px 11px;border:1px solid var(--court-line);border-radius:9px;background:#101923;color:#fff;font-size:.72rem}.courtside-incident-dialog textarea{resize:vertical}.courtside-incident-dialog>div{display:flex;justify-content:flex-end;gap:9px;margin-top:3px}.courtside-incident-dialog button{min-height:43px;padding:0 16px;border:0;border-radius:9px;background:#df3f2c;color:#fff;font-size:.68rem;font-weight:900}.courtside-incident-dialog button.secondary{border:1px solid var(--court-line);background:transparent}.courtside-incident-dialog button:disabled{opacity:.45}
+@media(max-width:700px){.courtside-safety{align-items:stretch;flex-direction:column}.courtside-safety>div:last-child{display:grid;grid-template-columns:1fr 1fr}.courtside-safety button{justify-content:center}.courtside-incident-dialog{padding:20px}.courtside-incident-dialog>div{display:grid;grid-template-columns:1fr 1fr}}
+
+/* Simplified courtside roster: one clear column per team, no lineup/substitution workflow. */
+.courtside-workspace{grid-template-columns:1fr}
+.courtside-roster-picker{max-height:none!important;overflow:visible!important}
+.courtside-roster-teams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.courtside-roster-teams .courtside-team-roster{min-width:0;margin:0!important;padding:14px;border:1px solid var(--court-line);border-radius:11px;background:#111b24}
+.courtside-roster-teams .courtside-team-roster h4{min-height:38px;margin-bottom:12px!important;padding-bottom:10px;border-bottom:1px solid var(--court-line);font-size:.82rem!important}
+.courtside-roster-teams .courtside-team-roster h4 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.courtside-roster-teams .courtside-roster-row{grid-template-columns:1fr}
+.courtside-roster-teams .courtside-player-pick{min-height:48px!important}
+.roster-not-cleared{margin-top:12px;border-top:1px solid var(--court-line);padding-top:10px}.roster-not-cleared summary{display:flex;justify-content:space-between;color:#f0c168;font-size:.65rem;font-weight:800;text-transform:uppercase;cursor:pointer}.roster-not-cleared[open] summary{margin-bottom:8px}
+.courtside-safety-bottom{max-width:calc(1280px - 40px);margin:0 auto 24px}
+@media(max-width:760px){.courtside-roster-teams{grid-template-columns:1fr}.courtside-safety-bottom{margin:0 10px 17px}.courtside-roster-teams .courtside-team-roster h4{font-size:.76rem!important}}
+
+/* 2026 game-day polish: clearer team identity and faster courtside controls. */
+.courtside-console{
+  background:
+    radial-gradient(circle at 10% 8%,rgba(223,53,31,.10),transparent 24rem),
+    radial-gradient(circle at 92% 18%,rgba(239,194,77,.07),transparent 24rem),
+    #0a1016;
+}
+.courtside-console>header{position:sticky;z-index:20;top:0;background:rgba(10,16,22,.94);backdrop-filter:blur(14px);box-shadow:0 8px 30px rgba(0,0,0,.22)}
+.courtside-scoreboard{overflow:hidden;border:1px solid rgba(255,255,255,.11);border-radius:18px;background:#0d151e;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+.courtside-scoreboard article:first-child{border-top:4px solid #df351f;background:linear-gradient(135deg,rgba(223,53,31,.12),transparent 60%)}
+.courtside-scoreboard article:last-child{border-top:4px solid #e9be4b;background:linear-gradient(225deg,rgba(233,190,75,.11),transparent 60%)}
+.courtside-scoreboard article strong{font-variant-numeric:tabular-nums;text-shadow:0 8px 28px rgba(0,0,0,.38)}
+.courtside-clock{border-inline:1px solid rgba(255,255,255,.09);background:#080d12}
+.courtside-clock b{font-variant-numeric:tabular-nums;letter-spacing:-.055em}
+.courtside-period-board,.courtside-clock-editor,.courtside-shotclock-box{box-shadow:0 12px 34px rgba(0,0,0,.16)}
+.courtside-roster-picker>h3{margin:.35rem 0 .25rem;font-size:1.18rem;letter-spacing:-.025em}
+.courtside-roster-help{max-width:680px;color:#9eafbd!important;line-height:1.55}
+.courtside-roster-teams .courtside-team-roster:first-child{border-top:3px solid #df351f}
+.courtside-roster-teams .courtside-team-roster:last-child{border-top:3px solid #e9be4b}
+.courtside-roster-teams .courtside-team-roster h4 small{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;background:rgba(54,199,138,.11);color:#64dca7}
+.courtside-player-pick{transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.courtside-player-pick:not(:disabled):hover{border-color:rgba(255,255,255,.24);background:#1b2935;transform:translateY(-1px)}
+.courtside-player-pick.active{border-color:#efc24d!important;background:linear-gradient(90deg,rgba(239,194,77,.17),rgba(223,53,31,.09))!important;box-shadow:0 0 0 2px rgba(239,194,77,.08)}
+.courtside-actions{border:1px solid rgba(255,255,255,.1)!important;background:#0e1720!important;box-shadow:0 18px 50px rgba(0,0,0,.24)}
+.selected-player{position:sticky;z-index:10;top:74px;border:1px solid rgba(239,194,77,.25)!important;background:rgba(13,22,30,.96)!important;backdrop-filter:blur(12px);box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.selected-player h2{letter-spacing:-.025em}
+.stat-action-grid{gap:10px!important}
+.stat-action-grid button{position:relative;overflow:hidden;min-height:82px!important;border:1px solid rgba(255,255,255,.11)!important;background:#15212b!important;box-shadow:0 7px 18px rgba(0,0,0,.16);transition:transform .14s ease,border-color .14s ease,background .14s ease}
+.stat-action-grid button:not(:disabled):hover{border-color:rgba(255,255,255,.28)!important;background:#1b2a36!important;transform:translateY(-2px)}
+.stat-action-grid button:not(:disabled):active{transform:translateY(1px) scale(.985)}
+.stat-action-grid button.made{border-color:rgba(54,199,138,.32)!important;background:linear-gradient(145deg,rgba(54,199,138,.17),#15212b 68%)!important}
+.stat-action-grid button.missed{border-color:rgba(255,99,84,.28)!important;background:linear-gradient(145deg,rgba(255,99,84,.12),#15212b 68%)!important}
+.stat-action-grid button strong{font-size:1.12rem!important}
+.stat-action-grid button span{color:#c3d0da!important;font-size:.68rem!important}
+.courtside-finalize,.courtside-safety-bottom{box-shadow:0 14px 36px rgba(0,0,0,.18)}
+
+@media(max-width:700px){
+  .courtside-console>header{position:relative}
+  .courtside-scoreboard{margin-inline:10px;border-radius:14px}
+  .courtside-scoreboard article{padding-inline:9px!important}
+  .courtside-scoreboard article h2{font-size:.78rem!important;line-height:1.15}
+  .courtside-scoreboard article strong{font-size:clamp(2.8rem,17vw,4.2rem)!important}
+  .courtside-clock{padding-inline:8px!important}
+  .selected-player{top:8px}
+  .stat-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .stat-action-grid button{min-height:76px!important}
+  .courtside-roster-teams .courtside-team-roster{padding:11px}
+}

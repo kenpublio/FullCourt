@@ -51,8 +51,9 @@ export function MatchCard({ match, sheet = false }) {
 }
 export function TournamentCard({ tournament }) {
   const completed=tournament.status==='completed';
+  const teamCount=tournament.team_count ?? tournament.registered_teams_count;
   return <Link to={`/sports/tournaments/${tournament.id}`} className="court-tournament" onClick={()=>localStorage.setItem('fullcourt_public_tournament',String(tournament.id))}>
     <div className="court-tournament-cover"><i className="bi bi-trophy" aria-hidden="true"/><CourtStatus status={tournament.status}/><span className="court-tournament-sport">BASKETBALL / {String(tournament.format || 'Tournament').replaceAll('_',' ')}</span></div>
-    <div className="court-tournament-body"><h3>{tournament.name}</h3><p>{tournament.description || 'Follow the teams, fixtures, standings, and results.'}</p><div className="court-tournament-facts"><span className="court-tournament-date"><i className="bi bi-calendar3"/> {completed?'Started':'Starts'} {courtDate(tournament.start_date)}</span>{completed&&tournament.end_date&&<span><i className="bi bi-flag-fill"/> Ended {courtDate(tournament.end_date)}</span>}{tournament.team_count!=null&&<span><i className="bi bi-people"/> {tournament.team_count} teams</span>}</div><div className="court-tournament-link">Explore tournament <i className="bi bi-arrow-up-right"/></div></div>
+    <div className="court-tournament-body"><h3>{tournament.name}</h3><p>{tournament.description || 'Follow the teams, fixtures, standings, and results.'}</p><div className="court-tournament-facts"><span className="court-tournament-date"><i className="bi bi-calendar3"/> {completed?'Started':'Starts'} {courtDate(tournament.start_date)}</span>{completed&&tournament.end_date&&<span><i className="bi bi-flag-fill"/> Ended {courtDate(tournament.end_date)}</span>}{teamCount!=null&&<span><i className="bi bi-people"/> {teamCount} teams</span>}</div><div className="court-tournament-link">Explore tournament <i className="bi bi-arrow-up-right"/></div></div>
   </Link>;
 }

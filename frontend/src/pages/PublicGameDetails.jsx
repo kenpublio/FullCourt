@@ -283,7 +283,7 @@ export default function PublicGameDetails() {
                         <span>OFFICIAL STATISTICS</span>
                         <h2>Box score</h2>
                       </div>
-                      <i className="bi bi-bar-chart-fill" />
+                      <span className="game-box-player-count"><b>{selectedBoxPlayers.length}</b> players</span>
                     </header>
                     <div className="game-box-team-tabs" role="tablist" aria-label="Select a team box score">
                       {[{ key: "team1", name: display.team1, score: display.score1 }, { key: "team2", name: display.team2, score: display.score2 }].map((team) => <button type="button" role="tab" aria-selected={boxScoreTeam === team.key} className={boxScoreTeam === team.key ? "active" : ""} onClick={() => setBoxScoreTeam(team.key)} key={team.key}>
@@ -291,7 +291,7 @@ export default function PublicGameDetails() {
                       </button>)}
                     </div>
                     {details.box_score.length ? (
-                      <div className="game-table-scroll">
+                      <div className={`game-table-scroll ${selectedBoxPlayers.length > 8 ? "is-long" : ""}`}>
                         <table>
                           <thead>
                             <tr>
@@ -333,6 +333,7 @@ export default function PublicGameDetails() {
                             ))}
                           </tbody>
                         </table>
+                        {selectedBoxPlayers.length > 8 && <div className="game-box-scroll-hint"><i className="bi bi-mouse"/> Scroll to view all {selectedBoxPlayers.length} players</div>}
                       </div>
                     ) : (
                       <div className="game-panel-empty">

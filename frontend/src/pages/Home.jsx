@@ -31,13 +31,26 @@ export default function Home() {
       active = false;
     };
   }, []);
-  const featured = [...data.matches]
-    .sort(
-      (a, b) =>
-        (a.status === "in_progress" ? -1 : 1) -
-        (b.status === "in_progress" ? -1 : 1),
-    )
-    .slice(0, 3);
+  const featured = (() => {
+    const byDate = (a, b) =>
+      new Date(a.scheduled_start_time || 0) -
+      new Date(b.scheduled_start_time || 0);
+    const live = data.matches
+      .filter((match) => match.status === "in_progress")
+      .sort(byDate);
+    const upcoming = data.matches
+      .filter((match) => ["scheduled", "starting_soon"].includes(match.status))
+      .sort(byDate);
+    const finals = data.matches
+      .filter((match) => match.status === "completed")
+      .sort((a, b) => byDate(b, a));
+    return [...live, ...upcoming, ...finals]
+      .filter(
+        (match, index, rows) =>
+          rows.findIndex((row) => row.id === match.id) === index,
+      )
+      .slice(0, 3);
+  })();
   const liveCount = data.matches.filter(
     (match) => match.status === "in_progress",
   ).length;
@@ -55,6 +68,11 @@ export default function Home() {
         name: player.tournament_name || "Tournament",
       }]),
   ).values()];
+  useEffect(() => {
+    if (!leaderTournament && leaderTournaments.length) {
+      setLeaderTournament(leaderTournaments[0].id);
+    }
+  }, [leaderTournament, leaderTournaments]);
   const visibleLeaders = data.leaders
     .filter((player) => String(player.tournament_id) === leaderTournament)
     .filter((player) =>
@@ -90,7 +108,7 @@ export default function Home() {
                   <span className="court-explore-icon">
                     <i className="bi bi-broadcast-pin" />
                   </span>
-                  <span>Explore Tournaments</span>
+                  <span>View Tournaments</span>
                   <i className="bi bi-arrow-right court-explore-arrow" />
                 </Link>
                 <Link

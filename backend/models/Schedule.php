@@ -14,10 +14,13 @@ class Schedule {
         $stmt=$this->db->prepare("UPDATE matches SET schedule_status='published' WHERE tournament_id=:tournament_id AND scheduled_start_time IS NOT NULL AND court_id IS NOT NULL");
         $stmt->execute([':tournament_id'=>$tournamentId]);
         $notify=$this->db->prepare("INSERT INTO notifications (user_id,notification_type,title,message,action_url)
-            SELECT DISTINCT tp.user_id,'schedule_publication','Basketball schedule published',CONCAT(t.name,' schedule is now available.'),'/schedules'
-            FROM teams tm JOIN team_players tp ON tp.team_id=tm.id AND tp.user_id IS NOT NULL JOIN tournaments t ON t.id=tm.tournament_id
-            WHERE tm.tournament_id=:tournament_id");
-        $notify->execute([':tournament_id'=>$tournamentId]);
+            SELECT DISTINCT recipients.user_id,'schedule_publication','Basketball schedule published',CONCAT(t.name,' schedule is now available.'),'/schedules'
+            FROM (
+                SELECT coach_user_id AS user_id,tournament_id FROM teams WHERE tournament_id=:coach_tournament AND coach_user_id IS NOT NULL
+                UNION
+                SELECT manager_user_id AS user_id,tournament_id FROM teams WHERE tournament_id=:assistant_tournament AND manager_user_id IS NOT NULL
+            ) recipients JOIN tournaments t ON t.id=recipients.tournament_id");
+        $notify->execute([':coach_tournament'=>$tournamentId,':assistant_tournament'=>$tournamentId]);
         return $stmt->rowCount();
     }
 
@@ -197,7 +200,9 @@ class Schedule {
                     $cursor = (clone $slotEnd)->modify("+{$c['break_mins']} minutes");
                     break 2;
                 }
-                $candidate->modify("+{$c['break_mins']} minutes");
+                // Move to the next complete game slot. A zero changeover break
+                // must still advance by the 90-minute match duration.
+                $candidate->modify("+{$advanceSec} seconds");
                 $attempts++;
             }
 
@@ -437,9 +442,12 @@ class Schedule {
         $recipients = $this->db->prepare("SELECT DISTINCT recipient.user_id FROM (
                 SELECT tm.coach_user_id AS user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
                     WHERE m.id=:coaches_match AND tm.coach_user_id IS NOT NULL
+                UNION SELECT tm.manager_user_id AS user_id FROM teams tm JOIN matches m ON tm.id IN (m.team1_id,m.team2_id)
+                    WHERE m.id=:assistants_match AND tm.manager_user_id IS NOT NULL
             ) recipient JOIN users u ON u.id=recipient.user_id WHERE u.is_active=1");
         $recipients->execute([
             ':coaches_match' => $matchId,
+            ':assistants_match' => $matchId,
         ]);
         $users = $recipients->fetchAll(PDO::FETCH_COLUMN);
         if (!$users) return 0;

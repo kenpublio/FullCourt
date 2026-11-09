@@ -27,7 +27,7 @@ const LiveScoringView = () => {
   const [finalizing, setFinalizing] = useState(false);
   const liveMatchCount = matches.filter((item) => item.status === 'in_progress').length;
   const awaitingReviews = matches.filter((item) => item.status === 'awaiting_confirmation');
-  const visibleMatches = matches.filter((item) => matchFilter === 'all'
+  const visibleMatches = matches.filter((item) => canReviewScores ? item.status === 'awaiting_confirmation' : matchFilter === 'all'
     || (matchFilter === 'active' && ['scheduled','in_progress','awaiting_confirmation'].includes(item.status))
     || item.status === matchFilter);
 
@@ -157,8 +157,8 @@ const LiveScoringView = () => {
       <header className="live-scoring-hero mb-4">
         <div className="live-scoring-heading">
           <span className="live-scoring-kicker"><i className="bi bi-broadcast-pin"/> GAME-DAY CONTROL</span>
-          <h1>Live Scorekeeping Portal</h1>
-          <p>Update the game score and keep every result current as the action happens.</p>
+          <h1>{canReviewScores?'Final Score Review':'Live Scorekeeping Portal'}</h1>
+          <p>{canReviewScores?'Review and correct the submitted final score before publishing the official result.':'Update the game score and keep every result current as the action happens.'}</p>
           <div className="live-scoring-meta"><span><i className="bi bi-dribbble"/> Basketball</span><span><i className="bi bi-broadcast"/> {liveMatchCount} live {liveMatchCount === 1 ? 'game' : 'games'}</span></div>
         </div>
         <select
@@ -191,15 +191,15 @@ const LiveScoringView = () => {
         <div className="col-md-5">
           <div className="card-custom p-3 live-scoring-match-panel">
             <div className="live-scoring-panel-heading"><div><span>GAME LIST</span><h2>Select a match</h2></div><b>{matches.length}</b></div>
-            <div className="live-match-filters" aria-label="Filter games">
+            {!canReviewScores&&<div className="live-match-filters" aria-label="Filter games">
               {[['active','Active'],['in_progress','Live'],['awaiting_confirmation','Review'],['all','All']].map(([value,label])=><button type="button" key={value} className={matchFilter===value?'active':''} onClick={()=>setMatchFilter(value)}>{label}</button>)}
-            </div>
+            </div>}
             <div className="d-flex flex-column gap-2 live-match-scroll">
               {visibleMatches.length === 0 && (
                 <div className="live-scoring-empty">
                   <i className="bi bi-calendar2-x" />
-                  <b>{tournaments.length ? 'No games scheduled yet' : 'No tournament available'}</b>
-                  <span>{tournaments.length ? 'Games will appear after the tournament schedule is created.' : 'Create or publish a tournament schedule to begin scorekeeping.'}</span>
+                  <b>{canReviewScores?'No final scores waiting for review':tournaments.length ? 'No games scheduled yet' : 'No tournament available'}</b>
+                  <span>{canReviewScores?'A submitted score appears here before it becomes official.':tournaments.length ? 'Games will appear after the tournament schedule is created.' : 'Create or publish a tournament schedule to begin scorekeeping.'}</span>
                 </div>
               )}
               {visibleMatches.map(m => (

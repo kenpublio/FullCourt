@@ -58,6 +58,8 @@ function routeRequest(string $uri, string $method) {
     if ($path === '/platform-settings' && $method === 'PUT') { (new PlatformSettingsController())->update(); return; }
     if ($path === '/system/health' && $method === 'GET') { (new SystemOperationsController())->health(); return; }
     if ($path === '/system/backups' && $method === 'POST') { (new SystemOperationsController())->backup(); return; }
+    if ($path === '/announcements' && $method === 'GET') { (new AnnouncementController())->managed(); return; }
+    if ($path === '/announcements' && $method === 'POST') { (new AnnouncementController())->publish(); return; }
     if (preg_match('#^/public/organizations/([a-z0-9-]+)$#', $path, $m) && $method === 'GET') { (new PublicController())->organization($m[1]); return; }
     if (preg_match('#^/public/tournaments/(\d+)$#', $path, $m) && $method === 'GET') { (new PublicController())->tournament((int)$m[1]); return; }
     if (preg_match('#^/public/tournaments/(\d+)/bracket$#', $path, $m) && $method === 'GET') { (new PublicController())->bracket((int)$m[1]); return; }
@@ -161,6 +163,7 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/scoring-session/stats/(\d+)$#', $path, $m) && $method === 'DELETE') { (new ScoringAccessController())->undoStat((int)$m[1]); return; }
     if ($path === '/scoring-session/clock' && $method === 'PUT') { (new ScoringAccessController())->updateClock(); return; }
     if ($path === '/scoring-session/substitutions' && $method === 'POST') { (new ScoringAccessController())->substitute(); return; }
+    if ($path === '/scoring-session/incidents' && $method === 'POST') { (new ScoringAccessController())->incident(); return; }
     if ($path === '/scoring-session/submit-final' && $method === 'POST') { (new ScoringAccessController())->submitFinal(); return; }
     if (preg_match('#^/matches/(\d+)/assignments$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->assign((int)$m[1]); return; }
     if (preg_match('#^/game-assignments/(\d+)/respond$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->respond((int)$m[1]); return; }

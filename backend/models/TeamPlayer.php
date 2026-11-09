@@ -199,7 +199,8 @@ class TeamPlayer {
             'locked'=>!empty($row['roster_locked_at']),
             'lock_time'=>$row['roster_locked_at'] ?? null,
             'deadline'=>$deadline,
-            'deadline_passed'=>$deadline ? strtotime((string)$deadline) < time() : false,
+            // A date-only roster deadline remains open for the whole stated day.
+            'deadline_passed'=>$deadline ? strtotime((string)$deadline . ' 23:59:59') < time() : false,
         ];
     }
 

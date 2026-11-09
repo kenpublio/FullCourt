@@ -8,7 +8,7 @@ const fs = require('node:fs');
   const out = path.join(root, 'output', 'design-polish');
   fs.mkdirSync(out, { recursive: true });
   const sessions = JSON.parse(execFileSync('php', [path.join(__dirname, 'BrowserAuditSession.php')], { cwd:root, encoding:'utf8' }));
-  const routes = { platform_admin:'/tournaments', coach:'/coach', statistician:'/statistician' };
+  const routes = { platform_admin:'/tournaments', admin:'/tournaments', coach:'/coach', assistant_coach:'/coach', statistician:'/statistician' };
   const browser = await chromium.launch({ channel:'msedge', headless:true });
   const results = [];
   for (const session of sessions) {
@@ -22,7 +22,7 @@ const fs = require('node:fs');
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(`${process.env.APP_URL || 'http://127.0.0.1:5180'}${routes[role]}`, { waitUntil:'networkidle' });
+    await page.goto(`${process.env.APP_URL || 'http://127.0.0.1:5180'}${routes[role] || '/'}`, { waitUntil:'networkidle' });
     await page.screenshot({ path:path.join(out, `${role}.png`), fullPage:true });
     const desktopOverflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2);
     await page.setViewportSize({ width:390, height:844 });

@@ -1,11 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import engagementService from "../services/engagementService";
+import contentService from "../services/contentService";
+import tournamentService from "../services/tournamentService";
+import { useAuth } from "../hooks/useAuth";
 import "../styles/operations-polish.css";
 
 const NotificationsView = () => {
+  const { user } = useAuth();
+  const isTeamStaff = ["coach", "assistant_coach"].includes(user?.role);
+  const canPublish = ["platform_admin", "admin", "statistician"].includes(user?.role);
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [announcements,setAnnouncements]=useState([]),[tournaments,setTournaments]=useState([]),[publishing,setPublishing]=useState(false),[publishNotice,setPublishNotice]=useState('');
+  const [announcement,setAnnouncement]=useState({tournament_id:'',title:'',message:'',priority:'important',expires_in_hours:72});
 
   const loadNotifications = useCallback(
     async () => setItems(await engagementService.notifications()),
@@ -14,6 +22,9 @@ const NotificationsView = () => {
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
+  useEffect(()=>{if(!canPublish)return;Promise.all([contentService.getManagedAnnouncements(),tournamentService.getTournaments()]).then(([rows,data])=>{setAnnouncements(rows);const list=data.tournaments||[];setTournaments(list);setAnnouncement(current=>({...current,tournament_id:current.tournament_id||String(list[0]?.id||'')}));}).catch(()=>setPublishNotice('Announcement tools could not be loaded.'));},[canPublish]);
+
+  const publishAnnouncement=async(event)=>{event.preventDefault();setPublishing(true);setPublishNotice('');try{const result=await contentService.publishAnnouncement({...announcement,tournament_id:announcement.tournament_id?Number(announcement.tournament_id):null,expires_in_hours:Number(announcement.expires_in_hours)});setPublishNotice(`Announcement published${result?.notifications_created?` · ${result.notifications_created} team staff notified`:''}.`);setAnnouncement(current=>({...current,title:'',message:''}));setAnnouncements(await contentService.getManagedAnnouncements());await loadNotifications();}catch(error){setPublishNotice(error.response?.data?.message||'Announcement could not be published.');}finally{setPublishing(false);}};
 
   const markRead = async (id) => {
     await engagementService.read(id);
@@ -49,7 +60,9 @@ const NotificationsView = () => {
             Notifications
           </h1>
           <p className="text-muted small mb-0">
-            Schedule changes, eligibility, payments, assignments, results, and awards
+            {isTeamStaff
+              ? "Schedule, eligibility, payment, and result updates for your assigned team only."
+              : "Schedule changes, eligibility, payments, assignments, results, and awards"}
           </p>
         </div>
         <button
@@ -60,6 +73,7 @@ const NotificationsView = () => {
           Mark all read
         </button>
       </div>
+      {canPublish&&<section className="card-custom p-4 mb-4 announcement-composer"><div className="d-flex flex-wrap justify-content-between gap-3 align-items-start mb-3"><div><span className="ops-eyebrow">TOURNAMENT COMMUNICATIONS</span><h2 className="h5 fw-bold mb-1">Publish an announcement</h2><p className="text-muted small mb-0">Send one clear update to the selected tournament. It also appears on the public home page until it expires.</p></div><span className="badge rounded-pill text-bg-light">{announcements.length} published</span></div><form className="row g-3" onSubmit={publishAnnouncement}><label className="col-lg-4 form-label small fw-bold">Tournament<select className="form-select mt-1" value={announcement.tournament_id} onChange={event=>setAnnouncement(current=>({...current,tournament_id:event.target.value}))} required={user?.role==='statistician'}>{user?.role!=='statistician'&&<option value="">All tournaments</option>}{tournaments.map(row=><option value={row.id} key={row.id}>{row.name}</option>)}</select></label><label className="col-lg-5 form-label small fw-bold">Title<input className="form-control mt-1" maxLength="180" value={announcement.title} onChange={event=>setAnnouncement(current=>({...current,title:event.target.value}))} placeholder="Example: Venue changed for Saturday" required/></label><label className="col-lg-3 form-label small fw-bold">Priority<select className="form-select mt-1" value={announcement.priority} onChange={event=>setAnnouncement(current=>({...current,priority:event.target.value}))}><option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option></select></label><label className="col-lg-9 form-label small fw-bold">Message<textarea className="form-control mt-1" rows="3" maxLength="1500" value={announcement.message} onChange={event=>setAnnouncement(current=>({...current,message:event.target.value}))} placeholder="Write the exact update coaches and team staff need to know." required/></label><label className="col-lg-3 form-label small fw-bold">Visible for<select className="form-select mt-1" value={announcement.expires_in_hours} onChange={event=>setAnnouncement(current=>({...current,expires_in_hours:event.target.value}))}><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option><option value="720">30 days</option></select></label><div className="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2">{publishNotice?<span className="small fw-semibold" role="status">{publishNotice}</span>:<span className="text-muted small">Only assigned tournament staff and Admin can publish.</span>}<button className="btn btn-evsu" disabled={publishing||!announcement.title.trim()||!announcement.message.trim()||user?.role==='statistician'&&!announcement.tournament_id}><i className="bi bi-megaphone-fill me-2"/>{publishing?'Publishing…':'Publish announcement'}</button></div></form></section>}
       <nav className="notification-filters" aria-label="Filter notifications">
         {[['all','All',items.length],['unread','Unread',unreadCount],['critical','Urgent',items.filter(item=>priorityFor(item)==='critical').length],['action','Action required',items.filter(item=>priorityFor(item)==='action').length]].map(([value,label,count])=><button type="button" className={filter===value?'active':''} aria-pressed={filter===value} onClick={()=>setFilter(value)} key={value}>{label}<b>{count}</b></button>)}
       </nav>

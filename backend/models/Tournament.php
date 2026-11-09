@@ -11,7 +11,7 @@ class Tournament {
         $this->db = $database->getConnection();
     }
 
-    public function getAll(?int $userId = null, bool $platform = false): array {
+    public function getAll(?int $userId = null, bool $platform = false, bool $assignedStaffOnly = false): array {
         $sql = "SELECT t.*, s.name as sport_name, s.category as sport_category, u.full_name as organizer_name,
                 (SELECT COUNT(*) FROM teams WHERE tournament_id = t.id AND status = 'registered') as registered_teams_count,
                 (SELECT tsa.user_id FROM tournament_staff_assignments tsa WHERE tsa.tournament_id=t.id ORDER BY CASE WHEN tsa.assignment_role='primary' THEN 0 ELSE 1 END,tsa.created_at LIMIT 1) AS assigned_staff_id,
@@ -29,14 +29,19 @@ class Tournament {
                 JOIN sports s ON t.sport_id = s.id
                 JOIN users u ON t.created_by = u.id
                 WHERE LOWER(s.name) = 'basketball' AND t.archived_at IS NULL";
-        if (!$platform && $userId !== null) {
+        if ($assignedStaffOnly && $userId !== null) {
+            $sql .= " AND EXISTS (SELECT 1 FROM tournament_staff_assignments tsa_scope WHERE tsa_scope.tournament_id=t.id AND tsa_scope.user_id=:assigned_staff_id)";
+        } elseif (!$platform && $userId !== null) {
             $sql .= " AND (t.approval_status='approved' OR t.created_by=:creator_id)";
             $sql .= " AND (t.created_by=:user_id OR EXISTS (SELECT 1 FROM tournament_staff_assignments tsa_access WHERE tsa_access.tournament_id=t.id AND tsa_access.user_id=:staff_id) OR EXISTS (SELECT 1 FROM organization_members om WHERE om.organization_id=t.organization_id AND om.user_id=:member_id AND om.status='active') OR EXISTS (SELECT 1 FROM teams own_tm LEFT JOIN team_players own_tp ON own_tp.team_id=own_tm.id WHERE own_tm.tournament_id=t.id AND (own_tm.coach_user_id=:coach_id OR own_tm.manager_user_id=:manager_id OR own_tp.user_id=:player_id)))";
         }
         $sql .= "
                 ORDER BY t.created_at DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(!$platform && $userId !== null ? [':creator_id'=>$userId,':user_id'=>$userId,':staff_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
+        $params = $assignedStaffOnly && $userId !== null
+            ? [':assigned_staff_id'=>$userId]
+            : (!$platform && $userId !== null ? [':creator_id'=>$userId,':user_id'=>$userId,':staff_id'=>$userId,':member_id'=>$userId,':coach_id'=>$userId,':manager_id'=>$userId,':player_id'=>$userId] : []);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
 

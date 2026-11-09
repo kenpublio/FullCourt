@@ -379,6 +379,16 @@
 :root[data-fullcourt-theme="light"] .auth-heading > p {
   color: #6f5555 !important;
 }
+
+/* Dark operations navigation: white labels, accent reserved for icons/active rail. */
+:root[data-fullcourt-theme="dark"] .admin-console-dark .sidebar-link,
+:root[data-fullcourt-theme="dark"] .admin-console-dark .sidebar-link > span,
+:root[data-fullcourt-theme="dark"] .admin-console-dark .sidebar-link:visited,
+:root[data-fullcourt-theme="dark"] .admin-console-dark .sidebar-link:hover,
+:root[data-fullcourt-theme="dark"] .admin-console-dark .sidebar-link.active,
+:root[data-fullcourt-theme="dark"] .admin-console-dark .sidebar-link.active > span {
+  color: #ffffff !important;
+}
 :root[data-fullcourt-theme] .fc-auth .auth-heading > p { color: #6f5555 !important; }
 .fc-auth .auth-heading > p { color: #6f5555 !important; }
 :root[data-fullcourt-theme] .admin-console-dark .btn-outline-secondary {

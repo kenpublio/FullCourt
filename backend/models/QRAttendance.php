@@ -49,7 +49,8 @@ class QRAttendance {
                 $valid=$this->db->prepare("SELECT id FROM team_players WHERE team_id=:team_id AND eligibility_status='verified'");$valid->execute([':team_id'=>$teamId]);
                 $allowed=array_map('intval',array_column($valid->fetchAll(),'id'));$present=array_values(array_intersect($allowed,array_map('intval',$playerIds)));
                 $lineup=$this->db->prepare("INSERT INTO game_lineups(match_id,team_player_id,is_present,is_starter,confirmed_by)
-                    VALUES(:match_id,:player_id,:present,0,:user_id) ON CONFLICT (match_id,team_player_id) DO UPDATE SET is_present=EXCLUDED.is_present,confirmed_by=EXCLUDED.confirmed_by");
+                    VALUES(:match_id,:player_id,:present,0,:user_id)
+                    ON DUPLICATE KEY UPDATE is_present=VALUES(is_present),confirmed_by=VALUES(confirmed_by)");
                 foreach($allowed as $playerId)$lineup->execute([':match_id'=>$matchId,':player_id'=>$playerId,':present'=>in_array($playerId,$present,true)?1:0,':user_id'=>$scannedBy]);
             }
             $this->db->commit();return['status'=>'success','message'=>'Team check-in verified and saved.','team_id'=>$teamId];
@@ -64,7 +65,7 @@ class QRAttendance {
         if(!$assignment||(!$manager&&(int)$assignment['user_id']!==$userId))throw new InvalidArgumentException('Game assignment not found.');
         if($assignment['status']!=='accepted')throw new InvalidArgumentException('The assignment must be accepted before generating game access.');
         $token=bin2hex(random_bytes(32));
-        $update=$this->db->prepare("UPDATE game_assignments SET qr_token_hash=:hash,qr_expires_at=NOW() + INTERVAL '12 hours',qr_used_at=NULL WHERE id=:id");
+        $update=$this->db->prepare("UPDATE game_assignments SET qr_token_hash=:hash,qr_expires_at=DATE_ADD(NOW(), INTERVAL 12 HOUR),qr_used_at=NULL WHERE id=:id");
         $update->execute([':hash'=>hash('sha256',$token),':id'=>$assignmentId]);
         $assignment['qr_payload']='FULLCOURT:OFFICIAL:'.$assignmentId.':'.$token;$assignment['expires_in_hours']=12;
         return$assignment;

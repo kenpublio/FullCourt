@@ -79,6 +79,8 @@ const TournamentManagement = () => {
   const [showVenueMapPicker, setShowVenueMapPicker] = useState(false);
   const [availabilitySaved, setAvailabilitySaved] = useState(false);
   const [venueDraftMsg, setVenueDraftMsg] = useState("");
+  const [manualVenue, setManualVenue] = useState({ name: "", location: "" });
+  const [savingManualVenue, setSavingManualVenue] = useState(false);
   const [joinTournament, setJoinTournament] = useState(null);
   const [joinLogo, setJoinLogo] = useState(null);
   const [joinForm, setJoinForm] = useState({ team_name: '', short_name: '', primary_color: 'red' });
@@ -225,6 +227,42 @@ const TournamentManagement = () => {
       alert(err.response?.data?.message || (err.code === "ECONNABORTED" ? "The database is taking too long to respond. Please try again." : "Could not submit the tournament. Check your connection and try again."));
     } finally {
       setSubmittingTournament(false);
+    }
+  };
+
+  const saveAndUseManualVenue = async () => {
+    const name = manualVenue.name.trim();
+    const location = manualVenue.location.trim();
+    if (!name || !location) {
+      setVenueDraftMsg("Enter both the venue name and complete address.");
+      return;
+    }
+    try {
+      setSavingManualVenue(true);
+      setVenueDraftMsg("");
+      const venueResponse = await venueService.createVenue({ name, location });
+      const venueId = venueResponse?.data?.id;
+      if (!venueId) throw new Error("Venue was saved without an ID.");
+      const courtResponse = await venueService.createCourt({
+        venue_id: venueId,
+        court_name: "Main Court",
+        sport_id: formData.sport_id,
+        is_available: true,
+      });
+      const courtId = courtResponse?.data?.id;
+      if (!courtId) throw new Error("Main Court was not created.");
+      setFormData((current) => ({ ...current, court_ids: [String(courtId)] }));
+      setPreviewVenueId(String(venueId));
+      setPreviewCourtId(String(courtId));
+      setManualVenue({ name: "", location: "" });
+      setAvailabilitySaved(false);
+      setCourtSelectionError("");
+      setVenueDraftMsg("Venue saved and selected. Set its available days and opening time below.");
+      await loadData();
+    } catch (error) {
+      setVenueDraftMsg(error.response?.data?.message || error.message || "Unable to save this venue.");
+    } finally {
+      setSavingManualVenue(false);
     }
   };
 
@@ -729,6 +767,12 @@ const TournamentManagement = () => {
                       </div>
                       <span className="tournament-venue-count" aria-live="polite">{selectedVenueCount} venues · {selectedCourtCount} courts</span>
                     </div>
+                    <div className="tournament-manual-venue-form">
+                      <label><span>Venue name</span><input className="form-control" value={manualVenue.name} onChange={(event) => setManualVenue((current) => ({ ...current, name: event.target.value }))} placeholder="e.g. Ormoc City Superdome" /></label>
+                      <label><span>Complete address</span><input className="form-control" value={manualVenue.location} onChange={(event) => setManualVenue((current) => ({ ...current, location: event.target.value }))} placeholder="Street, barangay, city, province" /></label>
+                      <button type="button" className="btn btn-outline-danger" disabled={savingManualVenue} onClick={saveAndUseManualVenue}><i className={`bi ${savingManualVenue ? "bi-arrow-repeat" : "bi-plus-circle"} me-2`}/>{savingManualVenue ? "Saving venue…" : "Save and use venue"}</button>
+                    </div>
+                    {selectedCourtCount > 0 && <div className="tournament-selected-venue"><i className="bi bi-check-circle-fill"/><div><b>{previewVenue?.name || "Venue selected"}</b><span>{previewVenue?.location || "Main Court is ready for scheduling."}</span></div><button type="button" onClick={() => { setFormData((current) => ({ ...current, court_ids: [] })); setAvailabilitySaved(false); }}>Change</button></div>}
                     {bookableCourtCount > 0 && !selectedCourtCount && <button type="button" className="tournament-add-venue-map" onClick={() => setShowVenueMapPicker((current) => !current)}><i className={`bi ${showVenueMapPicker ? "bi-chevron-up" : "bi-map"}`}/><span>{showVenueMapPicker ? "Hide map picker" : "Choose a venue from map"}</span></button>}
                     <div className="tournament-location-autocomplete">
                       <div className="tournament-location-search">

@@ -8,7 +8,6 @@ const menuItems = [
   ]},
   { section: 'Management', items: [
     { title: 'Accounts & Staff', path: '/users', icon: 'bi-shield-lock-fill', roles: ['platform_admin','admin'] },
-    { title: 'Organizations', path: '/organizations', icon: 'bi-building', roles: ['platform_admin','admin','organization_admin','tournament_organizer'] },
     { title: 'Tournaments', path: '/tournaments', icon: 'bi-trophy-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Teams & Players', path: '/teams', icon: 'bi-people-fill', roles: ['platform_admin','admin','coach','statistician'] },
     { title: 'Eligibility', path: '/eligibility', icon: 'bi-patch-check-fill', roles: ['platform_admin','admin','coach','statistician'] },
@@ -17,7 +16,6 @@ const menuItems = [
   { section: 'Live Ops', items: [
     { title: 'Scoring Access', path: '/officials', icon: 'bi-person-badge-fill', roles: ['platform_admin','admin','statistician'] },
     { title: 'Schedules & Venues', path: '/schedules', icon: 'bi-calendar-event-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
-    { title: 'Venues & Courts', path: '/venues', icon: 'bi-geo-alt-fill', roles: ['platform_admin','admin','statistician'] },
     { title: 'Score Review', path: '/live-scoring', icon: 'bi-broadcast-pin', roles: ['platform_admin','admin'] },
     { title: 'Standings', path: '/standings', icon: 'bi-list-ol', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
   ]},
@@ -33,9 +31,6 @@ const menuItems = [
   ]},
   { section: 'Account', items: [
     { title: 'Notifications', path: '/notifications', icon: 'bi-bell-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
-    { title: 'My Documents', path: '/my-documents', icon: 'bi-person-vcard-fill', roles: ['coach','statistician'] },
-    { title: 'My Sports History', path: '/my-history', icon: 'bi-clock-history', roles: ['coach','statistician'] },
-    { title: 'My Stats', path: '/my-stats', icon: 'bi-graph-up-arrow', roles: ['coach','statistician'] },
     { title: 'My Profile', path: '/profile', icon: 'bi-person-circle', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
     { title: 'Settings', path: '/settings', icon: 'bi-gear-fill', roles: ['platform_admin','admin','coach','assistant_coach','statistician'] },
   ]},

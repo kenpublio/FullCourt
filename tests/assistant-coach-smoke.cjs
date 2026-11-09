@@ -34,7 +34,7 @@ const restrictedRoutes = ['/teams', '/eligibility', '/payments', '/live-scoring'
 
   for (const route of restrictedRoutes) {
     await page.goto(`${base}${route}`);
-    await page.waitForTimeout(300);
+    await page.waitForURL(url => new URL(url).pathname !== route, { timeout: 5000 }).catch(() => {});
     if (new URL(page.url()).pathname === route) throw new Error(`Assistant Coach can access restricted route ${route}.`);
   }
   if (pageErrors.length) throw new Error(`Browser errors: ${pageErrors.join(' | ')}`);

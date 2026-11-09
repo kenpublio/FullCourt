@@ -185,7 +185,7 @@ const OfficialsWorkspace = () => {
       </div>
       {loadError && <div className="alert alert-danger d-flex justify-content-between align-items-center gap-3" role="alert"><span><i className="bi bi-exclamation-triangle-fill me-2"/>{loadError}</span><button className="btn btn-sm btn-outline-danger" onClick={load}>Try again</button></div>}
       <section className="officials-command-grid" aria-label="Statistician assignment summary">
-        <article><span className="officials-stat-icon is-red"><i className="bi bi-clipboard2-check" /></span><div><small>Total duties</small><strong>{assignmentStats.total}</strong><p>All statistician assignments</p></div></article>
+        <article><span className="officials-stat-icon is-red"><i className="bi bi-clipboard2-check" /></span><div><small>Scoring duties</small><strong>{assignmentStats.total}</strong><p>Games assigned to a Staff Admin</p></div></article>
         <article><span className="officials-stat-icon is-green"><i className="bi bi-check2-circle" /></span><div><small>Confirmed</small><strong>{assignmentStats.accepted}</strong><p>Ready for courtside access</p></div></article>
         <article><span className="officials-stat-icon is-gold"><i className="bi bi-hourglass-split" /></span><div><small>Needs response</small><strong>{assignmentStats.pending}</strong><p>Pending confirmations</p></div></article>
         <article><span className="officials-stat-icon is-blue"><i className="bi bi-broadcast-pin" /></span><div><small>Today's games</small><strong>{assignmentStats.today}</strong><p>Scheduled duties today</p></div></article>
@@ -235,7 +235,7 @@ const OfficialsWorkspace = () => {
             <option value="all">Statistician</option>{roles.map((role) => <option value={role} key={role}>{role}</option>)}
           </select>
         </div>
-        <div className="officials-list-heading"><div><span>GAME-DAY CREW</span><h2>{isManager ? 'All statistician assignments' : 'Your game assignments'}</h2></div><small>{visibleAssignments.length} {visibleAssignments.length === 1 ? 'assignment' : 'assignments'}</small></div>
+        <div className="officials-list-heading"><div><span>SCORING RESPONSIBILITY</span><h2>{isManager ? 'Assigned game scorers' : 'Games you will score'}</h2><p className="text-muted small mb-0">This confirms who is responsible for recording the official score and player statistics for each game.</p></div><small>{visibleAssignments.length} {visibleAssignments.length === 1 ? 'game' : 'games'}</small></div>
         <div className="row g-3">
           {assignments.length === 0 ? (
             <div className="ops-empty"><i className="bi bi-calendar2-x"/><strong>No game assignments</strong><p>Statistician assignments will appear here.</p>

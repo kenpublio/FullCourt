@@ -27,11 +27,12 @@ if (!staff) throw new Error('Staff Admin audit session is unavailable.');
   await page.getByRole('link', { name: /Open Courtside Statistician/i }).waitFor();
   await page.getByRole('link', { name: /Manage scoring links/i }).waitFor();
 
-  await page.goto(`${base}/venues`);
-  await page.getByRole('heading', { name: /Venue & Court Management/i }).waitFor();
-  await page.getByRole('button', { name: /Edit/i }).first().waitFor({ timeout: 15000 });
-  const editVenueButtons = await page.getByRole('button', { name: /Edit/i }).count();
-  if (!editVenueButtons) throw new Error('Assigned Staff Admin has no venue edit control.');
+  await page.goto(`${base}/schedules`);
+  await page.getByRole('heading', { name: /Game Schedule & Venue Assignment/i }).waitFor();
+  await page.getByRole('button', { name: /Configure optimizer/i }).click();
+  await page.getByRole('heading', { name: /Build the playable game slots/i }).waitFor();
+  await page.getByLabel(/Complete game location/i).waitFor();
+  const locationInputs = await page.getByLabel(/Complete game location/i).count();
 
   await page.goto(`${base}/brackets`);
   await page.locator('.bracket-engine-board').waitFor();
@@ -54,6 +55,6 @@ if (!staff) throw new Error('Staff Admin audit session is unavailable.');
   await page.waitForTimeout(500);
   if (qrFailures.length) throw new Error(`Assigned Staff Admin QR access failed: ${JSON.stringify(qrFailures)}`);
 
-  console.log(JSON.stringify({ scoring_choices: true, standings_scoring_hub: true, assigned_venue_controls: editVenueButtons, bye_cards_in_assigned_bracket: byeCount, bye_not_counted_as_winner: true, assigned_team_qr_access: true }, null, 2));
+  console.log(JSON.stringify({ scoring_choices: true, standings_scoring_hub: true, schedule_location_editor: locationInputs > 0, bye_cards_in_assigned_bracket: byeCount, bye_not_counted_as_winner: true, assigned_team_qr_access: true }, null, 2));
   await browser.close();
 })().catch(error => { console.error(error.stack || error.message); process.exit(1); });

@@ -33,12 +33,10 @@ const GuestScoringConsole = () => {
   const [pin, setPin] = useState('');
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [subOut, setSubOut] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [clockBusy, setClockBusy] = useState(false);
-  const [subBusy, setSubBusy] = useState(false);
   const [period, setPeriod] = useState('Q1');
   const [clockMinutes, setClockMinutes] = useState('10');
   const [clockSeconds, setClockSeconds] = useState('00');
@@ -59,6 +57,10 @@ const GuestScoringConsole = () => {
   const [submittedFinal, setSubmittedFinal] = useState(null);
   const [undoBusy, setUndoBusy] = useState(false);
   const [pendingUndo, setPendingUndo] = useState(null);
+  const [incidentType, setIncidentType] = useState('');
+  const [incidentSubject, setIncidentSubject] = useState('');
+  const [incident, setIncident] = useState({ severity: 'medium', description: '', action_taken: '' });
+  const [incidentBusy, setIncidentBusy] = useState(false);
 
   const saveQueue = useCallback((items) => {
     localStorage.setItem(queueKey, JSON.stringify(items));
@@ -90,6 +92,10 @@ const GuestScoringConsole = () => {
 
   const load = useCallback(async (active = session) => {
     if (!active) return;
+    if (!navigator.onLine) {
+      setOnline(false);
+      return;
+    }
     try {
       const result = await scoringAccessService.console(active);
       clockSyncAt.current = Date.now();
@@ -103,9 +109,13 @@ const GuestScoringConsole = () => {
       setData(result);
       const eligiblePlayers = result.players.filter((player) => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
       setSelected((current) => eligiblePlayers.find((player) => player.team_player_id === current?.team_player_id) || eligiblePlayers[0] || null);
-      setSubOut((current) => result.players.find((player) => player.team_player_id === current?.team_player_id && player.eligibility_status === 'verified' && Number(player.is_on_court) === 1) || null);
       setError('');
     } catch (loadError) {
+      if (!loadError.response) {
+        setOnline(false);
+        setMessage('Connection unavailable. Your scoring session and queued actions are preserved on this device.');
+        return;
+      }
       setError(loadError.response?.data?.message || 'This scoring session is unavailable.');
       setSession('');
       sessionStorage.removeItem(`fc_score_${token}`);
@@ -203,26 +213,22 @@ const GuestScoringConsole = () => {
     finally { setBusy(false); }
   };
 
-  const substitute = async (playerIn) => {
-    if (!subOut || !playerIn || subBusy) return;
-    setSubBusy(true);
-    setError('');
-    setMessage('');
+  const openIncident = (type) => {
+    setIncidentType(type);
+    setIncidentSubject(selected ? `#${selected.jersey_number || '—'} ${selected.full_name} · ${selected.team_name}` : 'Game incident');
+    setIncident({ severity: type === 'injury' ? 'medium' : 'high', description: '', action_taken: '' });
+  };
+
+  const reportIncident = async () => {
+    if (!session || !incidentType || !incident.description.trim() || incidentBusy) return;
+    setIncidentBusy(true);setError('');setMessage('');
     try {
-      await scoringAccessService.substitute(session, {
-        player_out_id: Number(subOut.team_player_id),
-        player_in_id: Number(playerIn.team_player_id),
-        current_period: data.game.current_period || period,
-        game_clock_seconds: remainingSeconds,
-      });
-      setMessage(`${subOut.full_name} subbed out; ${playerIn.full_name} subbed in.`);
-      setSubOut(null);
-      await load();
-    } catch (subError) {
-      setError(subError.response?.data?.message || 'Unable to record this substitution.');
-    } finally {
-      setSubBusy(false);
-    }
+      await scoringAccessService.reportIncident(session, { incident_type: incidentType, subject: incidentSubject, ...incident });
+      setMessage(`${incidentType === 'injury' ? 'Injury' : 'Fight / misconduct'} report saved and sent to tournament operations.`);
+      setIncidentType('');
+    } catch (incidentError) {
+      setError(incidentError.response?.data?.message || 'Unable to save the incident report.');
+    } finally { setIncidentBusy(false); }
   };
 
   const saveClock = async (event) => {
@@ -417,33 +423,26 @@ const GuestScoringConsole = () => {
     </form>
     {(message || error) && <div className={`courtside-alert ${error ? 'is-error' : ''}`} role={error ? 'alert' : 'status'}><i className={`bi ${error ? 'bi-exclamation-triangle' : 'bi-check-circle'}`}/>{error || message}<button type="button" onClick={() => { setError(''); setMessage(''); }}>×</button></div>}
     <div className="courtside-workspace">
-      <aside><span className="score-kicker">GAME ROSTERS</span><h3>Players &amp; substitutions</h3>
-        <p className="courtside-roster-help">All roster players are shown. Only verified, present players can be scored.</p>
-        {teams.map((team) => {
+      <aside className="courtside-roster-picker"><span className="score-kicker">CHOOSE A PLAYER</span><h3>Tap a team, then a player</h3>
+        <p className="courtside-roster-help">Both teams are separated below. Tap any cleared player to record a game action.</p>
+        <div className="courtside-roster-teams">{teams.map((team) => {
           const roster = data.players.filter((player) => Number(player.team_id) === Number(team.id));
           const available = roster.filter((player) => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
-          const onCourt = available.filter((player) => Number(player.is_on_court) === 1);
-          const bench = available.filter((player) => Number(player.is_on_court) !== 1);
           const unavailable = roster.filter((player) => player.eligibility_status !== 'verified' || Number(player.is_present) !== 1);
-          const playerRow = (player, location) => <div className={`courtside-roster-row ${player.eligibility_status !== 'verified' || Number(player.is_present) !== 1 ? 'is-locked' : ''}`} key={player.team_player_id}>
+          const playerRow = (player) => <div className={`courtside-roster-row ${player.eligibility_status !== 'verified' || Number(player.is_present) !== 1 ? 'is-locked' : ''}`} key={player.team_player_id}>
             <button type="button" disabled={player.eligibility_status !== 'verified' || Number(player.is_present) !== 1} className={`courtside-player-pick ${selected?.team_player_id === player.team_player_id ? 'active' : ''}`} onClick={() => setSelected(player)}>
-              <span>#{player.jersey_number || '—'}</span><div><b>{player.full_name}</b><small>{player.position || 'Player'} · {Math.round((player.seconds_played || 0) / 6) / 10} min</small></div>
+              <span>#{player.jersey_number || '—'}</span><div><b>{player.full_name}</b><small>{player.position || 'Player'}</small></div>
               {player.eligibility_status !== 'verified' || Number(player.is_present) !== 1
                 ? <i className="roster-status">{player.eligibility_status === 'verified' ? 'ABSENT' : (player.eligibility_status || 'PENDING').replaceAll('_', ' ').toUpperCase()}</i>
-                : <i className="roster-status is-ready">{location === 'court' ? 'ON COURT' : 'BENCH'}</i>}
+                : <i className="roster-status is-ready">SELECT</i>}
             </button>
-            {location === 'court' && player.eligibility_status === 'verified' && <button type="button" className={`roster-sub-action ${subOut?.team_player_id === player.team_player_id ? 'is-selected' : ''}`} disabled={subBusy} onClick={() => setSubOut(subOut?.team_player_id === player.team_player_id ? null : player)}>{subOut?.team_player_id === player.team_player_id ? 'Selected out' : 'Sub out'}</button>}
-            {location === 'bench' && player.eligibility_status === 'verified' && <button type="button" className="roster-sub-action is-in" disabled={subBusy || !subOut || Number(subOut.team_id) !== Number(player.team_id)} onClick={() => substitute(player)}>{subBusy ? 'Saving…' : 'Swap in'}</button>}
           </div>;
-          return <section className="courtside-team-roster" key={team.id}><h4>{team.name} <small>{available.length} eligible</small></h4>
-            <div className="roster-group-heading">ON COURT <span>{onCourt.length}/5</span></div>
-            {onCourt.length ? onCourt.map((player) => playerRow(player, 'court')) : <p className="roster-empty">Starting lineup not confirmed yet.</p>}
-            <div className="roster-group-heading">BENCH <span>{bench.length}</span></div>
-            {bench.length ? bench.map((player) => playerRow(player, 'bench')) : <p className="roster-empty">No eligible bench players.</p>}
-            {!!unavailable.length && <><div className="roster-group-heading is-muted">NOT CLEARED <span>{unavailable.length}</span></div>{unavailable.map((player) => playerRow(player, 'locked'))}</>}
+          return <section className="courtside-team-roster" key={team.id}><h4><span>{team.name}</span><small>{available.length} cleared</small></h4>
+            <div className="roster-group-heading">PLAYERS <span>{available.length}</span></div>
+            {available.length ? available.map(playerRow) : <p className="roster-empty">No cleared players.</p>}
+            {!!unavailable.length && <details className="roster-not-cleared"><summary>Not cleared <span>{unavailable.length}</span></summary>{unavailable.map(playerRow)}</details>}
           </section>;
-        })}
-        <p className="courtside-sub-hint">{subOut ? `Choose a bench player from ${subOut.team_name} to complete the substitution.` : 'Choose “Sub out” beside an on-court player to make a substitution.'}</p>
+        })}</div>
       </aside>
       <section className="courtside-actions">
         <div className="selected-player"><div><span className="score-kicker">RECORDING FOR</span><h2>{selected ? `#${selected.jersey_number || '—'} ${selected.full_name}` : 'Select a player'}</h2><p>{selected?.team_name || 'Choose an active roster player to begin.'}</p></div><i className="bi bi-person-bounding-box"/></div>
@@ -453,8 +452,10 @@ const GuestScoringConsole = () => {
       </section>
     </div>
     <section className="courtside-finalize"><div><span className="score-kicker">END OF GAME</span><h3>Submit the final score</h3><p>Review the scoreboard first. Submission locks scoring until the Admin confirms the official result.</p></div><button type="button" disabled={busy||pendingEvents.length>0||Number(teams[0]?.score)===Number(teams[1]?.score)} onClick={()=>setShowFinalReview(true)}><i className="bi bi-flag-fill"/> Review final score</button>{pendingEvents.length>0&&<small>Sync all pending actions before ending the game.</small>}{Number(teams[0]?.score)===Number(teams[1]?.score)&&<small>A tied score cannot be submitted. Continue to overtime.</small>}</section>
+    <section className="courtside-safety courtside-safety-bottom"><div><span className="score-kicker">PLAYER SAFETY</span><h3>Report a game incident</h3><p>Use only when a player is injured or a fight/misconduct happens.</p></div><div><button type="button" className="injury" onClick={()=>openIncident('injury')}><i className="bi bi-bandaid-fill"/> Player injury</button><button type="button" className="fight" onClick={()=>openIncident('misconduct')}><i className="bi bi-shield-exclamation"/> Fight / misconduct</button></div></section>
     <footer><span><i className="bi bi-cloud-check"/> Every action is saved to the FullCourt game log.</span><button type="button" onClick={() => load()}><i className="bi bi-arrow-clockwise"/> Refresh</button></footer>
     {showFinalReview&&<div className="courtside-final-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setShowFinalReview(false)}}><section className="courtside-final-dialog" role="dialog" aria-modal="true" aria-labelledby="guest-final-title"><span className="score-kicker">FINAL SCORE REVIEW</span><h2 id="guest-final-title">Confirm before submitting</h2><div className="courtside-final-score"><span><small>{teams[0]?.name}</small><b>{teams[0]?.score||0}</b></span><em>FINAL</em><span><small>{teams[1]?.name}</small><b>{teams[1]?.score||0}</b></span></div><p>This will pause the clock, lock the scoring link, and send the result to the Admin for official confirmation.</p><div><button type="button" className="secondary" disabled={busy} onClick={()=>setShowFinalReview(false)}>Go back</button><button type="button" disabled={busy} onClick={submitFinal}>{busy?'Submitting…':'Submit final score'}</button></div></section></div>}
+    {incidentType&&<div className="courtside-final-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!incidentBusy)setIncidentType('')}}><section className="courtside-incident-dialog" role="dialog" aria-modal="true" aria-labelledby="incident-dialog-title"><span className="score-kicker">COURTSIDE SAFETY REPORT</span><h2 id="incident-dialog-title">{incidentType==='injury'?'Player injury':'Fight / misconduct'}</h2><p>Save the facts only. Tournament operations will receive this protected report for follow-up.</p><label>Affected player or team<select value={incidentSubject} onChange={event=>setIncidentSubject(event.target.value)}><option value="Game incident">Whole game / multiple people</option>{teams.map(team=><option value={team.name} key={`team-${team.id}`}>{team.name}</option>)}{data.players.map(player=><option value={`#${player.jersey_number||'—'} ${player.full_name} · ${player.team_name}`} key={player.team_player_id}>#{player.jersey_number||'—'} {player.full_name} · {player.team_name}</option>)}</select></label><label>Severity<select value={incident.severity} onChange={event=>setIncident(current=>({...current,severity:event.target.value}))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical / emergency</option></select></label><label>What happened?<textarea rows="3" value={incident.description} onChange={event=>setIncident(current=>({...current,description:event.target.value}))} placeholder={incidentType==='injury'?'Example: Player landed awkwardly and reported ankle pain.':'Example: Players exchanged punches after a hard foul.'}/></label><label>Immediate action taken<textarea rows="2" value={incident.action_taken} onChange={event=>setIncident(current=>({...current,action_taken:event.target.value}))} placeholder="Example: Game paused; first aid provided; players separated."/></label><div><button type="button" className="secondary" disabled={incidentBusy} onClick={()=>setIncidentType('')}>Cancel</button><button type="button" disabled={incidentBusy||!incident.description.trim()} onClick={reportIncident}>{incidentBusy?'Saving…':'Save incident report'}</button></div></section></div>}
     <ConfirmActionDialog open={Boolean(pendingUndo)} eyebrow="SCORING CORRECTION" title="Undo the last action?" message={pendingUndo ? <><b>{String(pendingUndo.event_type).replaceAll('_',' ')}</b> for {pendingUndo.player_name||pendingUndo.team_name} will be removed and all totals recalculated.</> : null} confirmLabel="Undo action" confirmIcon="bi-arrow-counterclockwise" onCancel={()=>setPendingUndo(null)} onConfirm={undoLastAction}/>
   </main>;
 };
