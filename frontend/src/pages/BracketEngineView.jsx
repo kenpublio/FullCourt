@@ -144,6 +144,23 @@ const BracketEngineView = () => {
         </div>
       </header>
 
+      <details className="bracket-guide" open={!bracketData?.matches?.length}>
+        <summary>
+          <span><i className="bi bi-compass-fill"/><b>How to use the bracket</b><small>Open this guide anytime you need help.</small></span>
+          <i className="bi bi-chevron-down bracket-guide-chevron"/>
+        </summary>
+        <div className="bracket-guide-body">
+          <article><b>1</b><div><h3>Select the tournament</h3><p>Choose the competition you are handling. Only its registered teams and matches will appear here.</p></div></article>
+          <article><b>2</b><div><h3>Generate the match path</h3><p>Use <strong>Generate bracket</strong> after at least two teams are registered. FullCourt creates the opening matchups and the path to the championship.</p></div></article>
+          <article><b>3</b><div><h3>Review Round 1</h3><p>Before tip-off, use <strong>Edit team placement</strong> to swap teams or seeds. Saving recreates only draft matchups; placement locks once a game starts.</p></div></article>
+          <article><b>4</b><div><h3>Finalize games to advance</h3><p>The winner advances only after the official result is finalized. <strong>TBD</strong> means the team depends on an earlier result; <strong>BYE</strong> means no opponent was available for that slot.</p></div></article>
+        </div>
+        <div className="bracket-guide-format">
+          <i className="bi bi-info-circle-fill"/>
+          <p><b>{(activeTournament?.format || 'Tournament format').replaceAll('_',' ')}</b><span>{activeTournament?.format==='double_elimination'?'A team moves to the losers bracket after its first loss and is eliminated after its second loss.':activeTournament?.format==='round_robin'||activeTournament?.format==='league'?'Every team plays the other teams. Rankings determine the final standing or playoff qualification.':activeTournament?.format==='group_stage'?'Teams first compete within groups; qualified teams continue to the knockout rounds.':'A team is eliminated after one loss. Each finalized winner moves to the next round.'}</span></p>
+        </div>
+      </details>
+
       {activeTournament && (
         <section className="bracket-ops-summary">
           <article><i className="bi bi-trophy"></i><div><small>Format</small><strong>{(activeTournament.format || 'single_elimination').replaceAll('_', ' ')}</strong></div></article>
@@ -158,7 +175,7 @@ const BracketEngineView = () => {
         <LoadingSpinner message="Building bracket hierarchy..." />
       ) : bracketData?.matches?.length > 0 ? (
         <section className="bracket-engine-board">
-          <div className="bracket-board-head"><div><span>LIVE BRACKET</span><h5>{activeTournament?.name}</h5></div><div className="bracket-board-actions"><small><i className="bi bi-arrows-move"></i> Scroll sideways to view every round</small><button type="button" className="btn btn-outline-secondary" onClick={openSeedEditor} disabled={placementLocked||!teams.length} title={placementLocked?'Team placement locks after the first game starts.':'Change the opening bracket placement'}><i className={`bi ${placementLocked?'bi-lock-fill':'bi-shuffle'}`}/>{placementLocked?' Placement locked':' Edit team placement'}</button></div></div>
+          <div className="bracket-board-head"><div><span>LIVE BRACKET</span><h5>{activeTournament?.name}</h5><small className="bracket-board-purpose">Read from left to right: opening games lead toward the championship.</small></div><div className="bracket-board-actions"><small><i className="bi bi-arrows-move"></i> Scroll sideways to view every round</small><button type="button" className="btn btn-outline-secondary" onClick={openSeedEditor} disabled={placementLocked||!teams.length} title={placementLocked?'Team placement locks after the first game starts.':'Change the opening bracket placement'}><i className={`bi ${placementLocked?'bi-lock-fill':'bi-shuffle'}`}/>{placementLocked?' Placement locked':' Edit team placement'}</button></div></div>
           <div className="bracket-rounds-track" role="region" aria-label="Tournament bracket rounds. Scroll horizontally to view each round." tabIndex={0}>
             {/* Rounds Column */}
             {rounds.map((r,roundIndex,allRounds) => (
