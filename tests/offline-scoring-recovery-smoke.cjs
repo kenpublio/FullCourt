@@ -20,10 +20,14 @@ async function api(route, { method = 'GET', token = admin?.token, body } = {}) {
   let game;
   for (const tournament of tournaments) {
     const schedule = (await api(`/tournaments/${tournament.id}/schedule`)).schedule || [];
-    game = schedule.find((row) => row.team1_id && row.team2_id && !['completed', 'cancelled', 'awaiting_confirmation'].includes(row.status));
+    for (const candidate of schedule.filter((row) => row.team1_id && row.team2_id && !['completed', 'cancelled', 'awaiting_confirmation'].includes(row.status))) {
+      const lineup = await api(`/matches/${candidate.id}/lineup`);
+      const hasPresentPlayer = (lineup.players || []).some(player => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
+      if (hasPresentPlayer) { game = candidate; break; }
+    }
     if (game) break;
   }
-  if (!game) throw new Error('No playable game is available for offline scoring recovery.');
+  if (!game) throw new Error('No playable game with a checked-in eligible player is available for offline scoring recovery.');
   const access = (await api(`/matches/${game.id}/scoring-link`, { method: 'POST', body: { operator_label: 'Offline Recovery Test', expires_in_hours: 2 } })).access;
   const activation = await api(`/public/scoring-links/${access.token}/activate`, { method: 'POST', token: null, body: { operator_name: 'Offline Recovery Test', pin: access.pin, device_id: `offline-${Date.now()}` } });
 
