@@ -169,6 +169,7 @@ function routeRequest(string $uri, string $method) {
     if (preg_match('#^/game-assignments/(\d+)/respond$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->respond((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/lineup$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->lineup((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/lineup$#', $path, $m) && $method === 'GET') { (new GameOperationsController())->getLineup((int)$m[1]); return; }
+    if (preg_match('#^/matches/(\d+)/availability$#', $path, $m) && $method === 'PUT') { (new GameOperationsController())->availability((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/substitutions$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->substitute((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/basketball-stats$#', $path, $m) && $method === 'POST') { (new GameOperationsController())->stat((int)$m[1]); return; }
     if (preg_match('#^/matches/(\d+)/basketball-stats/(\d+)$#', $path, $m) && $method === 'DELETE') { (new GameOperationsController())->voidStat((int)$m[1],(int)$m[2]); return; }

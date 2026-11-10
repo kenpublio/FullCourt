@@ -106,6 +106,7 @@ class GameOperations {
     public function lineup(int $matchId): array {
         $stmt=$this->db->prepare("SELECT tp.id team_player_id,tp.team_id,tp.user_id,tp.jersey_number,tp.position,tp.eligibility_status,
             COALESCE(tp.player_name,u.full_name) AS full_name,tm.team_name,COALESCE(gl.is_present,1) is_present,COALESCE(gl.is_starter,0) is_starter,
+            COALESCE(gl.availability_status,CASE WHEN COALESCE(gl.is_present,1)=1 THEN 'available' ELSE 'absent' END) availability_status,
             COALESCE(pgm.seconds_played,0) seconds_played,COALESCE(pgm.is_on_court,CASE WHEN COALESCE(gl.is_present,1)=1 THEN COALESCE(gl.is_starter,0) ELSE 0 END,0) is_on_court
             FROM matches m JOIN teams tm ON tm.id IN (m.team1_id,m.team2_id)
             JOIN team_players tp ON tp.team_id=tm.id
@@ -113,6 +114,26 @@ class GameOperations {
             LEFT JOIN player_game_minutes pgm ON pgm.match_id=m.id AND pgm.team_player_id=tp.id
             WHERE m.id=:match_id ORDER BY tm.id,tp.jersey_number,u.full_name");
         $stmt->execute([':match_id'=>$matchId]);return $stmt->fetchAll();
+    }
+
+    public function saveAvailability(int $matchId,int $teamId,array $players,int $userId):array {
+        $allowed=['available','absent','injured','suspended'];
+        $match=$this->db->prepare('SELECT 1 FROM matches WHERE id=:match_id AND :team_id IN(team1_id,team2_id)');
+        $match->execute([':match_id'=>$matchId,':team_id'=>$teamId]);
+        if(!$match->fetchColumn())throw new InvalidArgumentException('Choose a team playing in this game.');
+        $valid=$this->db->prepare('SELECT id FROM team_players WHERE team_id=:team_id');$valid->execute([':team_id'=>$teamId]);
+        $validIds=array_map('intval',$valid->fetchAll(PDO::FETCH_COLUMN));
+        $mysql=$this->db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql';
+        $sql=$mysql
+            ? "INSERT INTO game_lineups(match_id,team_player_id,is_present,is_starter,availability_status,confirmed_by) VALUES(:match_id,:player_id,:present,0,:status,:user_id) ON DUPLICATE KEY UPDATE is_present=VALUES(is_present),availability_status=VALUES(availability_status),is_starter=IF(VALUES(is_present)=0,0,is_starter),confirmed_by=VALUES(confirmed_by)"
+            : "INSERT INTO game_lineups(match_id,team_player_id,is_present,is_starter,availability_status,confirmed_by) VALUES(:match_id,:player_id,:present,0,:status,:user_id) ON CONFLICT(match_id,team_player_id) DO UPDATE SET is_present=EXCLUDED.is_present,availability_status=EXCLUDED.availability_status,is_starter=CASE WHEN EXCLUDED.is_present=0 THEN 0 ELSE game_lineups.is_starter END,confirmed_by=EXCLUDED.confirmed_by";
+        $save=$this->db->prepare($sql);$saved=0;
+        $this->db->beginTransaction();
+        try{
+            foreach($players as $player){$id=(int)($player['team_player_id']??$player['id']??0);$status=(string)($player['status']??'available');if(!in_array($id,$validIds,true)||!in_array($status,$allowed,true))throw new InvalidArgumentException('One or more player availability entries are invalid.');$save->execute([':match_id'=>$matchId,':player_id'=>$id,':present'=>$status==='available'?1:0,':status'=>$status,':user_id'=>$userId]);$saved++;}
+            $this->db->commit();
+        }catch(Throwable $e){$this->db->rollBack();throw $e;}
+        return ['saved'=>$saved,'players'=>$this->lineup($matchId)];
     }
 
     public function substitute(int $matchId,int $playerOutId,int $playerInId,int $period,int $clock,int $userId):void {

@@ -5,6 +5,7 @@ import eligibilityService from "../services/eligibilityService";
 import teamService from "../services/teamService";
 import venueService from "../services/venueService";
 import reportService from "../services/reportService";
+import gameOperationsService from "../services/gameOperationsService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
 import "../styles/schedule-optimizer.css";
@@ -42,6 +43,10 @@ const ScheduleOptimizerView = () => {
   const [optimizerLocation, setOptimizerLocation] = useState("");
   const [showOptimizerSetup, setShowOptimizerSetup] = useState(false);
   const [packBusy, setPackBusy] = useState(false);
+  const [availabilityMatch,setAvailabilityMatch]=useState(null);
+  const [availabilityTeamId,setAvailabilityTeamId]=useState("");
+  const [availabilityPlayers,setAvailabilityPlayers]=useState([]);
+  const [availabilityBusy,setAvailabilityBusy]=useState(false);
   const activeTournament = tournaments.find(
     (t) => String(t.id) === String(selectedTournament),
   );
@@ -63,6 +68,15 @@ const ScheduleOptimizerView = () => {
       setPackBusy(false);
     }
   };
+
+  const openAvailability=async(match)=>{
+    const teamId=[match.team1_id,match.team2_id].find(id=>coachTeamIds.includes(Number(id)));
+    if(!teamId)return;
+    setAvailabilityMatch(match);setAvailabilityTeamId(String(teamId));setAvailabilityBusy(true);
+    try{const rows=await gameOperationsService.lineup(match.id);setAvailabilityPlayers(rows.filter(player=>Number(player.team_id)===Number(teamId)).map(player=>({...player,availability_status:player.availability_status||(Number(player.is_present)===1?'available':'absent')})));}
+    catch(error){setLoadError(error.response?.data?.message||"Player availability could not be loaded.");setAvailabilityMatch(null);}finally{setAvailabilityBusy(false);}
+  };
+  const saveAvailability=async()=>{setAvailabilityBusy(true);try{await gameOperationsService.saveAvailability(availabilityMatch.id,Number(availabilityTeamId),availabilityPlayers.map(player=>({team_player_id:Number(player.team_player_id),status:player.availability_status})));setAvailabilityMatch(null);setLoadError("");}catch(error){setLoadError(error.response?.data?.message||"Player availability could not be saved.");}finally{setAvailabilityBusy(false);}};
 
   useEffect(() => {
     const load = async () => {
@@ -761,14 +775,14 @@ const ScheduleOptimizerView = () => {
                   <th>Teams</th>
                   <th>Venue &amp; Court</th>
                   <th>Status</th>
-                  {canOptimize && <th className="text-end">Actions</th>}
+                  {(canOptimize||isCoach) && <th className="text-end">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {visibleSchedule.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={canOptimize ? 6 : 5}
+                      colSpan={canOptimize||isCoach ? 6 : 5}
                       className="text-center py-4"
                     >
                       <div className="team-selection-empty">
@@ -866,6 +880,9 @@ const ScheduleOptimizerView = () => {
                             )}
                           </td>
                         )}
+                        {isCoach && (
+                          <td className="text-end small"><button type="button" className="schedule-edit" onClick={()=>openAvailability(s)} disabled={!s.team1_id||!s.team2_id||['completed','cancelled'].includes(s.status)} title="Set who is available for this game"><i className="bi bi-person-check-fill"/><span>Player availability</span></button></td>
+                        )}
                       </tr>
                     );
                   })
@@ -903,6 +920,7 @@ const ScheduleOptimizerView = () => {
           )}
         </section>
       )}
+      {availabilityMatch&&<div className="schedule-edit-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget&&!availabilityBusy)setAvailabilityMatch(null);}}><section className="schedule-edit-dialog schedule-availability-dialog" role="dialog" aria-modal="true" aria-labelledby="availability-title"><header><div><span>MY TEAM · GAME AVAILABILITY</span><h2 id="availability-title">Who can play this game?</h2><p>{availabilityMatch.team1_name} vs {availabilityMatch.team2_name}. These choices appear in the Staff Admin scoring lineup.</p></div><button type="button" aria-label="Close player availability" onClick={()=>setAvailabilityMatch(null)}>×</button></header><div className="schedule-availability-list">{availabilityBusy&&!availabilityPlayers.length?<LoadingSpinner message="Loading roster…"/>:availabilityPlayers.map(player=><article key={player.team_player_id}><span><b>#{player.jersey_number||'—'} {player.full_name}</b><small>{player.position||'Player'} · {player.eligibility_status}</small></span><select aria-label={`Availability for ${player.full_name}`} value={player.availability_status} onChange={event=>setAvailabilityPlayers(current=>current.map(row=>row.team_player_id===player.team_player_id?{...row,availability_status:event.target.value}:row))}><option value="available">Available</option><option value="absent">Absent</option><option value="injured">Injured</option><option value="suspended">Suspended</option></select></article>)}</div><footer><button type="button" className="btn btn-outline-secondary" onClick={()=>setAvailabilityMatch(null)} disabled={availabilityBusy}>Cancel</button><button type="button" className="btn btn-evsu" onClick={saveAvailability} disabled={availabilityBusy||!availabilityPlayers.length}>{availabilityBusy?'Saving…':'Save availability'}</button></footer></section></div>}
       {canOptimize && showOptimizerSetup && (
         <div
           className="schedule-setup-backdrop"

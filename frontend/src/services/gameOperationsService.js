@@ -6,6 +6,7 @@ const gameOperationsService = {
   async respond(id, status) { return (await api.put(`/game-assignments/${id}/respond`, { status })).data; },
   async confirmLineup(matchId, players) { return (await api.put(`/matches/${matchId}/lineup`, { players })).data; },
   async lineup(matchId) { return (await api.get(`/matches/${matchId}/lineup`)).data?.data?.players || []; },
+  async saveAvailability(matchId, teamId, players) { return (await api.put(`/matches/${matchId}/availability`, { team_id:teamId, players })).data?.data || {}; },
   async recordStat(matchId, payload) { return (await api.post(`/matches/${matchId}/basketball-stats`, payload)).data; },
   async substitute(matchId, payload) { return (await api.post(`/matches/${matchId}/substitutions`, payload)).data; },
   async voidStat(matchId, eventId) { return (await api.delete(`/matches/${matchId}/basketball-stats/${eventId}`)).data; },

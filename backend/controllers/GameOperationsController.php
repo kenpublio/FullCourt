@@ -44,6 +44,15 @@ class GameOperationsController {
         Response::success('Starting lineup confirmed');
     }
     public function getLineup(int $matchId): void { $user=AuthMiddleware::authenticate();OrganizationAccess::requireMatch($matchId,$user);Response::success('Game lineup retrieved',['players'=>$this->model->lineup($matchId)]); }
+    public function availability(int $matchId):void {
+        $user=AuthMiddleware::authorizeRoles(array_merge(self::MANAGERS,['coach','assistant_coach','coach_manager','statistician']));OrganizationAccess::requireMatch($matchId,$user);$in=$this->input();$teamId=(int)($in['team_id']??0);
+        if(in_array($user['role'],['coach','assistant_coach','coach_manager'],true)){
+            $db=(new Database())->getConnection();$own=$db->prepare('SELECT id FROM teams WHERE id=:team_id AND (coach_user_id=:coach OR manager_user_id=:manager)');$own->execute([':team_id'=>$teamId,':coach'=>(int)$user['user_id'],':manager'=>(int)$user['user_id']]);if(!$own->fetchColumn())Response::forbidden('You can update availability only for your assigned team.');
+        }
+        try{$result=$this->model->saveAvailability($matchId,$teamId,$in['players']??[],(int)$user['user_id']);}catch(InvalidArgumentException $e){Response::error($e->getMessage(),422);}
+        $this->audit->log((int)$user['user_id'],'UPDATE_PLAYER_AVAILABILITY','GAME_OPERATIONS',"Updated {$result['saved']} player availability records for match {$matchId}.");
+        Response::success('Player availability saved. The scoring lineup is updated.',$result);
+    }
     public function substitute(int $matchId):void { $user=$this->requireAssignedStatistician($matchId);$in=$this->input();try{$this->model->substitute($matchId,(int)($in['player_out_id']??0),(int)($in['player_in_id']??0),(int)($in['period']??1),(int)($in['game_clock_seconds']??600),(int)$user['user_id']);}catch(InvalidArgumentException $e){Response::error($e->getMessage(),422);}Response::success('Substitution and playing time recorded.'); }
     public function stat(int $matchId): void {
         $user=$this->requireAssignedStatistician($matchId); $in=$this->input();
