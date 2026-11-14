@@ -20,26 +20,32 @@ if (!admin) throw new Error('Admin session unavailable.');
   page.on('dialog', async (dialog) => { console.log(`DIALOG: ${dialog.message()}`); await dialog.dismiss(); });
   await page.goto(`${webBase}/tournaments`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /Create Tournament/i }).first().click();
-  await page.getByPlaceholder(/Barangay Summer Basketball/i).fill(`UI Create Verification ${stamp}`);
-  const dateInputs = page.locator('.tournament-create-dialog input[type="date"]');
-  await dateInputs.nth(0).fill('2026-10-10');
-  if (!await page.locator('.tournament-court-choice.is-checked').count()) {
-    if (await page.getByRole('button', { name: 'Use venue' }).count()) {
-      await page.getByRole('button', { name: 'Use venue' }).first().click();
+  const dialog = page.locator('.tournament-create-dialog');
+  await dialog.getByPlaceholder(/Barangay Summer Basketball/i).fill(`UI Create Verification ${stamp}`);
+  const dateInputs = dialog.locator('input[type="date"]');
+  await dateInputs.nth(0).fill('2026-12-10');
+  if (!await dialog.locator('.tournament-court-choice.is-checked').count()) {
+    if (await dialog.getByRole('button', { name: 'Use venue' }).count()) {
+      await dialog.getByRole('button', { name: 'Use venue' }).first().click();
     } else {
-      await page.getByPlaceholder(/Ormoc City Sports Complex/i).fill(`UI Create Venue ${stamp}`);
-      await page.getByPlaceholder(/Street, barangay, city/i).fill('Ormoc City, Leyte');
-      const attachButton = page.getByRole('button', { name: /Attach venue/i });
+      await dialog.getByPlaceholder(/Ormoc City Superdome/i).fill(`UI Create Venue ${stamp}`);
+      await dialog.getByPlaceholder(/Street, barangay, city/i).fill('Ormoc City, Leyte');
+      const attachButton = dialog.getByRole('button', { name: /Save and use venue/i });
       await attachButton.click();
-      await page.waitForFunction(() => !document.querySelector('.tournament-inline-venue .btn')?.disabled, null, { timeout: 60000 });
-      if (!await page.locator('.tournament-court-choice.is-checked').count()) {
-        throw new Error(`Attach venue failed: ${(await page.locator('.tournament-inline-message').allTextContents()).join(' | ') || 'no message'}`);
+      await dialog.locator('.tournament-court-choice.is-checked').first().waitFor({ timeout: 60000 });
+      if (!await dialog.locator('.tournament-court-choice.is-checked').count()) {
+        throw new Error(`Attach venue failed: ${(await dialog.locator('.tournament-inline-message').allTextContents()).join(' | ') || 'no message'}`);
       }
     }
   }
-  await page.locator('.tournament-availability-actions').getByRole('button', { name: /Save availability/i }).click();
+  if (!await dialog.locator('.tournament-court-choice.is-checked').count()) {
+    const firstCourt = dialog.locator('.tournament-court-choice input[type="checkbox"]').first();
+    if (await firstCourt.count()) await firstCourt.evaluate((element) => element.click());
+  }
+  await page.waitForFunction(() => document.querySelectorAll('.tournament-create-dialog .tournament-court-choice.is-checked').length > 0, null, { timeout: 30000 });
+  await dialog.locator('.tournament-availability-actions').getByRole('button', { name: /Save availability/i }).click();
   const responsePromise = page.waitForResponse((response) => response.url().endsWith('/api/tournaments') && response.request().method() === 'POST');
-  await page.getByRole('button', { name: /Save tournament/i }).click();
+  await dialog.getByRole('button', { name: /Save tournament/i }).click();
   const response = await responsePromise;
   const payload = await response.json();
   const tournamentId = payload?.data?.id;

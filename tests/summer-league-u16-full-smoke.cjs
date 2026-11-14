@@ -44,7 +44,15 @@ async function login(email, portal = 'user') {
   const coachTeams = (await api('/teams', { token: coach.token })).teams;
   const coachRoster = (await api('/eligibility', { token: coach.token })).players;
   if (!adminTournaments.some((item) => Number(item.id) === tournamentId)) throw new Error('Admin cannot see the Summer League.');
-  if (staffTournaments.length !== 1 || Number(staffTournaments[0].id) !== tournamentId) throw new Error('Nova is not limited to the assigned Summer League.');
+  const expectedStaffTournamentIds = adminTournaments
+    .filter((item) => Number(item.assigned_staff_id) === Number(staff.user.id))
+    .map((item) => Number(item.id))
+    .sort((a, b) => a - b);
+  const visibleStaffTournamentIds = staffTournaments.map((item) => Number(item.id)).sort((a, b) => a - b);
+  if (!visibleStaffTournamentIds.includes(tournamentId)) throw new Error('Nova cannot see the assigned Summer League.');
+  if (JSON.stringify(visibleStaffTournamentIds) !== JSON.stringify(expectedStaffTournamentIds)) {
+    throw new Error(`Nova tournament scope mismatch. Expected assigned ${expectedStaffTournamentIds.join(',')}, received ${visibleStaffTournamentIds.join(',')}.`);
+  }
   if (coachTeams.length !== 1 || coachTeams[0].team_name !== fixture.coach_accounts[0].team) throw new Error('Coach does not see exactly one assigned team.');
   if (coachRoster.length !== 15 || coachRoster.some((row) => Number(row.team_id) !== Number(coachTeams[0].id))) throw new Error('Coach roster scope is not exactly 15 own-team players.');
   const forbidden = await raw('/tournaments', { method: 'POST', token: staff.token, body: { name: 'Staff must not create this', start_date: '2026-11-01', end_date: '2026-11-02' } });
@@ -125,6 +133,7 @@ async function login(email, portal = 'user') {
     roster_per_team: 15,
     coach_accounts: fixture.coach_accounts.length,
     nova_assignment_isolated: true,
+    nova_assigned_tournaments: visibleStaffTournamentIds.length,
     staff_create_tournament_forbidden: true,
     coach_team_and_roster_isolated: true,
     public_schedule_and_rosters_connected: true,
