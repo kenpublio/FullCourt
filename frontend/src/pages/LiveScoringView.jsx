@@ -330,7 +330,7 @@ const LiveScoringView = () => {
           ) : (
             <div className="card-custom live-score-placeholder text-center">
               <i className="bi bi-broadcast-pin" style={{ fontSize: '3.5rem', color: 'var(--evsu-primary)', opacity: 0.25, display: 'block', marginBottom: '1rem' }} />
-              <h5 className="fw-bold text-muted">No Match Selected</h5>
+              <h3 className="h5 fw-bold text-muted">No Match Selected</h3>
               <p className="text-muted small mb-0">
                 Pick a match from the left panel to launch the live scoreboard.
               </p>

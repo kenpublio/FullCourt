@@ -480,3 +480,40 @@
 .admin-console-dark :is(.share-size-tag, .share-preview-caption) {
   color: #c4c7ce !important;
 }
+
+/* WCAG contrast safeguards shared by the Admin, Staff Admin, and Coach workspaces. */
+:root[data-fullcourt-theme="dark"] .admin-console-dark :is(
+  td .fw-bold,
+  .schedule-pack-action small,
+  .live-scoring-panel-heading > b,
+  .settings-platform-panel article > b,
+  .coach-roster-team-chip > span,
+  .schedule-summary-card small,
+  .standings-mobile-card small,
+  .official-assignment-card small,
+  .officials-list-heading > div > span
+) { color:#f4f4f5 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark :is(.btn-outline-danger,.btn-outline-dark) {
+  color:#ff9b8a !important;
+  border-color:#ff806c !important;
+}
+:root[data-fullcourt-theme="dark"] .admin-console-dark .badge-role.bg-info {
+  color:#fff !important;
+  background:#0b63ce !important;
+}
+:root[data-fullcourt-theme="dark"] .admin-console-dark .coach-team-primary,
+:root[data-fullcourt-theme="dark"] .admin-console-dark a[href$="statistician"] {
+  color:#fff !important;
+}
+:root[data-fullcourt-theme="dark"] .admin-console-dark small { color:#c9cbd1; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark :is(.coach-roster-team-chip > span,.officials-list-heading > div > span,.schedule-pack-action small,.settings-platform-panel article > b) { color:#f4f4f5 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark :is(.coach-team-primary,.btn-outline-danger,.btn-outline-dark) { opacity:1 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .coach-team-primary { color:#fff !important;background:#a92718 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .user-management-tabs .btn:not(.is-active) > span { color:#e4e4e7 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .standings-mobile-rank .rank-number { color:#111318 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .officials-workspace input { color:#f4f4f5 !important;background:#15171b !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .officials-workspace input::placeholder { color:#b9bdc7 !important; }
+.admin-console .schedule-pack-action > div > span > small { color:#374151 !important; }
+.admin-console .btn-outline-danger { color:#a12618 !important;border-color:#a12618 !important; }
+.admin-console :is(.coach-roster-team-chip > span,.coach-team-primary) { color:#fff !important;background:#6b4f00 !important; }
+.admin-console .schedule-table-panel small { color:#a12618 !important; }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import paymentService from '../services/paymentService';
 import teamService from '../services/teamService';
 import tournamentService from '../services/tournamentService';
@@ -16,6 +16,7 @@ const PaymentVerificationView = () => {
   const { user } = useAuth();
   const canSubmitPayment = ['coach','coach_manager'].includes(user?.role);
   const canVerifyPayment = ['platform_admin','admin','finance_officer','organization_admin','tournament_organizer'].includes(user?.role);
+  const canConfigurePayment = ['platform_admin','admin'].includes(user?.role);
   const isCoach = ['coach','coach_manager'].includes(user?.role);
   const [payments, setPayments] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -26,6 +27,11 @@ const PaymentVerificationView = () => {
   const [receiptFile, setReceiptFile] = useState(null);
   const [uploadingReceiptId, setUploadingReceiptId] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [settingsTournamentId,setSettingsTournamentId]=useState('');
+  const [paymentSetup,setPaymentSetup]=useState({registration_fee:'0',payment_methods:['gcash','maya','cash'],payment_account_name:'',payment_account_number:'',payment_deadline:'',payment_instructions:'',payment_contact:''});
+  const [paymentQrFile,setPaymentQrFile]=useState(null);
+  const [savingSetup,setSavingSetup]=useState(false);
+  const [setupNotice,setSetupNotice]=useState('');
 
   const loadData = useCallback(async () => {
     setLoadError('');
@@ -39,6 +45,7 @@ const PaymentVerificationView = () => {
       setPayments(pData);
       setTeams(tData);
       setTournaments(tourRes.tournaments || []);
+      if(!settingsTournamentId&&(tourRes.tournaments||[]).length)setSettingsTournamentId(String(tourRes.tournaments[0].id));
       if (tData.length > 0) {
         const firstTeam=tData[0];
         const teamTournament=(tourRes.tournaments||[]).find(tournament=>String(tournament.id)===String(firstTeam.tournament_id));
@@ -50,7 +57,7 @@ const PaymentVerificationView = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [settingsTournamentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -123,6 +130,22 @@ const PaymentVerificationView = () => {
   const selectedPaid = payments.filter(payment => String(payment.team_id)===String(formData.team_id) && String(payment.tournament_id)===String(formData.tournament_id) && payment.status==='approved').reduce((sum,payment)=>sum+Number(payment.amount||0),0);
   const selectedFee = Number(selectedTournament?.registration_fee||0);
   const selectedBalance = Math.max(0,selectedFee-selectedPaid);
+  const selectedMethods=useMemo(()=>String(selectedTournament?.payment_methods||'gcash,maya,cash').split(',').filter(Boolean),[selectedTournament?.payment_methods]);
+  const settingsTournament=tournaments.find(tournament=>String(tournament.id)===String(settingsTournamentId));
+
+  useEffect(()=>{
+    if(!settingsTournament)return;
+    setPaymentSetup({
+      registration_fee:String(settingsTournament.registration_fee??0),
+      payment_methods:String(settingsTournament.payment_methods||'gcash,maya,cash').split(',').filter(Boolean),
+      payment_account_name:settingsTournament.payment_account_name||'',payment_account_number:settingsTournament.payment_account_number||'',
+      payment_deadline:settingsTournament.payment_deadline||'',payment_instructions:settingsTournament.payment_instructions||'',payment_contact:settingsTournament.payment_contact||'',
+    });
+    setPaymentQrFile(null);setSetupNotice('');
+  },[settingsTournament]);
+
+  const togglePaymentMethod=method=>setPaymentSetup(current=>({...current,payment_methods:current.payment_methods.includes(method)?current.payment_methods.filter(item=>item!==method):[...current.payment_methods,method]}));
+  const savePaymentSetup=async event=>{event.preventDefault();setSavingSetup(true);setSetupNotice('');try{await paymentService.updateTournamentSettings(settingsTournamentId,paymentSetup);if(paymentQrFile)await paymentService.uploadTournamentQr(settingsTournamentId,paymentQrFile);setSetupNotice('Payment instructions saved and are now visible to the tournament coaches.');await loadData();}catch(error){setSetupNotice(error.response?.data?.message||'Payment setup could not be saved.');}finally{setSavingSetup(false);}};
 
   useEffect(() => {
     if (!showSubmitModal || selectedBalance <= 0) return;
@@ -132,6 +155,8 @@ const PaymentVerificationView = () => {
       return { ...previous, amount: String(selectedBalance) };
     });
   }, [showSubmitModal, selectedBalance]);
+
+  useEffect(()=>{if(selectedTournament&&!selectedMethods.includes(formData.payment_method))setFormData(previous=>({...previous,payment_method:selectedMethods[0]||'cash'}));},[selectedTournament,selectedMethods,formData.payment_method]);
 
   const downloadReport = () => {
     const escapeCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -158,10 +183,10 @@ const PaymentVerificationView = () => {
         <div className="coach-payment-heading-actions"><button type="button" className="btn btn-outline-secondary" onClick={loadData} disabled={loading}><i className="bi bi-arrow-clockwise me-2"/>Refresh</button><button type="button" className="btn btn-evsu" onClick={() => setShowSubmitModal(true)} disabled={!teams.length}><i className="bi bi-plus-lg me-2"/>Submit payment</button></div>
       </section> : <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h3 className="fw-bold text-dark mb-1">
+          <h1 className="h3 fw-bold text-dark mb-1">
             <i className="bi bi-credit-card-fill text-evsu-primary me-2"></i>
             Team Payment Review (GCash / Maya)
-          </h3>
+          </h1>
           <p className="text-muted small mb-0">Review receipts submitted by coaches, then approve or return them with a reason.</p>
         </div>
         <div className="d-flex gap-2">
@@ -176,6 +201,10 @@ const PaymentVerificationView = () => {
         <article><i className="bi bi-arrow-counterclockwise rejected"/><span><small>Needs attention</small><strong>{paymentSummary.rejected}</strong></span></article>
         <article><i className="bi bi-cash-stack amount"/><span><small>Verified total</small><strong>₱{paymentSummary.approvedAmount.toLocaleString(undefined,{maximumFractionDigits:2})}</strong></span></article>
       </section>}
+
+      {canConfigurePayment&&!loading&&!loadError&&<section className="card-custom p-3 p-md-4 mb-4 payment-setup-panel"><div className="d-flex flex-wrap justify-content-between gap-3 align-items-start mb-3"><div><span className="coach-payment-kicker"><i className="bi bi-wallet-fill"/> PAYMENT SETUP</span><h2 className="h4 fw-bold mb-1">How coaches pay</h2><p className="text-muted small mb-0">Set the fee, receiving account, deadline, QR, and exact instructions for one tournament.</p></div><label className="form-label small fw-bold mb-0">Tournament<select className="form-select mt-1" value={settingsTournamentId} onChange={event=>setSettingsTournamentId(event.target.value)}>{tournaments.map(tournament=><option value={tournament.id} key={tournament.id}>{tournament.name}</option>)}</select></label></div>{settingsTournament&&<form onSubmit={savePaymentSetup}><div className="row g-3"><label className="col-md-4 form-label small fw-bold">Registration fee (₱)<input type="number" min="0" step="0.01" className="form-control mt-1" value={paymentSetup.registration_fee} onChange={event=>setPaymentSetup(current=>({...current,registration_fee:event.target.value}))} required/></label><label className="col-md-4 form-label small fw-bold">Payment deadline<input type="date" className="form-control mt-1" value={paymentSetup.payment_deadline} onChange={event=>setPaymentSetup(current=>({...current,payment_deadline:event.target.value}))}/></label><label className="col-md-4 form-label small fw-bold">Contact person<input className="form-control mt-1" maxLength="150" value={paymentSetup.payment_contact} onChange={event=>setPaymentSetup(current=>({...current,payment_contact:event.target.value}))} placeholder="Name or mobile number"/></label><fieldset className="col-12"><legend className="form-label small fw-bold">Accepted methods</legend><div className="d-flex flex-wrap gap-2">{[['gcash','GCash'],['maya','Maya'],['cash','Cash over-counter']].map(([value,label])=><label className={`payment-method-chip ${paymentSetup.payment_methods.includes(value)?'is-selected':''}`} key={value}><input type="checkbox" checked={paymentSetup.payment_methods.includes(value)} onChange={()=>togglePaymentMethod(value)}/><i className={`bi ${paymentSetup.payment_methods.includes(value)?'bi-check-circle-fill':'bi-circle'}`}/>{label}</label>)}</div></fieldset><label className="col-md-6 form-label small fw-bold">Receiving account name<input className="form-control mt-1" maxLength="150" value={paymentSetup.payment_account_name} onChange={event=>setPaymentSetup(current=>({...current,payment_account_name:event.target.value}))} placeholder="Account holder name"/></label><label className="col-md-6 form-label small fw-bold">GCash / Maya number<input inputMode="numeric" className="form-control mt-1" maxLength="16" value={paymentSetup.payment_account_number} onChange={event=>setPaymentSetup(current=>({...current,payment_account_number:event.target.value}))} placeholder="09XXXXXXXXX"/></label><label className="col-md-7 form-label small fw-bold">Payment instructions<textarea className="form-control mt-1" rows="3" maxLength="2000" value={paymentSetup.payment_instructions} onChange={event=>setPaymentSetup(current=>({...current,payment_instructions:event.target.value}))} placeholder="Example: Add the team name to the payment note, then upload the receipt."/></label><label className="col-md-5 form-label small fw-bold">Payment QR image<input type="file" className="form-control mt-1" accept="image/jpeg,image/png,image/webp" onChange={event=>setPaymentQrFile(event.target.files?.[0]||null)}/>{settingsTournament.payment_qr_url&&<a className="small d-inline-block mt-2" href={receiptUrl(settingsTournament.payment_qr_url)} target="_blank" rel="noreferrer"><i className="bi bi-qr-code me-1"/>View current QR</a>}</label></div><div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">{setupNotice?<span className="small fw-semibold" role="status">{setupNotice}</span>:<span className="text-muted small">Never enter a wallet PIN, password, or OTP.</span>}<button className="btn btn-evsu" disabled={savingSetup}>{savingSetup?'Saving…':'Save payment setup'}</button></div></form>}</section>}
+
+      {isCoach&&selectedTournament&&Number(selectedTournament.registration_fee||0)>0&&<section className="card-custom p-3 p-md-4 mb-4 coach-payment-guide"><div><span className="coach-payment-kicker"><i className="bi bi-shield-check"/> OFFICIAL PAYMENT DETAILS</span><h2 className="h4 fw-bold mb-1">Pay {selectedTournament.name}</h2><p className="text-muted small mb-0">Use only the receiving details posted by the tournament Admin.</p></div><div className="coach-payment-guide-grid"><article><small>Amount due</small><strong>₱{selectedBalance.toFixed(2)}</strong><span>of ₱{selectedFee.toFixed(2)}</span></article><article><small>Send payment to</small><strong>{selectedTournament.payment_account_name||'Waiting for Admin setup'}</strong><span>{selectedTournament.payment_account_number||'No number posted'}</span></article><article><small>Deadline</small><strong>{selectedTournament.payment_deadline||'Not set'}</strong><span>{selectedTournament.payment_contact?`Contact: ${selectedTournament.payment_contact}`:'Contact the Admin for questions'}</span></article>{selectedTournament.payment_qr_url&&<article className="payment-qr-card"><img src={receiptUrl(selectedTournament.payment_qr_url)} alt={`${selectedTournament.name} payment QR`}/><a href={receiptUrl(selectedTournament.payment_qr_url)} target="_blank" rel="noreferrer">Open payment QR</a></article>}</div>{selectedTournament.payment_instructions&&<div className="payment-instruction-note"><i className="bi bi-info-circle-fill"/><span>{selectedTournament.payment_instructions}</span></div>}</section>}
 
       {!loading && user?.role === 'finance_officer' && <div className="row g-3 mb-4">
         <div className="col-sm-6 col-xl-3"><div className="finance-report-card pending"><i className="bi bi-hourglass-split" /><div><small>Pending Review</small><strong>{paymentSummary.pending}</strong></div></div></div>
@@ -281,9 +310,9 @@ const PaymentVerificationView = () => {
                     <div className="col-6">
                       <label className="form-label small fw-semibold">Method</label>
                       <select className="form-select" value={formData.payment_method} onChange={e => setFormData({...formData, payment_method: e.target.value})}>
-                        <option value="gcash">GCash</option>
-                        <option value="maya">Maya</option>
-                        <option value="cash">Cash Over-Counter</option>
+                        {selectedMethods.includes('gcash')&&<option value="gcash">GCash</option>}
+                        {selectedMethods.includes('maya')&&<option value="maya">Maya</option>}
+                        {selectedMethods.includes('cash')&&<option value="cash">Cash Over-Counter</option>}
                       </select>
                     </div>
                     <div className="col-6">
@@ -292,6 +321,7 @@ const PaymentVerificationView = () => {
                     </div>
                   </div>
                   <small id="payment-fee-note" className="text-muted d-block mb-3">Registration fee: ₱{selectedFee.toFixed(2)} · Verified paid: ₱{selectedPaid.toFixed(2)} · Remaining: ₱{selectedBalance.toFixed(2)}. You may pay the full balance or submit a partial installment.</small>
+                  {selectedTournament&&<div className="payment-modal-destination mb-3"><i className="bi bi-wallet2"/><span><small>Send to</small><b>{selectedTournament.payment_account_name||'Admin has not posted an account yet'}</b><strong>{selectedTournament.payment_account_number||'Contact the Admin before paying'}</strong></span>{selectedTournament.payment_qr_url&&<a href={receiptUrl(selectedTournament.payment_qr_url)} target="_blank" rel="noreferrer">View QR</a>}</div>}
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Reference Number</label>
                     <input type="text" className="form-control" required value={formData.reference_number} onChange={e => setFormData({...formData, reference_number: e.target.value})} placeholder="e.g. GCASH-1002394812" />
@@ -301,6 +331,7 @@ const PaymentVerificationView = () => {
                     <input
                       type="file"
                       className="form-control"
+                      required={formData.payment_method!=='cash'}
                       accept="image/jpeg,image/png,image/webp"
                       onChange={e => setReceiptFile(e.target.files?.[0] || null)}
                     />
@@ -310,7 +341,7 @@ const PaymentVerificationView = () => {
                 </div>
                 <div className="modal-footer border-top">
                   <button type="button" className="btn btn-light btn-sm" onClick={() => setShowSubmitModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-evsu btn-sm" disabled={!selectedTeam || !selectedTournament || !(Number(formData.amount)>0) || Number(formData.amount)>selectedBalance}>Submit for Verification</button>
+                  <button type="submit" className="btn btn-evsu btn-sm" disabled={!selectedTeam || !selectedTournament || !(Number(formData.amount)>0) || Number(formData.amount)>selectedBalance || (formData.payment_method!=='cash'&&!receiptFile)}>Submit for Verification</button>
                 </div>
               </form>
             </div>

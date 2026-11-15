@@ -187,6 +187,8 @@ function routeRequest(string $uri, string $method) {
     // 9. Payment Routes
     if ($path === '/payments' && $method === 'GET') { (new PaymentController())->index(); return; }
     if ($path === '/payments' && $method === 'POST') { (new PaymentController())->submit(); return; }
+    if (preg_match('#^/tournaments/(\d+)/payment-settings$#', $path, $m) && $method === 'PUT') { (new PaymentController())->updateSettings((int)$m[1]); return; }
+    if (preg_match('#^/tournaments/(\d+)/payment-qr$#', $path, $m) && $method === 'POST') { (new PaymentController())->uploadTournamentQr((int)$m[1]); return; }
     if (preg_match('#^/payments/(\d+)/verify$#', $path, $m) && $method === 'PUT') { (new PaymentController())->verify((int)$m[1]); return; }
     if (preg_match('#^/payments/(\d+)/receipt$#', $path, $m) && $method === 'POST') { (new PaymentController())->uploadReceipt((int)$m[1]); return; }
 

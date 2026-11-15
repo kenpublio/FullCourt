@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import contentService from "../services/contentService";
 import {
@@ -60,14 +60,14 @@ export default function Home() {
       ...data.leaders.map((row) => row.team_name),
     ].filter(Boolean),
   ).size;
-  const leaderTournaments = [...new Map(
+  const leaderTournaments = useMemo(() => [...new Map(
     data.leaders
       .filter((player) => player.tournament_id)
       .map((player) => [String(player.tournament_id), {
         id: String(player.tournament_id),
         name: player.tournament_name || "Tournament",
       }]),
-  ).values()];
+  ).values()], [data.leaders]);
   useEffect(() => {
     if (!leaderTournament && leaderTournaments.length) {
       setLeaderTournament(leaderTournaments[0].id);

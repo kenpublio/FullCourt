@@ -23,6 +23,20 @@ export const paymentService = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
+  },
+
+  async updateTournamentSettings(tournamentId, settings) {
+    const res = await api.put(`/tournaments/${tournamentId}/payment-settings`, settings);
+    return res.data;
+  },
+
+  async uploadTournamentQr(tournamentId, file) {
+    const formData = new FormData();
+    formData.append('qr', file);
+    const res = await api.post(`/tournaments/${tournamentId}/payment-qr`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
   }
 };
 

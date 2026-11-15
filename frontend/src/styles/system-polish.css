@@ -74,3 +74,6 @@ body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; 
   .staff-courtside-empty { min-height:220px; padding:30px 18px !important; }
   .btn:not(.btn-sm) { min-height:44px; }
 }
+
+/* Final contrast corrections validated across light and dark operational pages. */
+.admin-console .schedule-pack-action > div > span > small{color:#374151!important}.admin-console .btn-outline-danger{color:#a12618!important;border-color:#a12618!important}.admin-console :is(.coach-roster-team-chip > span,.coach-team-primary){color:#fff!important;background:#6b4f00!important}.admin-console .schedule-table-panel small{color:#a12618!important}

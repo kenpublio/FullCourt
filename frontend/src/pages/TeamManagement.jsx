@@ -259,11 +259,11 @@ const TeamManagement = () => {
       {loading ? (
         <LoadingSpinner message="Loading team directory..." />
       ) : loadError ? (
-        <div className="team-selection-empty"><i className="bi bi-exclamation-triangle"/><h4>Team directory unavailable</h4><p>{loadError}</p><button className="btn btn-evsu btn-sm" onClick={loadData}><i className="bi bi-arrow-clockwise me-1"/>Try again</button></div>
+        <div className="team-selection-empty"><i className="bi bi-exclamation-triangle"/><h2 className="h4">Team directory unavailable</h2><p>{loadError}</p><button className="btn btn-evsu btn-sm" onClick={loadData}><i className="bi bi-arrow-clockwise me-1"/>Try again</button></div>
       ) : (!isCoach && !selectedTournament) ? (
-        <div className="team-selection-empty"><i className="bi bi-trophy"/><h4>Select a tournament first</h4><p>Choose a tournament above to view and manage its registered teams, logos, coaches, and rosters.</p></div>
+        <div className="team-selection-empty"><i className="bi bi-trophy"/><h2 className="h4">Select a tournament first</h2><p>Choose a tournament above to view and manage its registered teams, logos, coaches, and rosters.</p></div>
       ) : visibleTeams.length === 0 ? (
-        <div className="team-selection-empty"><i className="bi bi-people"/><h4>{isCoach ? 'No team application yet' : 'No coach registrations yet'}</h4><p>{isCoach ? 'Open Tournament Operations, choose an available tournament, and submit your team application.' : 'Coach team registrations for this tournament will appear here for review.'}</p>{isCoach&&<button className="btn btn-evsu btn-sm" onClick={()=>navigate('/tournaments')}><i className="bi bi-trophy me-1"/>Find a tournament</button>}</div>
+        <div className="team-selection-empty"><i className="bi bi-people"/><h2 className="h4">{isCoach ? 'No team application yet' : 'No coach registrations yet'}</h2><p>{isCoach ? 'Open Tournament Operations, choose an available tournament, and submit your team application.' : 'Coach team registrations for this tournament will appear here for review.'}</p>{isCoach&&<button className="btn btn-evsu btn-sm" onClick={()=>navigate('/tournaments')}><i className="bi bi-trophy me-1"/>Find a tournament</button>}</div>
       ) : isCoach ? (
         <section className="coach-team-grid" aria-label="Your assigned teams">
           {visibleTeams.map(team => <article className="coach-team-card" key={team.id} style={{'--coach-team-color':team.primary_color || '#c92d19'}}>

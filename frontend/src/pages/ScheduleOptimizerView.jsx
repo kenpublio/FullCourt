@@ -733,11 +733,11 @@ const ScheduleOptimizerView = () => {
         <section className="schedule-table-panel text-center py-5">
           <div className="team-selection-empty">
             <i className="bi bi-calendar2-x" />
-            <h4>
+            <h2 className="h4">
               {isPlayer || isCoach
                 ? "No team tournament yet"
                 : "No tournaments available"}
-            </h4>
+            </h2>
             <p>
               {isPlayer || isCoach
                 ? "Your team schedule will show here after your team joins and the Admin publishes the games."
@@ -787,11 +787,11 @@ const ScheduleOptimizerView = () => {
                     >
                       <div className="team-selection-empty">
                         <i className="bi bi-calendar2-week" />
-                        <h5>
+                        <h2 className="h5">
                           {canOptimize
                             ? "No games scheduled yet"
                             : "The schedule is not published yet"}
-                        </h5>
+                        </h2>
                         <p className="mb-0">
                           {canOptimize
                             ? "Generate the bracket first, then run the schedule optimizer to create game times and court assignments."

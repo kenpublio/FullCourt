@@ -83,7 +83,7 @@ const Profile = () => {
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={handlePhoto} />
         </div>
         <div className="position-relative">
-          <div className="profile-name-display">{user?.full_name || 'Basketball User'}</div>
+          <h1 className="profile-name-display">{user?.full_name || 'Basketball User'}</h1>
           <div className="text-white-50 small mb-2">{user?.email}</div>
           <div className="d-flex flex-wrap gap-2">
             <span className="profile-role-pill"><i className="bi bi-shield-check me-1" />{roleLabel}</span>
@@ -97,7 +97,7 @@ const Profile = () => {
 
       {user?.role === 'player' && membership?.membership && (
         <div className="card-custom p-4 mb-4">
-          <h4 className="fw-bold text-dark mb-3"><i className="bi bi-people-fill text-evsu-primary me-2" />Team Membership</h4>
+          <h2 className="h4 fw-bold text-dark mb-3"><i className="bi bi-people-fill text-evsu-primary me-2" />Team Membership</h2>
           <div className="row g-3">
             <div className="col-md-4"><label htmlFor="profile-team" className="form-label small fw-semibold text-secondary">Team</label><input id="profile-team" type="text" className="form-control" value={membership.membership.team_name || 'N/A'} disabled /></div>
             <div className="col-md-5"><label htmlFor="profile-tournament" className="form-label small fw-semibold text-secondary">Tournament</label><input id="profile-tournament" type="text" className="form-control" value={membership.membership.tournament_name || 'N/A'} disabled /></div>
@@ -107,7 +107,7 @@ const Profile = () => {
       )}
 
       <div className="card-custom p-4 mb-4 account-profile-form-card">
-        <div className="account-profile-section-head"><div><span>ACCOUNT DETAILS</span><h4><i className="bi bi-person-circle"></i> Profile information</h4><p>Keep your contact details current for tournament communication.</p></div>{!isEditing&&<button type="button" className="btn btn-evsu" onClick={()=>setIsEditing(true)}><i className="bi bi-pencil-square"/>Edit profile</button>}</div>
+        <div className="account-profile-section-head"><div><span>ACCOUNT DETAILS</span><h2 className="h4"><i className="bi bi-person-circle"></i> Profile information</h2><p>Keep your contact details current for tournament communication.</p></div>{!isEditing&&<button type="button" className="btn btn-evsu" onClick={()=>setIsEditing(true)}><i className="bi bi-pencil-square"/>Edit profile</button>}</div>
 
         {message && <div className="alert alert-success py-2 px-3 small rounded-3">{message}</div>}
 
