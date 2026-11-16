@@ -35,7 +35,7 @@ def begin(c, section, title, subtitle=""):
     c.setFont("Helvetica-Bold", 23); c.drawString(M, H-57, title)
     if subtitle: wrap(c, subtitle, M, H-76, W-2*M, 8, 11)
     c.setStrokeColorRGB(0,0,0); c.line(M, H-88, W-M, H-88)
-    c.setFont("Helvetica", 7); c.drawString(M, 18, "FullCourt complete system flow guide - November 8, 2026")
+    c.setFont("Helvetica", 7); c.drawString(M, 18, "FullCourt complete system flow guide - November 16, 2026")
     c.drawRightString(W-M, 18, str(page_no))
 
 
@@ -108,8 +108,11 @@ pair(c,"38-coach-eligibility","39-coach-schedule","3. Player eligibility documen
 begin(c,"Coach flow","Standings, reports, and team QR","Only the assigned team data is exposed inside Coach reports and game-day access.")
 pair(c,"40-coach-standings","41-coach-reports","5. Tournament standings","6. Team reports")
 
+begin(c,"Coach flow","Official tournament payment","The Coach sees the organizer's approved GCash, Maya, or cash instructions, receiving account, deadline, QR code, installment balance, and receipt submission status.")
+pair(c,"58-coach-payments","26-admin-payments","7. Coach payment and receipt","8. Administrator payment setup and review")
+
 begin(c,"Coach flow","Game-day pass and notifications","The Coach presents the team QR pass and receives tournament, schedule, and result updates.")
-pair(c,"42-coach-qr","43-coach-notifications","7. Team QR access","8. Notifications")
+pair(c,"42-coach-qr","43-coach-notifications","9. Team QR access","10. Notifications")
 
 begin(c,"Assistant Coach flow","Assigned-team support workspace","Assistant Coach access is separate from Coach registration but remains limited to the team assigned by Administrator.")
 pair(c,"44-assistant-dashboard","45-assistant-schedule","1. Assistant Coach home","2. Assigned schedule")
@@ -191,6 +194,16 @@ bullets(c,[
     "9. Administrator confirms the official result and awards. Public schedule, bracket, standings, game page, and leaders update.",
 ],M,H-125,W-2*M)
 
+begin(c,"Payment workflow","How tournament registration payment works","The Administrator publishes one official payment destination per tournament. The Coach pays outside FullCourt, then FullCourt records and verifies the evidence.")
+bullets(c,[
+    "1. Administrator selects the tournament and sets the registration fee, accepted methods, account name and number, deadline, contact, instructions, and optional payment QR image.",
+    "2. Coach opens Payments and sees only the official details for the Coach's assigned tournament and team.",
+    "3. Coach pays through GCash or Maya, enters the unique reference number and installment amount, and uploads the receipt. Cash over-counter can also be enabled.",
+    "4. FullCourt blocks duplicate references, disabled methods, overpayment, late submissions, and digital payments without receipt evidence.",
+    "5. Administrator receives a notification, reviews the receipt, and approves or returns it with remarks.",
+    "6. The Coach receives the decision, while the approved total and remaining balance update automatically.",
+],M,H-125,W-2*M)
+
 begin(c,"System checks","Verified in the running local system","All screenshots in this guide were captured from the connected application and local database.")
 bullets(c,[
     "Public, Coach, Assistant Coach, Staff Admin, and Administrator role sessions opened successfully.",
@@ -199,6 +212,9 @@ bullets(c,[
     "Two-team direct player selection displayed eligible rosters.",
     "Injury and fight/misconduct reports saved successfully.",
     "Restricted incident desk and Administrator notification updated successfully.",
+    "Payment configuration, QR upload, receipt requirement, approval, balance update, and Coach/Admin notifications completed successfully.",
+    "Single elimination, double elimination, round robin, group stage, and league formats completed their automated regression checks.",
+    "Team QR validation, duplicate-scan protection, wrong-team rejection, and one-time official access completed successfully.",
     "Coach and Assistant Coach pages were checked at a mobile phone viewport.",
     "Final deployment still requires HTTPS, production secrets, verified email, backups, and an actual game-day rehearsal.",
 ],M,H-130,W-2*M)

@@ -148,8 +148,9 @@ const PaymentVerificationView = () => {
   const savePaymentSetup=async event=>{event.preventDefault();setSavingSetup(true);setSetupNotice('');try{await paymentService.updateTournamentSettings(settingsTournamentId,paymentSetup);if(paymentQrFile)await paymentService.uploadTournamentQr(settingsTournamentId,paymentQrFile);setSetupNotice('Payment instructions saved and are now visible to the tournament coaches.');await loadData();}catch(error){setSetupNotice(error.response?.data?.message||'Payment setup could not be saved.');}finally{setSavingSetup(false);}};
 
   useEffect(() => {
-    if (!showSubmitModal || selectedBalance <= 0) return;
+    if (!showSubmitModal) return;
     setFormData(previous => {
+      if (selectedBalance <= 0) return previous.amount === '' ? previous : { ...previous, amount: '' };
       const current = Number(previous.amount || 0);
       if (current > 0 && current <= selectedBalance) return previous;
       return { ...previous, amount: String(selectedBalance) };
@@ -180,7 +181,7 @@ const PaymentVerificationView = () => {
     <div className="container-fluid p-0">
       {isCoach ? <section className="coach-payment-heading mb-4">
         <div><span className="coach-payment-kicker"><i className="bi bi-wallet2"/> TEAM FINANCE</span><h1>Team Payments</h1><p>Submit your team’s registration payment and follow its verification status.</p></div>
-        <div className="coach-payment-heading-actions"><button type="button" className="btn btn-outline-secondary" onClick={loadData} disabled={loading}><i className="bi bi-arrow-clockwise me-2"/>Refresh</button><button type="button" className="btn btn-evsu" onClick={() => setShowSubmitModal(true)} disabled={!teams.length}><i className="bi bi-plus-lg me-2"/>Submit payment</button></div>
+        <div className="coach-payment-heading-actions"><button type="button" className="btn btn-outline-secondary" onClick={loadData} disabled={loading}><i className="bi bi-arrow-clockwise me-2"/>Refresh</button><button type="button" className="btn btn-evsu" onClick={() => setShowSubmitModal(true)} disabled={!teams.length||selectedBalance<=0}><i className="bi bi-plus-lg me-2"/>{selectedBalance<=0?'Fully paid':'Submit payment'}</button></div>
       </section> : <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="h3 fw-bold text-dark mb-1">
@@ -218,7 +219,7 @@ const PaymentVerificationView = () => {
       ) : (
         <div className="card-custom p-3 p-md-4 coach-payment-table-card">
           {isCoach&&<div className="coach-payment-table-head"><div><h2>Payment history</h2><p>{selectedTeam?.team_name ? `Transactions for ${selectedTeam.team_name}` : 'Your assigned team transactions'}</p></div><span>{payments.length} {payments.length===1?'record':'records'}</span></div>}
-          <div className="table-responsive" role="region" aria-label="Tournament payment records table" tabIndex={0}>
+          {isCoach&&payments.length===0?<div className="coach-payment-history-empty"><i className="bi bi-receipt"/><strong>No payment submitted yet</strong><span>Open Submit payment when your team is ready to send its receipt.</span></div>:<div className="table-responsive" role="region" aria-label="Tournament payment records table" tabIndex={0}>
             <table className="table table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
@@ -280,7 +281,7 @@ const PaymentVerificationView = () => {
                 )}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
       )}
 

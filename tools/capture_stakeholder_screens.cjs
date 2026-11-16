@@ -134,6 +134,7 @@ async function shot(page, name, locator = null) {
     ['/schedules', '39-coach-schedule'],
     ['/standings', '40-coach-standings'],
     ['/reports', '41-coach-reports'],
+    ['/payments', '58-coach-payments-page'],
     ['/qr-attendance', '42-coach-qr'],
     ['/notifications', '43-coach-notifications'],
     ['/profile', '53-coach-profile'],
@@ -142,6 +143,9 @@ async function shot(page, name, locator = null) {
     await coachPage.goto(web + route, { waitUntil: 'networkidle' });
     await shot(coachPage, name);
   }
+  await coachPage.goto(`${web}/payments`, { waitUntil: 'networkidle' });
+  await coachPage.getByRole('button', { name: /submit payment/i }).click();
+  await shot(coachPage, '58-coach-payments', '.modal-content');
   await coachContext.close();
 
   const assistant = byRole('assistant_coach');
