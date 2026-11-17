@@ -62,6 +62,14 @@ async function shot(page, name, locator = null) {
     await shot(publicPage, '22-public-tournament-details');
   }
   await publicPage.goto(`${web}/sports/schedule`, { waitUntil: 'networkidle' });
+  const scheduleTournament = publicPage.getByLabel('Select tournament schedule');
+  if (await scheduleTournament.count()) {
+    const options = await scheduleTournament.locator('option').evaluateAll(items => items.map(item => item.value).filter(Boolean));
+    if (options.length) {
+      await scheduleTournament.selectOption(options[0]);
+      await publicPage.waitForTimeout(600);
+    }
+  }
   await shot(publicPage, '03-public-schedule');
   const gameLink = publicPage.locator('a[href^="/sports/games/"]').first();
   const gameHref = await gameLink.count() ? await gameLink.getAttribute('href') : null;
@@ -72,6 +80,11 @@ async function shot(page, name, locator = null) {
     console.log('Public game detail screenshot skipped: no published game link is currently available.');
   }
   await publicContext.close();
+  if (process.env.CAPTURE_PUBLIC_ONLY === '1') {
+    await browser.close();
+    console.log(JSON.stringify({ output: out, mode: 'public-only' }, null, 2));
+    return;
+  }
 
   const admin = byRole('platform_admin');
   const adminContext = await authenticatedContext(browser, admin);

@@ -35,7 +35,7 @@ def begin(c, section, title, subtitle=""):
     c.setFont("Helvetica-Bold", 23); c.drawString(M, H-57, title)
     if subtitle: wrap(c, subtitle, M, H-76, W-2*M, 8, 11)
     c.setStrokeColorRGB(0,0,0); c.line(M, H-88, W-M, H-88)
-    c.setFont("Helvetica", 7); c.drawString(M, 18, "FullCourt complete system flow guide - November 16, 2026")
+    c.setFont("Helvetica", 7); c.drawString(M, 18, "FullCourt complete system flow guide - November 17, 2026")
     c.drawRightString(W-M, 18, str(page_no))
 
 
@@ -96,8 +96,13 @@ img(c,"23-public-game-details",M,62,W-2*M,H-165)
 begin(c,"Account access","Sign in and recover access","Registered users sign in by role. Forgot Password sends a verification code to the registered email.")
 pair(c,"18-login","21-forgot-password","1. Sign in","2. Forgot password")
 
-begin(c,"Registration","Coach and Assistant Coach registration","The user selects the correct account type, enters identity/contact details, verifies email, and creates a secure password.")
-pair(c,"19-register-coach","20-register-assistant","Coach registration","Assistant Coach registration")
+begin(c,"Registration","Coach account registration","The Coach chooses the Coach account type, enters accurate identity and contact details, verifies the email code, then creates a secure password. Team and roster management become available after sign-in.")
+c.setFont("Helvetica-Bold",9); c.setFillColorRGB(0,0,0); c.drawString(M,H-108,"STEP 1 - COACH PROFILE AND ACCOUNT TYPE")
+img(c,"19-register-coach",M,52,W-2*M,H-178)
+
+begin(c,"Registration","Assistant Coach account registration","The Assistant Coach uses the same verified three-step registration, but receives assigned-team support access only after the Administrator links the account to a team.")
+c.setFont("Helvetica-Bold",9); c.setFillColorRGB(0,0,0); c.drawString(M,H-108,"STEP 1 - ASSISTANT COACH PROFILE AND ACCOUNT TYPE")
+img(c,"20-register-assistant",M,52,W-2*M,H-178)
 
 begin(c,"Coach flow","Coach mobile home and assigned roster","The Coach sees one assigned team, roster progress, tournament alerts, and direct team actions.")
 pair(c,"12-coach-mobile-dashboard","13-coach-mobile-roster","1. Coach workspace","2. Team roster")
