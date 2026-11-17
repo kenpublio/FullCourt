@@ -46,6 +46,7 @@ const BasketballStatistician = () => {
     [players, setPlayers] = useState([]),
     [recentActions, setRecentActions] = useState([]),
     [selected, setSelected] = useState(null),
+    [activeStaffTeamId, setActiveStaffTeamId] = useState(null),
     [subOut, setSubOut] = useState(""),
     [subIn, setSubIn] = useState(""),
     [loading, setLoading] = useState(true),
@@ -105,12 +106,12 @@ const BasketballStatistician = () => {
         gameOperationsService.lineup(assignment.match_id),
         gameOperationsService.recentStats(assignment.match_id),
       ]);
-      setBoard(score);setPlayers(lineup);setRecentActions(recent);setSelected(lineup[0] || null);setClockDraft({period:score.score.current_period||'Q1',minutes:String(Math.floor(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)/60)),seconds:String(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)%60).padStart(2,'0')});
+      setBoard(score);setPlayers(lineup);setRecentActions(recent);setSelected(lineup[0] || null);setActiveStaffTeamId(lineup[0]?.team_id||null);setClockDraft({period:score.score.current_period||'Q1',minutes:String(Math.floor(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)/60)),seconds:String(Number(score.score.clock_remaining_seconds??score.score.timer_seconds??0)%60).padStart(2,'0')});
     } catch (error) {
       const draft=readScoringDraft(assignment.match_id);
       if(!error.response&&draft?.board){
         setBoard(draft.board);setPlayers(draft.players||[]);setRecentActions(draft.recentActions||[]);
-        setSelected((draft.players||[]).find(player=>player.team_player_id===draft.selectedId)||(draft.players||[])[0]||null);
+        setSelected((draft.players||[]).find(player=>player.team_player_id===draft.selectedId)||(draft.players||[])[0]||null);setActiveStaffTeamId((draft.players||[])[0]?.team_id||null);
         setRecoveredDraft(true);setLastSavedAt(draft.savedAt||null);
         setLoadError("");setMessage("Recovered the last local game snapshot. Scoring remains locked until the connection returns.");
       }else{setBoard(null);setLoadError(error.response?.data?.message || "Could not open this game console. Refresh the assignment list and try again.");}
@@ -119,7 +120,7 @@ const BasketballStatistician = () => {
   const refresh = async () => {
     if (!match) return;
     const [score,lineup,recent]=await Promise.all([scorekeeperService.getScoreboard(match.match_id),gameOperationsService.lineup(match.match_id),gameOperationsService.recentStats(match.match_id)]);
-    setBoard(score);setPlayers(lineup);setRecentActions(recent);
+    setBoard(score);setPlayers(lineup);setRecentActions(recent);setActiveStaffTeamId(current=>lineup.some(player=>Number(player.team_id)===Number(current))?current:(lineup[0]?.team_id||null));
     setRecoveredDraft(false);
   };
   const record = async (eventType) => {
@@ -351,12 +352,15 @@ const BasketballStatistician = () => {
                     Confirm Starting Fives
                   </button>
                 </div>
+                <div className="staff-mobile-team-tabs" role="tablist" aria-label="Choose team players">
+                  {[...new Map(players.map(player=>[player.team_id,player.team_name])).entries()].map(([teamId,teamName])=><button type="button" role="tab" aria-selected={Number(activeStaffTeamId)===Number(teamId)} className={Number(activeStaffTeamId)===Number(teamId)?"active":""} onClick={()=>setActiveStaffTeamId(teamId)} key={teamId}><span>{teamName}</span><b>{players.filter(player=>Number(player.team_id)===Number(teamId)).length}</b></button>)}
+                </div>
                 <div className="row g-2">
                   {players.map((p) => (
-                    <div className="col-md-6" key={p.team_player_id}>
+                    <div className={`col-md-6 staff-player-card ${Number(activeStaffTeamId)===Number(p.team_id)?"is-mobile-active":""}`} key={p.team_player_id}>
                       <div
                         className={`border rounded-3 p-2 d-flex align-items-center gap-2 ${selected?.team_player_id === p.team_player_id ? "border-warning bg-warning bg-opacity-10" : ""}`}
-                        onClick={() => setSelected(p)}
+                        onClick={() => {setSelected(p);setActiveStaffTeamId(p.team_id);}}
                         role="button"
                       >
                         <input
