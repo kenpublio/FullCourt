@@ -33,6 +33,7 @@ const GuestScoringConsole = () => {
   const [pin, setPin] = useState('');
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [activeTeamId, setActiveTeamId] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -108,7 +109,11 @@ const GuestScoringConsole = () => {
       }
       setData(result);
       const eligiblePlayers = result.players.filter((player) => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
-      setSelected((current) => eligiblePlayers.find((player) => player.team_player_id === current?.team_player_id) || eligiblePlayers[0] || null);
+      setSelected((current) => {
+        const nextSelected = eligiblePlayers.find((player) => player.team_player_id === current?.team_player_id) || eligiblePlayers[0] || null;
+        setActiveTeamId((activeTeam) => [result.game.team1_id,result.game.team2_id].some((id)=>Number(id)===Number(activeTeam)) ? activeTeam : (nextSelected?.team_id || result.game.team1_id));
+        return nextSelected;
+      });
       setError('');
     } catch (loadError) {
       if (!loadError.response) {
@@ -335,7 +340,7 @@ const GuestScoringConsole = () => {
       <div className="courtside-operator"><small>Operator</small><b>{data.operator_name}</b></div>
     </header>
     <div className={`courtside-sync-bar ${online?'is-online':'is-offline'}`} role="status"><span><i className={`bi ${online?'bi-cloud-check':'bi-cloud-slash'}`}/>{online?'Online - game actions are syncing':'Offline - player statistics will queue on this device'}</span><span>{pendingEvents.length?`${pendingEvents.length} waiting to sync`:lastSavedAt?`Last saved ${lastSavedAt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'Ready'}</span>{pendingEvents.length>0&&online&&<button type="button" onClick={syncPending}>Sync now</button>}</div>
-    <section className="courtside-scoreboard">
+    <section className="courtside-scoreboard" id="courtside-scoreboard">
       <article>
         <small>HOME</small>
         <h2>{teams[0]?.name || 'TBD'}</h2>
@@ -423,28 +428,29 @@ const GuestScoringConsole = () => {
     </form>
     {(message || error) && <div className={`courtside-alert ${error ? 'is-error' : ''}`} role={error ? 'alert' : 'status'}><i className={`bi ${error ? 'bi-exclamation-triangle' : 'bi-check-circle'}`}/>{error || message}<button type="button" onClick={() => { setError(''); setMessage(''); }}>×</button></div>}
     <div className="courtside-workspace">
-      <aside className="courtside-roster-picker"><span className="score-kicker">CHOOSE A PLAYER</span><h3>Tap a team, then a player</h3>
+      <aside className="courtside-roster-picker" id="courtside-rosters"><span className="score-kicker">CHOOSE A PLAYER</span><h3>Tap a team, then a player</h3>
         <p className="courtside-roster-help">Both teams are separated below. Tap any cleared player to record a game action.</p>
+        <div className="courtside-mobile-team-tabs" role="tablist" aria-label="Choose team roster">{teams.map((team)=><button type="button" role="tab" aria-selected={Number(activeTeamId)===Number(team.id)} className={Number(activeTeamId)===Number(team.id)?'active':''} onClick={()=>setActiveTeamId(team.id)} key={`mobile-team-${team.id}`}><span>{team.name}</span><b>{data.players.filter(player=>Number(player.team_id)===Number(team.id)&&player.eligibility_status==='verified'&&Number(player.is_present)===1).length}</b></button>)}</div>
         <div className="courtside-roster-teams">{teams.map((team) => {
           const roster = data.players.filter((player) => Number(player.team_id) === Number(team.id));
           const available = roster.filter((player) => player.eligibility_status === 'verified' && Number(player.is_present) === 1);
           const unavailable = roster.filter((player) => player.eligibility_status !== 'verified' || Number(player.is_present) !== 1);
           const playerRow = (player) => <div className={`courtside-roster-row ${player.eligibility_status !== 'verified' || Number(player.is_present) !== 1 ? 'is-locked' : ''}`} key={player.team_player_id}>
-            <button type="button" disabled={player.eligibility_status !== 'verified' || Number(player.is_present) !== 1} className={`courtside-player-pick ${selected?.team_player_id === player.team_player_id ? 'active' : ''}`} onClick={() => setSelected(player)}>
+            <button type="button" disabled={player.eligibility_status !== 'verified' || Number(player.is_present) !== 1} className={`courtside-player-pick ${selected?.team_player_id === player.team_player_id ? 'active' : ''}`} onClick={() => {setSelected(player);setActiveTeamId(player.team_id);}}>
               <span>#{player.jersey_number || '—'}</span><div><b>{player.full_name}</b><small>{player.position || 'Player'}</small></div>
               {player.eligibility_status !== 'verified' || Number(player.is_present) !== 1
                 ? <i className="roster-status">{player.eligibility_status === 'verified' ? 'ABSENT' : (player.eligibility_status || 'PENDING').replaceAll('_', ' ').toUpperCase()}</i>
                 : <i className="roster-status is-ready">SELECT</i>}
             </button>
           </div>;
-          return <section className="courtside-team-roster" key={team.id}><h4><span>{team.name}</span><small>{available.length} cleared</small></h4>
+          return <section className={`courtside-team-roster ${Number(activeTeamId)===Number(team.id)?'is-mobile-active':''}`} key={team.id}><h4><span>{team.name}</span><small>{available.length} cleared</small></h4>
             <div className="roster-group-heading">PLAYERS <span>{available.length}</span></div>
             {available.length ? available.map(playerRow) : <p className="roster-empty">No cleared players.</p>}
             {!!unavailable.length && <details className="roster-not-cleared"><summary>Not cleared <span>{unavailable.length}</span></summary>{unavailable.map(playerRow)}</details>}
           </section>;
         })}</div>
       </aside>
-      <section className="courtside-actions">
+      <section className="courtside-actions" id="courtside-stats">
         <div className="selected-player"><div><span className="score-kicker">RECORDING FOR</span><h2>{selected ? `#${selected.jersey_number || '—'} ${selected.full_name}` : 'Select a player'}</h2><p>{selected?.team_name || 'Choose an active roster player to begin.'}</p></div><i className="bi bi-person-bounding-box"/></div>
         <div className="courtside-action-heading"><div><span className="score-kicker">COMPLETE GAME STATS</span><p>Record scoring, missed shots, rebounds, assists, defense, turnovers, and fouls for the selected player.</p></div><span className="courtside-stat-ready"><i className="bi bi-grid-3x3-gap-fill"/> All controls ready</span></div>
         <div className="stat-action-grid">{actions.map(([type, mark, label]) => <button type="button" aria-label={label} disabled={busy || !selected} className={type.includes('made') ? 'made' : type.includes('missed') ? 'missed' : ''} onClick={() => record(type)} key={type}><strong>{mark}</strong><span>{label}</span></button>)}</div>
@@ -453,6 +459,7 @@ const GuestScoringConsole = () => {
     </div>
     <section className="courtside-finalize"><div><span className="score-kicker">END OF GAME</span><h3>Submit the final score</h3><p>Review the scoreboard first. Submission locks scoring until the Admin confirms the official result.</p></div><button type="button" disabled={busy||pendingEvents.length>0||Number(teams[0]?.score)===Number(teams[1]?.score)} onClick={()=>setShowFinalReview(true)}><i className="bi bi-flag-fill"/> Review final score</button>{pendingEvents.length>0&&<small>Sync all pending actions before ending the game.</small>}{Number(teams[0]?.score)===Number(teams[1]?.score)&&<small>A tied score cannot be submitted. Continue to overtime.</small>}</section>
     <section className="courtside-safety courtside-safety-bottom"><div><span className="score-kicker">PLAYER SAFETY</span><h3>Report a game incident</h3><p>Use only when a player is injured or a fight/misconduct happens.</p></div><div><button type="button" className="injury" onClick={()=>openIncident('injury')}><i className="bi bi-bandaid-fill"/> Player injury</button><button type="button" className="fight" onClick={()=>openIncident('misconduct')}><i className="bi bi-shield-exclamation"/> Fight / misconduct</button></div></section>
+    <nav className="courtside-mobile-nav" aria-label="Mobile scoring shortcuts"><a href="#courtside-rosters"><i className="bi bi-people-fill"/><span>Players</span></a><a href="#courtside-stats"><i className="bi bi-grid-3x3-gap-fill"/><span>Stats</span></a><a href="#courtside-scoreboard"><i className="bi bi-scoreboard"/><span>Score</span></a></nav>
     <footer><span><i className="bi bi-cloud-check"/> Every action is saved to the FullCourt game log.</span><button type="button" onClick={() => load()}><i className="bi bi-arrow-clockwise"/> Refresh</button></footer>
     {showFinalReview&&<div className="courtside-final-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setShowFinalReview(false)}}><section className="courtside-final-dialog" role="dialog" aria-modal="true" aria-labelledby="guest-final-title"><span className="score-kicker">FINAL SCORE REVIEW</span><h2 id="guest-final-title">Confirm before submitting</h2><div className="courtside-final-score"><span><small>{teams[0]?.name}</small><b>{teams[0]?.score||0}</b></span><em>FINAL</em><span><small>{teams[1]?.name}</small><b>{teams[1]?.score||0}</b></span></div><p>This will pause the clock, lock the scoring link, and send the result to the Admin for official confirmation.</p><div><button type="button" className="secondary" disabled={busy} onClick={()=>setShowFinalReview(false)}>Go back</button><button type="button" disabled={busy} onClick={submitFinal}>{busy?'Submitting…':'Submit final score'}</button></div></section></div>}
     {incidentType&&<div className="courtside-final-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!incidentBusy)setIncidentType('')}}><section className="courtside-incident-dialog" role="dialog" aria-modal="true" aria-labelledby="incident-dialog-title"><span className="score-kicker">COURTSIDE SAFETY REPORT</span><h2 id="incident-dialog-title">{incidentType==='injury'?'Player injury':'Fight / misconduct'}</h2><p>Save the facts only. Tournament operations will receive this protected report for follow-up.</p><label>Affected player or team<select value={incidentSubject} onChange={event=>setIncidentSubject(event.target.value)}><option value="Game incident">Whole game / multiple people</option>{teams.map(team=><option value={team.name} key={`team-${team.id}`}>{team.name}</option>)}{data.players.map(player=><option value={`#${player.jersey_number||'—'} ${player.full_name} · ${player.team_name}`} key={player.team_player_id}>#{player.jersey_number||'—'} {player.full_name} · {player.team_name}</option>)}</select></label><label>Severity<select value={incident.severity} onChange={event=>setIncident(current=>({...current,severity:event.target.value}))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical / emergency</option></select></label><label>What happened?<textarea rows="3" value={incident.description} onChange={event=>setIncident(current=>({...current,description:event.target.value}))} placeholder={incidentType==='injury'?'Example: Player landed awkwardly and reported ankle pain.':'Example: Players exchanged punches after a hard foul.'}/></label><label>Immediate action taken<textarea rows="2" value={incident.action_taken} onChange={event=>setIncident(current=>({...current,action_taken:event.target.value}))} placeholder="Example: Game paused; first aid provided; players separated."/></label><div><button type="button" className="secondary" disabled={incidentBusy} onClick={()=>setIncidentType('')}>Cancel</button><button type="button" disabled={incidentBusy||!incident.description.trim()} onClick={reportIncident}>{incidentBusy?'Saving…':'Save incident report'}</button></div></section></div>}

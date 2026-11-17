@@ -620,6 +620,7 @@
 .courtside-roster-teams .courtside-team-roster h4 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .courtside-roster-teams .courtside-roster-row{grid-template-columns:1fr}
 .courtside-roster-teams .courtside-player-pick{min-height:48px!important}
+.courtside-mobile-team-tabs,.courtside-mobile-nav{display:none}
 .roster-not-cleared{margin-top:12px;border-top:1px solid var(--court-line);padding-top:10px}.roster-not-cleared summary{display:flex;justify-content:space-between;color:#f0c168;font-size:.65rem;font-weight:800;text-transform:uppercase;cursor:pointer}.roster-not-cleared[open] summary{margin-bottom:8px}
 .courtside-safety-bottom{max-width:calc(1280px - 40px);margin:0 auto 24px}
 @media(max-width:760px){.courtside-roster-teams{grid-template-columns:1fr}.courtside-safety-bottom{margin:0 10px 17px}.courtside-roster-teams .courtside-team-roster h4{font-size:.76rem!important}}
@@ -671,4 +672,13 @@
   .stat-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .stat-action-grid button{min-height:76px!important}
   .courtside-roster-teams .courtside-team-roster{padding:11px}
+  .courtside-console{padding-bottom:74px}
+  .courtside-mobile-team-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0 10px}
+  .courtside-mobile-team-tabs button{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;min-height:48px;padding:9px 11px;border:1px solid var(--court-line);border-radius:10px;background:#101a23;color:#c4d0da;font-size:.68rem;font-weight:850;text-align:left}
+  .courtside-mobile-team-tabs button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.courtside-mobile-team-tabs button b{display:grid;min-width:25px;height:25px;place-items:center;border-radius:99px;background:rgba(255,255,255,.07);font-size:.65rem}
+  .courtside-mobile-team-tabs button.active{border-color:#efc24d;background:rgba(239,194,77,.12);color:#fff}.courtside-mobile-team-tabs button.active b{background:#efc24d;color:#121820}
+  .courtside-roster-teams .courtside-team-roster{display:none}.courtside-roster-teams .courtside-team-roster.is-mobile-active{display:block;max-height:380px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .courtside-mobile-nav{position:fixed;z-index:40;right:10px;bottom:10px;left:10px;display:grid;grid-template-columns:repeat(3,1fr);overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:14px;background:rgba(8,14,20,.95);box-shadow:0 12px 35px rgba(0,0,0,.48);backdrop-filter:blur(14px)}
+  .courtside-mobile-nav a{display:grid;justify-items:center;gap:3px;min-height:54px;padding:8px;color:#c8d3dc;font-size:.57rem;font-weight:850;text-decoration:none}.courtside-mobile-nav a+a{border-left:1px solid rgba(255,255,255,.1)}.courtside-mobile-nav i{color:#efc24d;font-size:1rem}
+  .courtside-actions{scroll-margin-top:8px}.courtside-roster-picker,.courtside-scoreboard{scroll-margin-top:8px}
 }
