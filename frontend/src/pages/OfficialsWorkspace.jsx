@@ -254,7 +254,7 @@ const OfficialsWorkspace = () => {
                       {a.status}
                     </span>
                   </div>
-                  <h5 className="fw-bold mt-3">
+                  <h5 className="fw-bold mt-3" role="heading" aria-level="2">
                     {a.home_team || "TBD"} vs {a.away_team || "TBD"}
                   </h5>
                   <p className="small text-muted mb-2">{a.tournament_name}</p>

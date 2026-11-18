@@ -11,7 +11,7 @@ const AwardsManagement = () => {
     [initializing, setInitializing] = useState(true),
     [loadingAwards, setLoadingAwards] = useState(false),
     [error, setError] = useState("");
-  const apiRoot = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8767/api").replace(/\/api\/?$/, "");
+  const apiRoot = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8767/api")).replace(/\/api\/?$/, "");
   const mediaUrl = (value) => value?.startsWith("http") ? value : `${apiRoot}${value}`;
   useEffect(() => {
     tournamentService.getTournaments().then((r) => {

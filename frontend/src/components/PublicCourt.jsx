@@ -41,7 +41,7 @@ export function CourtStatus({ status }) {
 }
 export function MatchCard({ match, sheet = false }) {
   const showScore = ['in_progress','completed'].includes(match.status);
-  const apiBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8767/api';
+  const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8767/api');
   return <article className={`court-match ${match.status === 'in_progress' ? 'live-match' : ''}`}>
     <div className="court-match-top"><span>{match.tournament_name}</span><CourtStatus status={match.status}/></div>
     {[['team1_name','team1_score'],['team2_name','team2_score']].map(([name,score], index) => <div className="court-team" key={name}><span className={`court-team-avatar team-${index}`}>{(match[name] || 'TBD').slice(0,2).toUpperCase()}</span><strong>{match[name] || 'To be determined'}</strong><b>{showScore ? (match[score] ?? '–') : '–'}</b></div>)}

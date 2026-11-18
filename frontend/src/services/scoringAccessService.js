@@ -1,7 +1,7 @@
 import axios from 'axios';
 import api from './api';
 
-const API_BASE_URL=import.meta.env.VITE_API_URL||'http://127.0.0.1:8767/api';
+const API_BASE_URL=import.meta.env.VITE_API_URL||(import.meta.env.PROD?'/api':'http://127.0.0.1:8767/api');
 const guest=axios.create({baseURL:API_BASE_URL,headers:{'Content-Type':'application/json'}});
 const sessionConfig=token=>({headers:{Authorization:`Bearer ${token}`}});
 

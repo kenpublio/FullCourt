@@ -122,7 +122,7 @@ const CoachDashboard = () => {
           {primaryTeam ? <>
             <div className="coach-hero-team-identity">
               <span style={{ background: primaryTeam.primary_color || "#d63a1d" }}>
-                {primaryTeam.logo_url ? <img src={`${(import.meta.env.VITE_API_URL || "http://127.0.0.1:8767/api").replace(/\/api\/?$/, "")}${primaryTeam.logo_url}`} alt="" /> : (primaryTeam.short_name || primaryTeam.team_name || "FC").slice(0,2).toUpperCase()}
+                {primaryTeam.logo_url ? <img src={`${(import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8767/api")).replace(/\/api\/?$/, "")}${primaryTeam.logo_url}`} alt="" /> : (primaryTeam.short_name || primaryTeam.team_name || "FC").slice(0,2).toUpperCase()}
               </span>
               <div><small>MY ASSIGNED TEAM</small><h2>{primaryTeam.team_name}</h2><p>{primaryTeam.tournament_name || "Tournament assignment pending"}</p></div>
             </div>

@@ -14,7 +14,7 @@ import "../styles/tournament-hub.css";
 function TeamLogo({ team }) {
   const [failed, setFailed] = useState(false);
   const apiRoot = (
-    import.meta.env.VITE_API_URL || "http://127.0.0.1:8767/api"
+    import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8767/api")
   ).replace(/\/api\/?$/, "");
   const src =
     team.logo_url &&

@@ -415,6 +415,8 @@ const ReportsAnalyticsView = () => {
           <div className="report-table-panel mt-4">
             <h5
               className="fw-bold mb-3"
+              role="heading"
+              aria-level="2"
               style={{ color: "var(--text-primary)" }}
             >
               <i className="bi bi-person-lines-fill text-evsu-primary me-2" />
@@ -471,7 +473,7 @@ const ReportsAnalyticsView = () => {
       {tab === "leaderboard" && (
         <div className="reports-content report-table-panel-wrap">
           <div className="report-table-panel">
-          <h5 className="fw-bold mb-3" style={{ color: "var(--text-primary)" }}>
+          <h5 className="fw-bold mb-3" style={{ color: "var(--text-primary)" }} role="heading" aria-level="2">
             <i className="bi bi-award me-2 text-muted" />
             {isCoach?'Assigned Team Performance':'Top Teams (all tournaments)'}
           </h5>
@@ -515,7 +517,7 @@ const ReportsAnalyticsView = () => {
       {tab === "log" && (
         <div className="reports-content report-table-panel-wrap">
           <div className="report-table-panel">
-          <h5 className="fw-bold mb-3" style={{ color: "var(--text-primary)" }}>
+          <h5 className="fw-bold mb-3" style={{ color: "var(--text-primary)" }} role="heading" aria-level="2">
             <i className="bi bi-clock-history me-2 text-muted" />
             Report Generation Log
           </h5>

@@ -484,7 +484,6 @@
 /* WCAG contrast safeguards shared by the Admin, Staff Admin, and Coach workspaces. */
 :root[data-fullcourt-theme="dark"] .admin-console-dark :is(
   td .fw-bold,
-  .schedule-pack-action small,
   .live-scoring-panel-heading > b,
   .settings-platform-panel article > b,
   .coach-roster-team-chip > span,
@@ -493,6 +492,7 @@
   .official-assignment-card small,
   .officials-list-heading > div > span
 ) { color:#f4f4f5 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .schedule-pack-action small { color:#374151 !important; }
 :root[data-fullcourt-theme="dark"] .admin-console-dark :is(.btn-outline-danger,.btn-outline-dark) {
   color:#ff9b8a !important;
   border-color:#ff806c !important;
@@ -506,7 +506,20 @@
   color:#fff !important;
 }
 :root[data-fullcourt-theme="dark"] .admin-console-dark small { color:#c9cbd1; }
-:root[data-fullcourt-theme="dark"] .admin-console-dark :is(.coach-roster-team-chip > span,.officials-list-heading > div > span,.schedule-pack-action small,.settings-platform-panel article > b) { color:#f4f4f5 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark :is(.coach-roster-team-chip > span,.officials-list-heading > div > span,.settings-platform-panel article > b) { color:#f4f4f5 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console-dark .schedule-pack-action small { color:#374151 !important; }
+
+/* Final accessibility contrast pass for operational text and controls. */
+:root[data-fullcourt-theme] .schedule-ops-assignment small,
+:root[data-fullcourt-theme] .ops-assigned-competition small,
+:root[data-fullcourt-theme] .officials-list-heading > div > span { color:#a42616 !important; }
+:root[data-fullcourt-theme] .schedule-pack-action > div > span > small { color:#3f4854 !important; }
+:root[data-fullcourt-theme] .admin-console .btn-outline-danger { color:#8f2113 !important; border-color:#8f2113 !important; }
+:root[data-fullcourt-theme="dark"] .admin-console .btn-outline-danger { color:#8f2113 !important; border-color:#8f2113 !important; }
+:root[data-fullcourt-theme="dark"] .settings-platform-panel article > b { color:#f4f6f8 !important; }
+:root[data-fullcourt-theme="dark"] .settings-center .btn-outline-dark { color:#f4f6f8 !important; border-color:#8e99a8 !important; }
+:root[data-fullcourt-theme="dark"] .official-assignment-card small { color:#c6ced8 !important; }
+:root[data-fullcourt-theme="dark"] .statistician-assignment-form .form-select { color:#f4f6f8 !important; background-color:#181c22 !important; }
 :root[data-fullcourt-theme="dark"] .admin-console-dark :is(.coach-team-primary,.btn-outline-danger,.btn-outline-dark) { opacity:1 !important; }
 :root[data-fullcourt-theme="dark"] .admin-console-dark .coach-team-primary { color:#fff !important;background:#a92718 !important; }
 :root[data-fullcourt-theme="dark"] .admin-console-dark .user-management-tabs .btn:not(.is-active) > span { color:#e4e4e7 !important; }

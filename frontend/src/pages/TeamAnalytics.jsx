@@ -4,7 +4,7 @@ import basketballAnalyticsService from '../services/basketballAnalyticsService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import '../styles/performance-profiles.css';
 
-const apiRoot=(import.meta.env.VITE_API_URL||'http://127.0.0.1:8767/api').replace(/\/api\/?$/,'');
+const apiRoot=(import.meta.env.VITE_API_URL||(import.meta.env.PROD?'/api':'http://127.0.0.1:8767/api')).replace(/\/api\/?$/,'');
 const initials=name=>(name||'FC').split(' ').map(word=>word[0]).slice(0,2).join('').toUpperCase();
 
 const TeamAnalytics=()=>{

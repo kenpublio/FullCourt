@@ -17,7 +17,7 @@ const Profile = () => {
   const fileRef = useRef(null);
   const isPlatformAdmin=['platform_admin','admin'].includes(user?.role);
 
-  const apiRoot = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8767/api').replace(/\/api\/?$/, '');
+  const apiRoot = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8767/api')).replace(/\/api\/?$/, '');
   const photoUrl = user?.avatar_url
     ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${apiRoot}${user.avatar_url}`)
     : '';

@@ -81,7 +81,7 @@ export default function Home() {
         .includes(playerQuery.trim().toLowerCase()),
     )
     .slice(0, 6);
-  const apiRoot = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8767/api").replace(/\/api\/?$/, "");
+  const apiRoot = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "/api" : "http://127.0.0.1:8767/api")).replace(/\/api\/?$/, "");
   return (
     <div className="court-site court-home-dark">
       <main>

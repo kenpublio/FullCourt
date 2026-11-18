@@ -50,7 +50,7 @@ const TeamManagement = () => {
   const [rosterPosition, setRosterPosition] = useState('');
   const [pendingDeleteTeam, setPendingDeleteTeam] = useState(null);
   const [assistantCoaches,setAssistantCoaches]=useState([]);
-  const apiRoot = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8767/api').replace(/\/api\/?$/, '');
+  const apiRoot = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8767/api')).replace(/\/api\/?$/, '');
   const mediaUrl = (path) => path?.startsWith('http') ? path : `${apiRoot}${path}`;
   const isCoach = ['coach','coach_manager'].includes(user?.role);
   const isPlatformAdmin=['platform_admin','admin'].includes(user?.role);
